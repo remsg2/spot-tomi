@@ -1,0 +1,53 @@
+# Étape 1 du pipeline (spécifications, section 8.3) : contrôles sur chaque pull request.
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+  SUPABASE_CLI_VERSION: "3.2.0"
+
+jobs:
+  app:
+    name: Lint, types, tests unitaires, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      # Build sans aucune variable Supabase : elle doit réussir quand même.
+      - run: npm run build
+      - name: Aucune URL Supabase dans le bundle client
+        run: npm run check:bundle
+      - name: Playwright sur la build locale
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+
+  database:
+    name: Migrations et pgTAP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Base Supabase locale (migrations + seed)
+        run: supabase db start
+      - name: Tests pgTAP
+        run: supabase test db

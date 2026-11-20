@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Profil et album</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; box-sizing: border-box; padding: 20px 16px 0; background: {{t.bg}}; color: {{t.text}}; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; gap: 14px;">
+
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <span style="width: 60px; height: 60px; border-radius: 999px; background: #111111; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: 'Archivo Black', sans-serif; font-size: 24px; box-shadow: 0 0 0 3px {{t.bg}}, 0 0 0 6px {{accent}};">R</span>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-family: 'Archivo Black', sans-serif; font-size: 24px; line-height: 1;">Rémi</span>
+      <div style="display: flex; gap: 6px; align-items: center;">
+        <span style="font-size: 13px; color: {{t.muted}};">Depuis 2024</span>
+        <a href="Admin.dc.html" style="padding: 2px 7px; border-radius: 6px; background: {{t.text}}; color: {{t.bg}}; font-size: 11px; font-weight: 700; text-decoration: none;">Admin</a>
+      </div>
+    </div>
+    <button type="button" aria-label="Réglages" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid {{t.line}}; background: {{t.card}}; color: {{t.text}}; display: flex; align-items: center; justify-content: center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+    </button>
+  </div>
+
+  <div style="position: relative; height: 140px; border-radius: 22px; overflow: hidden; background: {{accent}}; color: #111111; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.12), 0 10px 24px rgba(0,0,0,0.14);">
+    <div style="position: absolute; left: 18px; top: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+      <span style="font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;">Score total</span>
+      <span style="padding: 3px 8px; border-radius: 6px; background: #111111; color: #FFFFFF; font-size: 12px; font-weight: 700;">2ᵉ au classement</span>
+    </div>
+    <div style="position: absolute; inset: 0; background: #111111; clip-path: polygon(0 100%, 0 86%, 100% 30%, 100% 100%);"></div>
+    <div style="position: absolute; right: 18px; bottom: 10px; display: flex; align-items: baseline; gap: 6px; color: {{accent}};">
+      <span style="font-family: 'Archivo Black', sans-serif; font-size: 60px; line-height: 1;">1 435</span>
+      <span style="font-size: 14px; font-weight: 700;">pts</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+    <div style="padding: 12px; border-radius: 16px; background: {{t.card}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 2px;"><span style="font-family: 'Archivo Black', sans-serif; font-size: 22px;">27</span><span style="font-size: 12px; color: {{t.muted}};">stickers</span></div>
+    <div style="padding: 12px; border-radius: 16px; background: {{t.card}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 2px;"><span style="font-family: 'Archivo Black', sans-serif; font-size: 22px;">11</span><span style="font-size: 12px; color: {{t.muted}};">pays</span></div>
+    <div style="padding: 12px; border-radius: 16px; background: {{t.card}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 2px;"><span style="font-family: 'Archivo Black', sans-serif; font-size: 22px;">3</span><span style="font-size: 12px; color: {{t.muted}};">premiers du pays</span></div>
+  </div>
+
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <h2 style="margin: 0; font-family: 'Archivo Black', sans-serif; font-weight: 400; font-size: 18px;">Album</h2>
+    <div style="display: flex; gap: 10px; align-items: center; font-size: 11px; font-weight: 600; color: {{t.muted}};">
+      <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 9px; height: 9px; border-radius: 2px; background: #F2C230;"></span>24</span>
+      <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 9px; height: 9px; border-radius: 2px; background: #FF7A59;"></span>25</span>
+      <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 9px; height: 9px; border-radius: 2px; background: #5B8DEF;"></span>26</span>
+      <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 9px; height: 9px; border-radius: 2px; background: {{accent}};"></span>27</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px;">
+    <sc-for list="{{tiles}}" as="c" hint-placeholder-count="8">
+      <div style="position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: {{c.bg}}; transform: rotate({{c.rot}}deg); box-shadow: {{c.sh}};">
+        <span style="position: absolute; left: 8px; top: 7px; font-family: 'Archivo Black', sans-serif; font-size: 17px; color: #111111;">{{c.code}}</span>
+        <span style="position: absolute; inset: 0; background: #111111; clip-path: polygon(0 100%, 0 90%, 100% 56%, 100% 100%);"></span>
+        <span style="position: absolute; right: 6px; bottom: 4px; font-family: 'Archivo Black', sans-serif; font-size: 13px; color: {{c.bg}};">{{c.pts}}</span>
+      </div>
+    </sc-for>
+    <sc-for list="{{locked}}" as="c" hint-placeholder-count="4">
+      <div style="aspect-ratio: 1; box-sizing: border-box; border-radius: 10px; border: 2px dashed {{t.dash}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: {{t.muted}};">
+        <span style="font-family: 'Archivo Black', sans-serif; font-size: 15px;">{{c.code}}</span>
+        <span style="font-size: 10px; font-weight: 700;">{{c.pts}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <nav aria-label="Navigation principale" style="position: absolute; left: 0; right: 0; bottom: 0; height: 80px; padding: 0 10px 14px; box-sizing: border-box; background: {{t.card}}; border-top: 1px solid {{t.line}}; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center;">
+    <a href="Carte.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; color: {{t.muted}}; text-decoration: none; font-size: 11px; font-weight: 600;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"></path><path d="M9 4v14M15 6v14"></path></svg>Carte</a>
+    <a href="Classement.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; color: {{t.muted}}; text-decoration: none; font-size: 11px; font-weight: 600;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg>Classement</a>
+    <a href="Ajout.dc.html" aria-label="Ajouter un sticker" style="justify-self: center; position: relative; top: -16px; width: 62px; height: 62px; border-radius: 18px; background: {{accent}}; color: #111111; overflow: hidden; transform: rotate(-5deg); box-shadow: 0 0 0 4px {{t.card}}, 0 8px 18px rgba(0,0,0,0.28); display: flex; align-items: center; justify-content: center;">
+      <span style="position: absolute; inset: 0; background: #111111; clip-path: polygon(0 100%, 0 88%, 100% 58%, 100% 100%);"></span>
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true" style="position: relative; margin-top: -8px;"><path d="M12 5v14M5 12h14"></path></svg>
+    </a>
+    <a href="Profil.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; color: {{t.muted}}; text-decoration: none; font-size: 11px; font-weight: 600;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>Album</a>
+    <a href="Profil.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; color: {{t.text}}; text-decoration: none; font-size: 11px; font-weight: 700;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>Profil</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"accent":{"editor":"color","default":"#5DB043","options":["#5DB043","#5B8DEF","#FF7A59","#F2C230"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = this.props.dark === true || this.props.dark === 'true';
+    const a = this.props.accent ?? '#5DB043';
+    const t = dark
+      ? { bg: '#0E0E10', text: '#F4F3EF', muted: '#A6A5A0', card: '#1A1A1D', line: '#2E2E33', dash: '#3A3A40' }
+      : { bg: '#F3F1EB', text: '#121212', muted: '#5C5B57', card: '#FFFFFF', line: '#E2DFD6', dash: '#C9C5BA' };
+    const Y = { 2024: '#F2C230', 2025: '#FF7A59', 2026: '#5B8DEF', 2027: a };
+    const base = '0 1px 2px rgba(0,0,0,0.15), 0 4px 10px rgba(0,0,0,0.12)';
+    const goldSh = base + ', 0 0 0 2px #E9B52F, 0 0 10px rgba(233,181,47,0.7)';
+    const tiles = [
+      ['ARG', 195, 2027, true, -3], ['FRA', 312, 2024, false, 2], ['MAR', 120, 2025, true, -2], ['ESP', 96, 2025, false, 3],
+      ['ITA', 85, 2027, false, -2], ['PRT', 70, 2026, false, 2], ['GBR', 64, 2026, false, -3], ['ISL', 160, 2026, true, 1]
+    ].map(([code, pts, yr, gold, rot]) => ({ code, pts, bg: Y[yr], rot, sh: gold ? goldSh : base }));
+    const locked = [
+      { code: 'JPN', pts: '+25 et plus' }, { code: 'NOR', pts: '+10 et plus' }, { code: 'BTN', pts: '+60 et plus' }, { code: 'PRK', pts: '+150 et plus' }
+    ];
+    return { dark, accent: a, t, tiles, locked };
+  }
+}
+</script>
+</body>
+</html>

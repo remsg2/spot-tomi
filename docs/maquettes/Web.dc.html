@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Spot Tomi · web</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 1440px; height: 900px; overflow: hidden; display: flex; background: {{t.bg}}; color: {{t.text}}; font-family: 'Inter', sans-serif;">
+
+  <aside style="width: 440px; flex-shrink: 0; box-sizing: border-box; height: 900px; padding: 22px 24px 0; background: {{t.card}}; border-right: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="position: relative; width: 34px; height: 34px; border-radius: 9px; background: {{accent}}; overflow: hidden; transform: rotate(-5deg);">
+          <div style="position: absolute; inset: 0; background: #111111; clip-path: polygon(0 100%, 0 78%, 100% 45%, 100% 100%);"></div>
+        </div>
+        <span style="font-family: 'Archivo Black', sans-serif; font-size: 20px;">SPOT TOMI</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 6px; border-radius: 999px; background: #111111; color: #FFFFFF; box-shadow: {{t.ring}};">
+        <span style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; background: {{accent}}; color: #111111; font-size: 12px; font-weight: 800;">#2</span>
+        <span style="font-family: 'Archivo Black', sans-serif; font-size: 16px; color: {{accent}};">1 435</span>
+        <span style="font-size: 11px; font-weight: 600; color: #BDBCB6;">pts</span>
+      </div>
+    </div>
+
+    <nav aria-label="Navigation principale" style="display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: {{t.soft}};">
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="{{n.href}}" style="flex: 1; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13px; font-weight: {{n.fw}}; background: {{n.bg}}; color: {{n.c}}; box-shadow: {{n.sh}};">{{n.label}}</a>
+      </sc-for>
+    </nav>
+
+    <a href="Ajout.dc.html" style="position: relative; height: 52px; border-radius: 16px; overflow: hidden; background: {{accent}}; color: #111111; text-decoration: none; display: flex; align-items: center; gap: 10px; padding: 0 18px; flex-shrink: 0;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true" style="position: relative;"><path d="M12 5v14M5 12h14"></path></svg>
+      <span style="position: relative; font-family: 'Archivo Black', sans-serif; font-size: 16px;">Ajouter un sticker</span>
+      <span style="position: absolute; inset: 0; background: #111111; clip-path: polygon(74% 100%, 100% 0, 100% 100%);"></span>
+    </a>
+
+    <sc-if value="{{isFiche}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="position: relative; height: 168px; border-radius: 18px; overflow: hidden; background: {{t.photo}}; flex-shrink: 0;">
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: {{t.photoGround}};"></div>
+          <div style="position: absolute; left: 210px; top: 0; width: 120px; height: 168px; background: {{t.wall}};"></div>
+          <div style="position: absolute; left: 226px; top: 32px;">
+            <dc-import name="Sticker" size="96" tilt="5" accent="{{accent}}" gold="{{yes}}" hint-size="96px,96px"></dc-import>
+          </div>
+          <span style="position: absolute; left: 12px; bottom: 12px; padding: 4px 8px; border-radius: 6px; background: rgba(0,0,0,0.5); color: #FFFFFF; font-size: 11px; font-weight: 600;">Photo du lieu</span>
+        </div>
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; gap: 6px;">
+              <span style="padding: 3px 7px; border-radius: 6px; background: {{accent}}; color: #111111; font-size: 11px; font-weight: 800;">2027</span>
+              <span style="padding: 3px 7px; border-radius: 6px; background: #E9B52F; color: #111111; font-size: 11px; font-weight: 700;">Premier du pays</span>
+            </div>
+            <h1 style="margin: 0; font-family: 'Archivo Black', sans-serif; font-weight: 400; font-size: 30px; line-height: 1.05;">Dubrovnik</h1>
+            <span style="font-size: 13px; color: {{t.muted}};">Croatie · par Hugo · 3 juin 2027</span>
+          </div>
+        </div>
+        <div style="position: relative; height: 112px; border-radius: 18px; overflow: hidden; background: {{accent}}; color: #111111; flex-shrink: 0;">
+          <div style="position: absolute; left: 16px; top: 14px; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;">Rareté</span>
+            <span style="font-size: 13px; font-weight: 600;">Pays courant, premier sticker</span>
+          </div>
+          <div style="position: absolute; inset: 0; background: #111111; clip-path: polygon(0 100%, 0 86%, 100% 30%, 100% 100%);"></div>
+          <div style="position: absolute; right: 16px; bottom: 10px; display: flex; align-items: baseline; gap: 6px; color: {{accent}};">
+            <span style="font-family: 'Archivo Black', sans-serif; font-size: 48px; line-height: 1;">+85</span>
+            <span style="font-size: 13px; font-weight: 700;">pts</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column;">
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+            <div style="display: flex; align-items: center; gap: 10px; height: 40px; border-bottom: 1px solid {{t.line}};">
+              <span style="width: 8px; height: 8px; border-radius: 2px; background: {{r.dot}};"></span>
+              <span style="flex: 1; font-size: 14px; font-weight: 600;">{{r.label}} <span style="font-weight: 500; color: {{t.muted}};">{{r.sub}}</span></span>
+              <span style="font-family: 'Archivo Black', sans-serif; font-size: 15px;">{{r.v}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isRank}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0;">
+          <h1 style="margin: 0; font-family: 'Archivo Black', sans-serif; font-weight: 400; font-size: 24px;">Classement 2027</h1>
+          <span style="font-size: 12px; color: {{t.muted}};">8 participants</span>
+        </div>
+        <sc-for list="{{ranking}}" as="r" hint-placeholder-count="8">
+          <div style="position: relative; display: flex; align-items: center; gap: 12px; height: 62px; padding: 0 14px; border-radius: 16px; overflow: hidden; background: {{r.bg}}; color: {{r.fg}}; border: 1px solid {{r.bd}};">
+            <span style="width: 22px; font-family: 'Archivo Black', sans-serif; font-size: 17px; color: {{r.rc}};">{{r.rank}}</span>
+            <span style="width: 38px; height: 38px; border-radius: 999px; background: {{r.av}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; box-shadow: {{r.ring}};">{{r.ini}}</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+              <span style="font-size: 15px; font-weight: 700;">{{r.name}}</span>
+              <span style="font-size: 12px; opacity: 0.75;">{{r.sub}}</span>
+            </div>
+            <span style="font-family: 'Archivo Black', sans-serif; font-size: 18px;">{{r.pts}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </aside>
+
+  <main style="position: relative; width: 1000px; height: 900px; overflow: hidden; background: {{t.water}};">
+    <svg width="1000" height="900" viewBox="0 0 1000 900" aria-hidden="true" style="position: absolute; left: 0; top: 0;">
+      <path d="M235 819 L150 788 L155 756 L138 734 L152 675 L155 625 L142 595 L165 578 L230 571 L302 581 L335 578 L345 536 L345 479 L320 446 L288 424 L258 398 L300 383 L335 387 L335 350 L370 364 L378 356 L402 341 L421 299 L448 289 L475 261 L492 220 L548 200 L590 178 L590 109 L578 51 L640 9 L630 78 L618 109 L630 159 L648 176 L678 166 L710 148 L732 178 L775 161 L812 140 L840 148 L865 157 L902 100 L900 51 L940 7 L962 42 L978 42 L988 -24 L962 -33 L962 -62 L994 -75 L1075 -77 L1132 -97 L1075 -127 L1000 -112 L950 -97 L910 -142 L912 -232 L950 -304 L1008 -373 L980 -421 L930 -409 L905 -344 L862 -293 L815 -227 L808 -132 L845 -107 L828 -67 L792 -33 L790 9 L775 78 L735 83 L730 114 L698 105 L695 60 L672 9 L655 -58 L640 -97 L630 -58 L588 -19 L550 -5 L515 -48 L500 -102 L498 -153 L500 -205 L550 -254 L638 -315 L688 -421 L738 -529 L788 -602 L875 -701 L1020 -784 L1150 -723 L1875 -701 L1875 659 L1275 819 L1050 803 L1032 740 L1030 692 L1025 665 L948 672 L940 692 L950 714 L975 750 L952 803 L938 806 L918 794 L902 762 L912 746 L892 731 L880 711 L860 679 L860 649 L838 612 L785 574 L755 554 L735 518 L721 527 L719 499 L684 506 L682 540 L712 571 L730 612 L778 629 L798 655 L824 670 L838 687 L805 677 L790 705 L802 724 L788 743 L766 758 L780 731 L765 692 L744 670 L731 664 L700 651 L681 634 L652 612 L632 573 L621 554 L598 543 L580 561 L556 567 L522 588 L509 581 L472 573 L452 592 L458 615 L429 646 L406 655 L388 672 L366 710 L380 732 L362 745 L350 769 L320 797 L265 797 Z M232 335 L270 323 L300 309 L342 307 L409 293 L410 282 L398 265 L418 233 L382 220 L378 191 L365 157 L345 148 L335 105 L310 78 L330 19 L300 -33 L250 -33 L232 42 L238 87 L252 118 L250 140 L290 135 L300 174 L300 200 L260 204 L272 241 L244 265 L295 277 L270 291 L250 315 Z M216 251 L222 204 L225 148 L235 153 L222 122 L192 116 L162 135 L160 161 L122 166 L128 200 L148 206 L126 237 L115 257 L130 277 L165 265 L200 253 Z M685 762 L708 750 L765 746 L752 772 L752 797 L732 788 L690 769 Z M585 721 L585 672 L605 651 L620 675 L616 718 L600 724 Z M590 646 L604 646 L610 625 L611 592 L590 605 L590 629 Z M962 834 L988 837 L1032 840 L1028 849 L992 851 L962 842 Z M648 100 L690 87 L685 118 L670 133 L650 118 Z M620 109 L645 114 L640 131 L625 127 Z M434 693 L455 693 L461 701 L452 714 L435 708 Z M228 825 L242 822 L302 840 L360 828 L450 794 L502 795 L570 791 L630 781 L652 784 L638 806 L640 825 L652 843 L628 874 L635 892 L652 904 L750 927 L875 983 L875 1139 L-50 1274 L130 998 L135 930 L205 880 Z" fill="{{t.land}}" stroke="{{t.coast}}" stroke-width="1.2" stroke-linejoin="round"></path>
+      <g fill="{{t.label}}" font-family="Inter, sans-serif" font-size="12" font-weight="600" letter-spacing="3" text-anchor="middle">
+        <text x="420" y="470">FRANCE</text>
+        <text x="275" y="700">ESPAGNE</text>
+        <text x="330" y="215">ROYAUME-UNI</text>
+        <text x="195" y="248">IRLANDE</text>
+        <text x="610" y="300">ALLEMAGNE</text>
+        <text x="650" y="580">ITALIE</text>
+        <text x="862" y="258">POLOGNE</text>
+        <text x="790" y="545">CROATIE</text>
+        <text x="728" y="448">AUTRICHE</text>
+        <text x="920" y="712">GRÈCE</text>
+      </g>
+    </svg>
+
+    <sc-for list="{{markers}}" as="m" hint-placeholder-count="20">
+      <div style="position: absolute; left: {{m.l}}px; top: {{m.t}}px;">
+        <dc-import name="Marker" size="{{m.s}}" pts="{{m.pts}}" accent="{{m.c}}" gold="{{m.gold}}" selected="{{m.sel}}" dark="{{dark}}" hint-size="{{m.hs}}"></dc-import>
+      </div>
+    </sc-for>
+
+    <div style="position: absolute; left: 398px; top: 362px; display: flex; align-items: center; gap: 6px; padding: 9px 13px 9px 11px; border-radius: 999px; background: #111111; color: #FFFFFF; box-shadow: 0 0 0 3px {{t.card}}, 0 6px 16px rgba(0,0,0,0.3);">
+      <span style="font-family: 'Archivo Black', sans-serif; font-size: 17px; line-height: 1;">18</span>
+      <span style="font-size: 12px; font-weight: 700; color: {{accent}};">312 pts</span>
+    </div>
+
+    <div style="position: absolute; left: 20px; top: 20px; right: 90px; display: flex; gap: 8px; flex-wrap: wrap;">
+      <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: {{accent}}; color: #111111; font: 700 13px 'Inter', sans-serif; box-shadow: {{t.shadow}};">2027</button>
+      <button type="button" style="height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; font: 600 13px 'Inter', sans-serif; display: flex; align-items: center; gap: 6px; box-shadow: {{t.shadow}};"><span style="width: 10px; height: 10px; border-radius: 3px; background: #5B8DEF;"></span>2026</button>
+      <button type="button" style="height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; font: 600 13px 'Inter', sans-serif; display: flex; align-items: center; gap: 6px; box-shadow: {{t.shadow}};"><span style="width: 10px; height: 10px; border-radius: 3px; background: #FF7A59;"></span>2025</button>
+      <button type="button" style="height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; font: 600 13px 'Inter', sans-serif; display: flex; align-items: center; gap: 6px; box-shadow: {{t.shadow}};"><span style="width: 10px; height: 10px; border-radius: 3px; background: #F2C230;"></span>2024</button>
+      <button type="button" style="height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; font: 600 13px 'Inter', sans-serif; display: flex; align-items: center; gap: 6px; box-shadow: {{t.shadow}};"><span style="width: 10px; height: 10px; border-radius: 999px; background: #E9B52F; box-shadow: 0 0 6px rgba(233,181,47,0.9);"></span>Rares</button>
+      <button type="button" style="height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; font: 600 13px 'Inter', sans-serif; box-shadow: {{t.shadow}};">Toutes les personnes</button>
+      <span style="height: 36px; padding: 0 14px; border-radius: 999px; background: #111111; color: #FFFFFF; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">64 stickers à l'écran · <span style="font-family: 'Archivo Black', sans-serif; color: {{accent}};">2 340 pts</span></span>
+    </div>
+
+    <div style="position: absolute; right: 20px; top: 20px; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: {{t.card}}; box-shadow: {{t.shadow}};">
+      <button type="button" aria-label="Zoomer" style="width: 44px; height: 44px; border: 0; border-bottom: 1px solid {{t.line}}; background: transparent; color: {{t.text}}; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+      <button type="button" aria-label="Dézoomer" style="width: 44px; height: 44px; border: 0; background: transparent; color: {{t.text}}; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+    </div>
+
+    <div style="position: absolute; left: 20px; bottom: 20px; width: 300px; box-sizing: border-box; padding: 14px 16px; border-radius: 18px; background: {{t.card}}; box-shadow: {{t.shadow}}; display: flex; flex-direction: column; gap: 10px;">
+      <span style="font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: {{t.muted}};">Légende</span>
+      <div style="display: flex; align-items: flex-end; gap: 14px; font-size: 12px;">
+        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: {{accent}};"></span>-20</span>
+        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 16px; height: 16px; border-radius: 4px; background: {{accent}};"></span>20-79</span>
+        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 22px; height: 22px; border-radius: 5px; background: {{accent}};"></span>80+ pts</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+        <span style="width: 16px; height: 16px; border-radius: 4px; background: {{accent}}; box-shadow: 0 0 0 2px #E9B52F, 0 0 8px rgba(233,181,47,0.8);"></span>
+        Premier du pays ou lieu exceptionnel
+      </div>
+    </div>
+
+    <span style="position: absolute; right: 16px; bottom: 10px; font-size: 10px; color: {{t.muted}};">© OpenStreetMap · MapLibre</span>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"panel":{"editor":"enum","default":"fiche","options":["fiche","classement"]},"accent":{"editor":"color","default":"#5DB043","options":["#5DB043","#5B8DEF","#FF7A59","#F2C230"]},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = this.props.dark === true || this.props.dark === 'true';
+    const panel = this.props.panel ?? 'fiche';
+    const a = this.props.accent ?? '#5DB043';
+    const t = dark
+      ? { bg: '#0E0E10', text: '#F4F3EF', muted: '#A6A5A0', card: '#1A1A1D', soft: '#232327', line: '#2E2E33', water: '#0B0C0E', land: '#222226', coast: '#34343A', label: '#62626A', photo: '#3B4248', photoGround: '#2A2E31', wall: '#4A4036', shadow: '0 2px 10px rgba(0,0,0,0.5)', ring: '0 0 0 1px #34343A' }
+      : { bg: '#F3F1EB', text: '#121212', muted: '#5C5B57', card: '#FFFFFF', soft: '#EFEDE6', line: '#E2DFD6', water: '#DEDCD3', land: '#FBFAF7', coast: '#CFCBC0', label: '#A19E95', photo: '#9FC3DA', photoGround: '#C9B79C', wall: '#D9C7A8', shadow: '0 2px 10px rgba(30,25,10,0.12)', ring: 'none' };
+    const Y = { 2024: '#F2C230', 2025: '#FF7A59', 2026: '#5B8DEF', 2027: a };
+    const raw = [
+      [146, 733, 34, '22', 2026], [160, 654, 26, '', 2027], [226, 775, 34, '30', 2027], [429, 646, 26, '', 2025],
+      [360, 528, 26, '', 2024], [336, 442, 26, '', 2027], [372, 277, 34, '24', 2026], [498, 242, 26, '', 2025],
+      [295, 89, 34, '41', 2027], [149, 205, 34, '38', 2027], [546, 492, 34, '53', 2027, true], [509, 581, 26, '', 2026],
+      [664, 408, 26, '', 2027], [688, 629, 34, '35', 2027], [683, 506, 34, '26', 2024], [710, 236, 34, '28', 2027],
+      [689, 101, 34, '45', 2026], [736, 334, 34, '31', 2026], [784, 405, 34, '33', 2025], [968, 757, 34, '48', 2027],
+      [827, 603, 44, '85', 2027, true, panel === 'fiche']
+    ];
+    const markers = raw.map(([x, y, s, pts, yr, gold, sel]) => ({
+      l: x - (s + 16) / 2, t: y - (s + 16) / 2, s, pts, c: Y[yr], gold: !!gold, sel: !!sel, hs: (s + 16) + 'px,' + (s + 16) + 'px'
+    }));
+    const navItems = [['Carte', 'Web.dc.html'], ['Classement', 'Classement.dc.html'], ['Album', 'Profil.dc.html'], ['Profil', 'Profil.dc.html'], ['Admin', 'Admin.dc.html']];
+    const activeNav = panel === 'fiche' ? 'Carte' : 'Classement';
+    const nav = navItems.map(([label, href]) => {
+      const on = label === activeNav;
+      return { label, href, bg: on ? t.card : 'transparent', c: on ? t.text : t.muted, fw: on ? 700 : 600, sh: on ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' };
+    });
+    const rows = [
+      { label: 'Pays courant', sub: 'Croatie', v: '10', dot: t.muted },
+      { label: 'Premier du pays', sub: '', v: '+50', dot: '#E9B52F' },
+      { label: 'Première ville', sub: '', v: '+15', dot: a },
+      { label: 'Isolement', sub: '50 km', v: '+5', dot: a },
+      { label: 'Loin de chez lui', sub: '1 400 km', v: '+5', dot: a }
+    ];
+    const people = [
+      ['1', 'Léa', 'L', '18 stickers · 9 pays', '1 480', '#7A4FD8'],
+      ['2', 'Rémi · toi', 'R', '27 stickers · 11 pays', '1 435', '#111111'],
+      ['3', 'Hugo', 'H', '20 stickers · 8 pays', '1 315', '#C2410C'],
+      ['4', 'Camille', 'C', '12 stickers · 6 pays', '980', '#0F766E'],
+      ['5', 'Nico', 'N', '15 stickers · 4 pays', '760', '#1D4ED8'],
+      ['6', 'Inès', 'I', '9 stickers · 5 pays', '615', '#BE185D'],
+      ['7', 'Paul', 'P', '11 stickers · 3 pays', '540', '#4D7C0F'],
+      ['8', 'Jade', 'J', '6 stickers · 3 pays', '410', '#6D28D9']
+    ];
+    const ranking = people.map(([rank, name, ini, sub, pts, av]) => {
+      const me = rank === '2';
+      const first = rank === '1';
+      return {
+        rank, name, ini, sub, pts, av,
+        bg: me ? a : t.card, fg: me ? '#111111' : t.text, bd: me ? a : t.line,
+        rc: me ? '#111111' : (first ? '#B98A12' : t.muted),
+        ring: first ? '0 0 0 2px #E9B52F' : (me ? '0 0 0 2px #FFFFFF' : 'none')
+      };
+    });
+    return { dark, accent: a, t, markers, nav, rows, ranking, isFiche: panel === 'fiche', isRank: panel !== 'fiche', yes: true };
+  }
+}
+</script>
+</body>
+</html>

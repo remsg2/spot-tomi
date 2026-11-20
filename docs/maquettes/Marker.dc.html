@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Marqueur mini-sticker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: {{box}}px; height: {{box}}px; display: flex; align-items: center; justify-content: center; font-family: 'Archivo Black', sans-serif;">
+  <div style="position: relative; width: {{s}}px; height: {{s}}px; box-sizing: border-box; border-radius: {{r}}px; background: {{accent}}; border: 2px solid {{edge}}; overflow: hidden; transform: rotate(-5deg); box-shadow: {{shadow}};">
+    <img src="/_blob/fff0754f51da64ae1295ddabcfacb418" alt="" style="position: absolute; left: 6%; top: 10%; width: 94%; height: 94%; display: block;">
+    <div style="position: absolute; inset: 0; background: #111111; clip-path: polygon(0 96%, 100% 62%, 100% 100%, 0 100%);"></div>
+    <sc-if value="{{showPts}}" hint-placeholder-val="{{true}}">
+      <div style="position: absolute; right: 2px; bottom: 1px; font-size: {{pf}}px; line-height: 1; color: {{accent}};">{{pts}}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#5DB043","options":["#5DB043","#5B8DEF","#FF7A59","#F2C230"]},"size":{"editor":"enum","default":"44","options":["26","34","44"]},"pts":{"editor":"text","default":"85"},"gold":{"editor":"boolean","default":false},"selected":{"editor":"boolean","default":false},"dark":{"editor":"boolean","default":false},"$preview":{"width":60,"height":60}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = Number(this.props.size ?? 44);
+    const yes = (v) => v === true || v === 'true';
+    const gold = yes(this.props.gold);
+    const sel = yes(this.props.selected);
+    const dark = yes(this.props.dark);
+    let shadow = '0 2px 6px rgba(0,0,0,0.30)';
+    if (gold) shadow += ', 0 0 0 2px #E9B52F, 0 0 12px rgba(233,181,47,0.75)';
+    if (sel) shadow += ', 0 0 0 ' + (gold ? 6 : 4) + 'px ' + (dark ? '#FFFFFF' : '#111111');
+    return {
+      s,
+      box: s + 16,
+      r: Math.round(s * 0.16),
+      accent: this.props.accent ?? '#5DB043',
+      edge: dark ? '#1A1A1D' : '#FFFFFF',
+      pts: this.props.pts ?? '',
+      showPts: s >= 34 && (this.props.pts ?? '') !== '',
+      pf: s >= 44 ? 12 : 9,
+      shadow
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Étape 4 du pipeline : retour arrière sur une build précédente, sans reconstruction
+# (instant rollback Vercel). L'URL d'un déploiement de production précédent se
+# trouve dans l'onglet Deployments de Vercel ou dans l'historique de ce workflow.
+name: Retour arrière
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment:
+        description: "URL ou id du déploiement de production à remettre en ligne"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      DEPLOYMENT: ${{ inputs.deployment }}
+    steps:
+      - run: npm install --global vercel@66.6.0
+      - run: vercel rollback "$DEPLOYMENT" --yes --token=${{ secrets.VERCEL_TOKEN }}

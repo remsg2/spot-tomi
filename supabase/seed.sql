@@ -1,0 +1,2 @@
+-- Jeu de données de démo (projet dev et base locale uniquement, jamais la prod).
+-- Rempli à partir de l'étape 4 (pays, saisons, stickers de démo).

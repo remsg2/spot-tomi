@@ -1,0 +1,36 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-11-20T23:05:00Z"},
+  "title": "Maquettes Spot Tomi",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1240, "h": 844, "title": "Système visuel"},
+    "Sticker.dc.html": {"x": 1320, "y": 0, "w": 320, "h": 320, "title": "Composant · Sticker"},
+    "Marker.dc.html": {"x": 1320, "y": 400, "w": 60, "h": 60, "title": "Composant · Marqueur"},
+    "Carte.dc.html": {"x": 0, "y": 1200, "w": 390, "h": 844, "title": "Carte", "radius": 44},
+    "Fiche.dc.html": {"x": 470, "y": 1200, "w": 390, "h": 844, "title": "Fiche lieu", "radius": 44},
+    "Ajout.dc.html": {"x": 940, "y": 1200, "w": 390, "h": 844, "title": "Ajout d'un sticker", "radius": 44},
+    "Bravo.dc.html": {"x": 1410, "y": 1200, "w": 390, "h": 844, "title": "Sticker collé", "radius": 44},
+    "Classement.dc.html": {"x": 1880, "y": 1200, "w": 390, "h": 844, "title": "Classement", "radius": 44},
+    "Profil.dc.html": {"x": 2350, "y": 1200, "w": 390, "h": 844, "title": "Profil et album", "radius": 44},
+    "Admin.dc.html": {"x": 2820, "y": 1200, "w": 390, "h": 844, "title": "Admin · couleur de l'année", "radius": 44, "is_interactive": true},
+    "Carte-dark.dc.html": {"x": 0, "y": 2390, "w": 390, "h": 844, "title": "Carte · sombre", "radius": 44},
+    "Fiche-dark.dc.html": {"x": 470, "y": 2390, "w": 390, "h": 844, "title": "Fiche lieu · sombre", "radius": 44},
+    "Ajout-dark.dc.html": {"x": 940, "y": 2390, "w": 390, "h": 844, "title": "Ajout · sombre", "radius": 44},
+    "Bravo-dark.dc.html": {"x": 1410, "y": 2390, "w": 390, "h": 844, "title": "Sticker collé · sombre", "radius": 44},
+    "Classement-dark.dc.html": {"x": 1880, "y": 2390, "w": 390, "h": 844, "title": "Classement · sombre", "radius": 44},
+    "Profil-dark.dc.html": {"x": 2350, "y": 2390, "w": 390, "h": 844, "title": "Profil · sombre", "radius": 44},
+    "Admin-dark.dc.html": {"x": 2820, "y": 2390, "w": 390, "h": 844, "title": "Admin · sombre", "radius": 44, "is_interactive": true},
+    "Web.dc.html": {"x": 0, "y": 3580, "w": 1440, "h": 900, "title": "Web · carte et fiche lieu"},
+    "Web-dark.dc.html": {"x": 1520, "y": 3580, "w": 1440, "h": 900, "title": "Web · carte et classement, sombre"}
+  },
+  "order": ["Main.dc.html", "Sticker.dc.html", "Marker.dc.html", "Carte.dc.html", "Fiche.dc.html", "Ajout.dc.html", "Bravo.dc.html", "Classement.dc.html", "Profil.dc.html", "Admin.dc.html", "Carte-dark.dc.html", "Fiche-dark.dc.html", "Ajout-dark.dc.html", "Bravo-dark.dc.html", "Classement-dark.dc.html", "Profil-dark.dc.html", "Admin-dark.dc.html", "Web.dc.html", "Web-dark.dc.html"],
+  "notes": {
+    "t-identite": {"x": 0, "y": -300, "text": "Identité : le sticker devient le système", "kind": "title1", "maxW": 1640},
+    "t-light": {"x": 0, "y": 900, "text": "Mobile · mode clair", "kind": "title1", "maxW": 3210},
+    "t-dark": {"x": 0, "y": 2090, "text": "Mobile · mode sombre", "kind": "title1", "maxW": 3210},
+    "t-web": {"x": 0, "y": 3280, "text": "Tablette et web", "kind": "title1", "maxW": 2960}
+  },
+  "designSystems": []
+}

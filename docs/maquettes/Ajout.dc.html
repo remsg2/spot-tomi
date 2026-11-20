@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Ajouter un sticker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; box-sizing: border-box; padding: 16px 16px 0; background: {{t.bg}}; color: {{t.text}}; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; gap: 14px;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <a href="Carte.dc.html" aria-label="Fermer" style="width: 44px; height: 44px; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; display: flex; align-items: center; justify-content: center; border: 1px solid {{t.line}}; box-sizing: border-box;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+    </a>
+    <span style="font-family: 'Archivo Black', sans-serif; font-size: 20px;">Nouveau sticker</span>
+    <span style="width: 44px; text-align: right; font-size: 13px; font-weight: 700; color: {{t.muted}};">2 / 3</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;">
+    <span style="height: 5px; border-radius: 3px; background: {{accent}};"></span>
+    <span style="height: 5px; border-radius: 3px; background: {{accent}};"></span>
+    <span style="height: 5px; border-radius: 3px; background: {{t.line}};"></span>
+  </div>
+
+  <div style="position: relative; height: 200px; border-radius: 20px; overflow: hidden; background: {{t.photo}}; flex-shrink: 0;">
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 52px; background: {{t.photoGround}};"></div>
+    <div style="position: absolute; left: 150px; top: 0; width: 60px; height: 200px; background: {{t.post}};"></div>
+    <div style="position: absolute; left: 124px; top: 48px;">
+      <dc-import name="Sticker" size="110" tilt="-7" accent="{{accent}}" hint-size="110px,110px"></dc-import>
+    </div>
+    <button type="button" style="position: absolute; left: 12px; bottom: 12px; height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: rgba(0,0,0,0.6); color: #FFFFFF; font: 600 12px 'Inter', sans-serif;">Changer la photo</button>
+  </div>
+
+  <div style="border-radius: 20px; background: {{t.card}}; border: 1px solid {{t.line}}; padding: 6px 14px; display: flex; flex-direction: column;">
+    <sc-for list="{{checks}}" as="c" hint-placeholder-count="3">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid {{t.line}};">
+        <span style="width: 26px; height: 26px; border-radius: 8px; background: {{accent}}; color: #111111; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+        </span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 12px; color: {{t.muted}};">{{c.k}}</span>
+          <span style="font-size: 14px; font-weight: 600;">{{c.v}}</span>
+        </div>
+      </div>
+    </sc-for>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
+      <span style="width: 26px; height: 26px; border-radius: 8px; background: {{t.soft}}; color: {{t.text}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+      </span>
+      <span style="font-size: 12px; color: {{t.muted}}; line-height: 1.35;">Les données de la photo sont retirées avant publication.</span>
+    </div>
+  </div>
+
+  <label style="display: flex; flex-direction: column; gap: 6px;">
+    <span style="font-size: 12px; font-weight: 700; color: {{t.muted}};">Nom du lieu</span>
+    <input type="text" value="Panneau du bout du monde" style="height: 48px; padding: 0 14px; border-radius: 14px; border: 1px solid {{t.line}}; background: {{t.card}}; color: {{t.text}}; font: 600 15px 'Inter', sans-serif; outline: none;">
+  </label>
+
+  <div style="position: relative; height: 72px; border-radius: 18px; overflow: hidden; background: #111111; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 12px; font-weight: 600; color: #BDBCB6;">Estimation</span>
+      <span style="align-self: flex-start; padding: 3px 7px; border-radius: 6px; background: #E9B52F; color: #111111; font-size: 11px; font-weight: 700;">Premier du pays</span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 5px; color: {{accent}};">
+      <span style="font-size: 18px; font-weight: 700;">≈</span>
+      <span style="font-family: 'Archivo Black', sans-serif; font-size: 38px; line-height: 1;">195</span>
+      <span style="font-size: 13px; font-weight: 700;">pts</span>
+    </div>
+  </div>
+
+  <a href="Bravo.dc.html" style="position: absolute; left: 16px; right: 16px; bottom: 22px; height: 58px; border-radius: 18px; overflow: hidden; background: {{accent}}; color: #111111; text-decoration: none; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.2);">
+    <span style="position: relative; font-family: 'Archivo Black', sans-serif; font-size: 18px;">Coller le sticker</span>
+    <span style="position: absolute; inset: 0; background: #111111; clip-path: polygon(62% 100%, 100% 0, 100% 100%);"></span>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 18px; color: {{accent}};"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+  </a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"accent":{"editor":"color","default":"#5DB043","options":["#5DB043","#5B8DEF","#FF7A59","#F2C230"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = this.props.dark === true || this.props.dark === 'true';
+    const a = this.props.accent ?? '#5DB043';
+    const t = dark
+      ? { bg: '#0E0E10', text: '#F4F3EF', muted: '#A6A5A0', card: '#1A1A1D', soft: '#2A2A2F', line: '#2E2E33', photo: '#3B4248', photoGround: '#2A2E31', post: '#23272A' }
+      : { bg: '#F3F1EB', text: '#121212', muted: '#5C5B57', card: '#FFFFFF', soft: '#EFEDE6', line: '#E2DFD6', photo: '#AEB8BF', photoGround: '#7D857F', post: '#5A6066' };
+    const checks = [
+      { k: 'Position GPS de la photo', v: 'Ushuaïa, Argentine · 54,80° S' },
+      { k: 'Date de prise', v: '14 mars 2027 à 16:42' },
+      { k: 'Sticker de l’année', v: '2027, d’après la date' }
+    ];
+    return { dark, accent: a, t, checks };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Carte des stickers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: {{t.water}}; color: {{t.text}}; font-family: 'Inter', sans-serif;">
+
+  <svg width="390" height="844" viewBox="0 0 390 844" aria-hidden="true" style="position: absolute; left: 0; top: 0;">
+    <g transform="translate(30,20)">
+      <path d="M61 629 L8 610 L11 590 L0 576 L9 540 L11 509 L3 490 L17 479 L58 475 L103 481 L123 479 L129 453 L129 418 L114 397 L94 383 L75 367 L101 357 L123 360 L123 337 L145 346 L150 341 L165 331 L177 305 L193 299 L211 282 L222 256 L256 243 L282 230 L282 187 L275 150 L314 124 L307 167 L300 187 L307 218 L318 229 L337 222 L357 211 L371 230 L398 219 L421 206 L438 211 L454 217 L477 181 L476 150 L501 123 L515 145 L524 145 L530 104 L515 98 L515 80 L534 72 L585 70 L621 58 L585 39 L538 49 L507 58 L482 30 L484 -26 L507 -71 L543 -114 L526 -144 L495 -137 L479 -96 L452 -64 L423 -23 L418 36 L441 52 L431 77 L409 98 L407 124 L398 167 L373 170 L370 189 L349 184 L348 156 L334 124 L323 83 L314 58 L307 83 L281 107 L257 116 L236 89 L226 55 L225 23 L226 -9 L257 -40 L312 -78 L343 -144 L374 -211 L406 -257 L460 -319 L551 -371 L632 -333 L1084 -319 L1084 530 L710 629 L569 620 L558 580 L557 550 L554 534 L505 538 L501 550 L507 564 L523 586 L509 620 L499 622 L487 614 L477 594 L484 584 L471 574 L463 562 L451 542 L451 523 L437 500 L404 477 L385 464 L373 442 L364 448 L363 430 L341 434 L340 455 L359 475 L370 500 L399 511 L412 528 L428 537 L437 547 L417 541 L407 558 L415 570 L406 582 L392 591 L401 574 L392 550 L378 537 L370 533 L351 524 L339 514 L321 500 L309 476 L302 464 L287 457 L276 468 L261 473 L240 486 L232 481 L209 476 L197 488 L200 502 L182 521 L168 528 L156 538 L143 561 L151 575 L140 583 L133 598 L114 616 L80 616 Z M59 327 L83 320 L101 312 L128 310 L169 302 L170 294 L162 284 L175 264 L153 256 L150 238 L142 217 L129 211 L123 184 L108 167 L120 130 L101 98 L70 98 L59 145 L62 173 L72 192 L70 206 L95 203 L101 227 L101 243 L76 246 L84 269 L66 284 L98 292 L83 300 L70 315 Z M49 275 L53 246 L55 211 L61 214 L53 195 L34 191 L16 203 L14 219 L-9 222 L-6 243 L6 247 L-7 266 L-14 279 L-5 292 L17 284 L39 277 Z M342 594 L356 586 L392 584 L384 600 L384 616 L371 610 L345 598 Z M279 568 L279 538 L292 524 L301 540 L299 566 L289 570 Z M282 521 L291 521 L295 509 L296 488 L282 496 L282 511 Z M515 639 L530 641 L558 643 L555 649 L534 649 L515 644 Z M318 181 L345 173 L342 192 L332 202 L320 192 Z M301 187 L317 189 L314 200 L304 198 Z M185 551 L198 551 L202 556 L197 564 L186 560 Z M56 633 L66 631 L103 643 L139 635 L195 614 L228 615 L270 612 L307 606 L321 608 L312 622 L314 633 L321 645 L306 664 L310 675 L321 682 L382 697 L460 732 L460 829 L-117 914 L-5 741 L-2 699 L42 667 Z" fill="{{t.land}}" stroke="{{t.coast}}" stroke-width="1" stroke-linejoin="round"></path>
+    </g>
+    <g fill="{{t.label}}" font-family="Inter, sans-serif" font-size="10" font-weight="600" letter-spacing="2" text-anchor="middle">
+      <text x="200" y="432">FRANCE</text>
+      <text x="116" y="572">ESPAGNE</text>
+      <text x="128" y="236">ROYAUME-UNI</text>
+      <text x="60" y="304">IRLANDE</text>
+      <text x="330" y="322">ALLEMAGNE</text>
+      <text x="352" y="514">ITALIE</text>
+    </g>
+  </svg>
+
+  <sc-for list="{{markers}}" as="m" hint-placeholder-count="12">
+    <div style="position: absolute; left: {{m.l}}px; top: {{m.t}}px;">
+      <dc-import name="Marker" size="{{m.s}}" pts="{{m.pts}}" accent="{{m.c}}" gold="{{m.gold}}" selected="{{m.sel}}" dark="{{dark}}" hint-size="{{m.hs}}"></dc-import>
+    </div>
+  </sc-for>
+
+  <div style="position: absolute; left: 172px; top: 356px; display: flex; align-items: center; gap: 6px; padding: 8px 12px 8px 10px; border-radius: 999px; background: #111111; color: #FFFFFF; box-shadow: 0 0 0 3px {{t.cardA}}, 0 6px 16px rgba(0,0,0,0.3);">
+    <span style="font-family: 'Archivo Black', sans-serif; font-size: 16px; line-height: 1;">18</span>
+    <span style="font-size: 12px; font-weight: 700; color: {{accent}};">312 pts</span>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; top: 0; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="position: relative; width: 34px; height: 34px; border-radius: 9px; background: {{accent}}; overflow: hidden; transform: rotate(-5deg); box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+          <div style="position: absolute; inset: 0; background: #111111; clip-path: polygon(0 100%, 0 78%, 100% 45%, 100% 100%);"></div>
+        </div>
+        <span style="font-family: 'Archivo Black', sans-serif; font-size: 20px; letter-spacing: -0.01em;">SPOT TOMI</span>
+      </div>
+      <a href="Profil.dc.html" aria-label="Mon score : 1 435 points, 2e au classement" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 6px; border-radius: 999px; background: #111111; color: #FFFFFF; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+        <span style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; background: {{accent}}; color: #111111; font-size: 12px; font-weight: 800;">#2</span>
+        <span style="font-family: 'Archivo Black', sans-serif; font-size: 16px; color: {{accent}};">1 435</span>
+        <span style="font-size: 11px; font-weight: 600; color: #BDBCB6;">pts</span>
+      </a>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <label style="flex: 1; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px; border-radius: 14px; background: {{t.card}}; box-shadow: {{t.shadow}}; color: {{t.muted}};">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <input type="search" placeholder="Un lieu, un pays, une personne" aria-label="Rechercher" style="flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: 500 15px 'Inter', sans-serif; color: {{t.text}};">
+      </label>
+      <button type="button" aria-label="Filtres" style="width: 48px; height: 48px; border: 0; border-radius: 14px; background: {{t.card}}; color: {{t.text}}; box-shadow: {{t.shadow}}; display: flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9M19 6h1M4 12h3M11 12h9M4 18h11M19 18h1"></path><circle cx="16" cy="6" r="2.5"></circle><circle cx="9" cy="12" r="2.5"></circle><circle cx="17" cy="18" r="2.5"></circle></svg>
+      </button>
+    </div>
+    <div style="display: flex; gap: 8px; overflow: hidden;">
+      <button type="button" style="flex-shrink: 0; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: {{accent}}; color: #111111; font: 700 13px 'Inter', sans-serif; display: flex; align-items: center; gap: 6px; box-shadow: {{t.shadow}};">2027</button>
+      <button type="button" style="flex-shrink: 0; height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; font: 600 13px 'Inter', sans-serif; display: flex; align-items: center; gap: 6px; box-shadow: {{t.shadow}};"><span style="width: 10px; height: 10px; border-radius: 3px; background: #5B8DEF;"></span>2026</button>
+      <button type="button" style="flex-shrink: 0; height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; font: 600 13px 'Inter', sans-serif; display: flex; align-items: center; gap: 6px; box-shadow: {{t.shadow}};"><span style="width: 10px; height: 10px; border-radius: 3px; background: #FF7A59;"></span>2025</button>
+      <button type="button" style="flex-shrink: 0; height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; font: 600 13px 'Inter', sans-serif; display: flex; align-items: center; gap: 6px; box-shadow: {{t.shadow}};"><span style="width: 10px; height: 10px; border-radius: 999px; background: #E9B52F; box-shadow: 0 0 6px rgba(233,181,47,0.9);"></span>Rares</button>
+      <button type="button" style="flex-shrink: 0; height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: {{t.card}}; color: {{t.text}}; font: 600 13px 'Inter', sans-serif; box-shadow: {{t.shadow}};">Mes stickers</button>
+    </div>
+  </div>
+
+  <button type="button" aria-label="Me localiser" style="position: absolute; right: 16px; top: 560px; width: 44px; height: 44px; border: 0; border-radius: 14px; background: {{t.card}}; color: {{t.text}}; box-shadow: {{t.shadow}}; display: flex; align-items: center; justify-content: center;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><circle cx="12" cy="12" r="2.5"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg>
+  </button>
+
+  <a href="Fiche.dc.html" style="position: absolute; left: 16px; right: 16px; top: 636px; height: 108px; border-radius: 22px; background: {{t.card}}; box-shadow: {{t.shadowLg}}; overflow: hidden; display: flex; align-items: center; gap: 14px; padding: 0 14px; color: {{t.text}}; text-decoration: none;">
+    <div style="flex-shrink: 0;">
+      <dc-import name="Sticker" size="76" band="" sub="" tilt="-4" accent="{{accent}}" gold="{{yes}}" hint-size="76px,76px"></dc-import>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; align-self: flex-start; padding-top: 18px;">
+      <span style="font-family: 'Archivo Black', sans-serif; font-size: 18px; line-height: 1.1;">Mont Blanc</span>
+      <span style="font-size: 12px; color: {{t.muted}};">France · par Léa · 12 août</span>
+      <span style="display: inline-flex; align-self: flex-start; margin-top: 4px; padding: 3px 8px; border-radius: 6px; background: #E9B52F; color: #111111; font-size: 11px; font-weight: 700;">Sommet · 4 808 m</span>
+    </div>
+    <div style="position: absolute; inset: 0; background: #111111; clip-path: polygon(64% 100%, 100% 34%, 100% 100%); pointer-events: none;"></div>
+    <div style="position: absolute; right: 16px; bottom: 12px; display: flex; align-items: baseline; gap: 4px; color: {{accent}};">
+      <span style="font-family: 'Archivo Black', sans-serif; font-size: 30px; line-height: 1;">+53</span>
+      <span style="font-size: 11px; font-weight: 700;">pts</span>
+    </div>
+  </a>
+
+  <span style="position: absolute; right: 18px; top: 752px; font-size: 9px; color: {{t.muted}};">© OpenStreetMap</span>
+
+  <nav aria-label="Navigation principale" style="position: absolute; left: 0; right: 0; bottom: 0; height: 80px; padding: 0 10px 14px; box-sizing: border-box; background: {{t.card}}; border-top: 1px solid {{t.line}}; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center;">
+    <a href="Carte.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; color: {{t.text}}; text-decoration: none; font-size: 11px; font-weight: 700;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"></path><path d="M9 4v14M15 6v14"></path></svg>Carte</a>
+    <a href="Classement.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; color: {{t.muted}}; text-decoration: none; font-size: 11px; font-weight: 600;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg>Classement</a>
+    <a href="Ajout.dc.html" aria-label="Ajouter un sticker" style="justify-self: center; position: relative; top: -16px; width: 62px; height: 62px; border-radius: 18px; background: {{accent}}; color: #111111; overflow: hidden; transform: rotate(-5deg); box-shadow: 0 0 0 4px {{t.card}}, 0 8px 18px rgba(0,0,0,0.28); display: flex; align-items: center; justify-content: center;">
+      <span style="position: absolute; inset: 0; background: #111111; clip-path: polygon(0 100%, 0 88%, 100% 58%, 100% 100%);"></span>
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true" style="position: relative; margin-top: -8px;"><path d="M12 5v14M5 12h14"></path></svg>
+    </a>
+    <a href="Profil.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; color: {{t.muted}}; text-decoration: none; font-size: 11px; font-weight: 600;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>Album</a>
+    <a href="Profil.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; color: {{t.muted}}; text-decoration: none; font-size: 11px; font-weight: 600;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>Profil</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"accent":{"editor":"color","default":"#5DB043","options":["#5DB043","#5B8DEF","#FF7A59","#F2C230"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = this.props.dark === true || this.props.dark === 'true';
+    const a = this.props.accent ?? '#5DB043';
+    const t = dark
+      ? { text: '#F4F3EF', muted: '#A6A5A0', card: '#1A1A1D', cardA: '#1A1A1D', line: '#2E2E33', water: '#0B0C0E', land: '#222226', coast: '#34343A', label: '#62626A', shadow: '0 2px 10px rgba(0,0,0,0.45)', shadowLg: '0 12px 32px rgba(0,0,0,0.6)' }
+      : { text: '#121212', muted: '#5C5B57', card: '#FFFFFF', cardA: '#FFFFFF', line: '#E2DFD6', water: '#DEDCD3', land: '#FBFAF7', coast: '#CFCBC0', label: '#A19E95', shadow: '0 2px 10px rgba(30,25,10,0.12)', shadowLg: '0 12px 32px rgba(30,25,10,0.18)' };
+    const Y = { 2024: '#F2C230', 2025: '#FF7A59', 2026: '#5B8DEF', 2027: a };
+    const raw = [
+      [37, 266, 34, '38', 2027], [128, 194, 34, '41', 2027], [176, 312, 34, '24', 2026], [255, 290, 26, '', 2025],
+      [154, 414, 26, '', 2027], [169, 468, 26, '', 2024], [262, 501, 26, '', 2026], [212, 542, 26, '', 2025],
+      [44, 547, 26, '', 2027], [36, 596, 34, '22', 2026], [85, 618, 34, '30', 2027], [359, 393, 26, '', 2027],
+      [285, 446, 34, '53', 2027, true, true]
+    ];
+    const markers = raw.map(([x, y, s, pts, yr, gold, sel]) => ({
+      l: x - (s + 16) / 2, t: y - (s + 16) / 2, s, pts, c: Y[yr], gold: !!gold, sel: !!sel, hs: (s + 16) + 'px,' + (s + 16) + 'px'
+    }));
+    return { dark, accent: a, t, markers, yes: true };
+  }
+}
+</script>
+</body>
+</html>
