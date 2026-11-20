@@ -4,6 +4,10 @@
 # comme artefact, déployée sur staging, testée, puis la MÊME sortie est
 # déployée en production après validation manuelle (environnement GitHub
 # « production » protégé). Rien n'est reconstruit entre les deux.
+#
+# Staging = environnement Preview de Vercel (offre Hobby, sans environnement
+# personnalisé), avec une adresse fixe attribuée par alias. Ses variables
+# (APP_ENV=staging, Supabase dev) sont celles de l'environnement Preview.
 name: Déploiement
 
 on:
@@ -24,6 +28,8 @@ env:
   SUPABASE_CLI_VERSION: "3.2.0"
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  # Adresse fixe du staging (modifiable par la variable de dépôt du même nom).
+  VERCEL_STAGING_ALIAS: ${{ vars.VERCEL_STAGING_ALIAS || 'spot-tomi-staging.vercel.app' }}
 
 jobs:
   build:
@@ -86,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: dev
-      url: ${{ steps.deploy.outputs.url }}
+      url: https://${{ env.VERCEL_STAGING_ALIAS }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -101,15 +107,17 @@ jobs:
       - run: tar -xzf vercel-build.tgz
       - name: Même build que celle construite
         run: test "$(node scripts/vercel-output.mjs fingerprint)" = "${{ needs.build.outputs.fingerprint }}"
-      - run: node scripts/vercel-output.mjs retarget staging
-      - name: vercel deploy --prebuilt sur staging
+      - run: node scripts/vercel-output.mjs retarget preview
+      - name: vercel deploy --prebuilt sur staging (Preview)
         id: deploy
         run: |
-          url=$(vercel deploy --prebuilt --archive=tgz --environment=staging --token=${{ secrets.VERCEL_TOKEN }})
+          url=$(vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Adresse fixe du staging
+        run: vercel alias set "${{ steps.deploy.outputs.url }}" "$VERCEL_STAGING_ALIAS" --token=${{ secrets.VERCEL_TOKEN }}
       - name: Playwright contre staging
         env:
-          PLAYWRIGHT_BASE_URL: ${{ steps.deploy.outputs.url }}
+          PLAYWRIGHT_BASE_URL: https://${{ env.VERCEL_STAGING_ALIAS }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           EXPECTED_APP_ENV: staging
           EXPECTED_BUILD_ID: ${{ github.sha }}

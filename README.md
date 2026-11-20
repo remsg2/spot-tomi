@@ -45,8 +45,8 @@ Next.js grave les variables `NEXT_PUBLIC_*` dans le bundle au build. L'app n'en 
    Playwright sur la build locale, migrations + pgTAP sur une base Supabase locale.
 2. **Merge sur `main`** (`deploy.yml`) :
    `vercel build --prod` **une seule fois** → artefact → migrations et fonctions sur
-   `spot-tomi-dev` → `vercel deploy --prebuilt` sur l'environnement Vercel `staging`
-   → Playwright contre staging.
+   `spot-tomi-dev` → `vercel deploy --prebuilt` en Preview, avec l'adresse fixe
+   `spot-tomi-staging.vercel.app` → Playwright contre staging.
 3. **Validation manuelle** (environnement GitHub `production` protégé) : migrations et
    fonctions sur `spot-tomi-prod`, puis la **même** sortie est déployée avec
    `vercel deploy --prebuilt --prod`, et `/api/health` est vérifié.
@@ -72,22 +72,27 @@ Les migrations doivent rester compatibles avec la version précédente de l'app
    *Redirect URLs* correspondantes. Les fournisseurs Google et Apple arrivent à l'étape 3.
 3. Créer un jeton d'accès personnel (*Account → Access Tokens*) pour la CI.
 
-### Vercel
+### Vercel (offre Hobby)
 
-1. Créer le projet et le relier à ce dépôt. `vercel.json` désactive les déploiements
-   Git automatiques : seule la CI déploie.
-2. *Settings → Environments* : créer l'environnement personnalisé **`staging`** et lui
-   attacher le domaine de test.
-3. Variables d'environnement (ni `NEXT_PUBLIC_`, ni valeur au build) :
+Les environnements personnalisés demandent l'offre Pro : le staging utilise donc
+l'environnement **Preview**, avec l'adresse fixe `spot-tomi-staging.vercel.app`
+attribuée par la CI (modifiable avec la variable de dépôt `VERCEL_STAGING_ALIAS`).
+En passant à Pro, il suffira de créer un environnement `staging` et de déployer avec
+`--environment=staging`.
 
-   | Variable | staging | production |
+1. Créer le projet `spot-tomi` (Framework Preset Next.js, Node.js 22.x) sans le
+   relier au dépôt : `vercel.json` désactive de toute façon les déploiements Git
+   automatiques, seule la CI déploie.
+2. Variables d'environnement (ni `NEXT_PUBLIC_`, ni valeur au build) :
+
+   | Variable | Preview (staging) | Production |
    | --- | --- | --- |
    | `APP_ENV` | `staging` | `production` |
    | `SUPABASE_URL` | URL de `spot-tomi-dev` | URL de `spot-tomi-prod` |
    | `SUPABASE_PUBLISHABLE_KEY` | clé publishable dev | clé publishable prod |
 
-4. *Settings → Deployment Protection* : activer *Protection Bypass for Automation* et
-   noter le secret.
+3. *Settings → Deployment Protection* : garder *Standard Protection* (staging privé,
+   production publique) et créer un secret *Protection Bypass for Automation*.
 
 ### GitHub
 
