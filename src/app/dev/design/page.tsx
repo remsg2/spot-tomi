@@ -5,7 +5,7 @@ import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import {
   AlbumTile,
   AnimatedPointsBreakdown,
-  ClusterStack,
+  ClusterBubble,
   Logo,
   MapMarker,
   PointsBlock,
@@ -116,13 +116,11 @@ function ThemePanel({ theme, title }: { theme: "light" | "dark"; title: string }
           <MapMarker points={53} gold selected />
           <MapMarker points={30} color={EXAMPLE_YEARS[2025]} />
           <MapMarker points={90} pending />
-          <ClusterStack groups={[{ count: 18 }]} />
-          <ClusterStack
-            groups={[
-              { year: 2024, color: EXAMPLE_YEARS[2024], count: 1 },
-              { year: 2025, color: EXAMPLE_YEARS[2025], count: 42 },
-              { year: 2026, count: 312 },
-            ]}
+          <ClusterBubble total={18} />
+          <ClusterBubble
+            total={355}
+            colors={[EXAMPLE_YEARS[2024], EXAMPLE_YEARS[2025], EXAMPLE_YEARS[2026]]}
+            years={[2024, 2025, 2026]}
           />
         </div>
       </Demo>
