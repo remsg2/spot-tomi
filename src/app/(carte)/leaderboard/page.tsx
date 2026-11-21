@@ -4,11 +4,13 @@ import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { LoadError } from "@/components/leaderboard/column-page";
 import { LeaderboardPanel, LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-panel";
+import { RarestSection, ZoneLeaderboard } from "@/components/leaderboard/zone-sections";
 import { leaderboardFr as l } from "@/i18n/leaderboard.fr";
 import { rulesFr } from "@/i18n/rules.fr";
 import { getSessionUser } from "@/lib/auth/server";
 import { parseCriterion, parsePeriod } from "@/lib/leaderboard/leaderboard";
 import { fetchCurrentSeason, fetchLeaderboard } from "@/lib/leaderboard/queries";
+import { parseZone } from "@/lib/stats/queries";
 
 export const metadata: Metadata = {
   title: l.title,
@@ -27,9 +29,16 @@ export default function LeaderboardPage({ searchParams }: PageProps<"/leaderboar
       <Suspense fallback={<LeaderboardSkeleton />}>
         <LeaderboardContent searchParams={searchParams} />
       </Suspense>
+      <p className="text-xs text-muted">{l.tieRule}</p>
       <Link href="/points" className="inline-flex min-h-11 items-center self-start text-sm font-semibold underline underline-offset-4">
         {rulesFr.link}
       </Link>
+      <Suspense fallback={null}>
+        <ZoneContent searchParams={searchParams} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <RarestSection />
+      </Suspense>
     </div>
   );
 }
@@ -43,6 +52,16 @@ async function LeaderboardContent({ searchParams }: Pick<PageProps<"/leaderboard
   });
   if (!data) return <LoadError message={l.error} />;
   return <LeaderboardPanel {...data} />;
+}
+
+async function ZoneContent({ searchParams }: Pick<PageProps<"/leaderboard">, "searchParams">) {
+  const params = await searchParams;
+  const keep: Record<string, string> = {};
+  for (const key of ["periode", "critere"]) {
+    const value = params[key];
+    if (typeof value === "string") keep[key] = value;
+  }
+  return <ZoneLeaderboard zone={parseZone(params.zone)} keep={keep} />;
 }
 
 async function loadLeaderboard(searchParams: PageProps<"/leaderboard">["searchParams"]) {

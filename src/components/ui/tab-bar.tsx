@@ -14,13 +14,8 @@ const icon = {
   leaderboard: (
     <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
   ),
-  album: (
-    <>
-      <rect x="4" y="4" width="7" height="7" rx="1.5" />
-      <rect x="13" y="4" width="7" height="7" rx="1.5" />
-      <rect x="4" y="13" width="7" height="7" rx="1.5" />
-      <rect x="13" y="13" width="7" height="7" rx="1.5" />
-    </>
+  stats: (
+    <path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />
   ),
   profile: (
     <>
@@ -32,11 +27,14 @@ const icon = {
 
 type Tab = { href: string; label: string; icon: keyof typeof icon; match: (path: string) => boolean };
 
-/** L'album est une section de la page profil (/me#album), comme dans les maquettes. */
+/**
+ * Les cinq entrées du cahier des charges (section 10) : Carte, Classement, Ajouter (au
+ * centre), Stats, Profil. L'album (passeport) est une section du profil.
+ */
 const TABS: Tab[] = [
   { href: "/", label: t.nav.map, icon: "map", match: (p) => p === "/" || p.startsWith("/spots/") && p !== "/spots/new" },
   { href: "/leaderboard", label: t.nav.leaderboard, icon: "leaderboard", match: (p) => p.startsWith("/leaderboard") },
-  { href: "/me#album", label: t.nav.album, icon: "album", match: () => false },
+  { href: "/stats", label: t.nav.stats, icon: "stats", match: (p) => p.startsWith("/stats") || p.startsWith("/fil") },
   { href: "/me", label: t.nav.profile, icon: "profile", match: (p) => p.startsWith("/me") || p.startsWith("/u/") },
 ];
 
@@ -85,7 +83,7 @@ export function TabBar({
 }) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const [map, leaderboard, album, profile] = TABS;
+  const [map, leaderboard, stats, profile] = TABS;
 
   return (
     <nav
@@ -123,7 +121,7 @@ export function TabBar({
         </Link>
         <HapticTouch onActivate={() => router.push("/spots/new")} />
       </span>
-      <TabLink tab={album} active={album.match(pathname)} />
+      <TabLink tab={stats} active={stats.match(pathname)} />
       <TabLink tab={profile} active={profile.match(pathname)} />
     </nav>
   );

@@ -10,8 +10,8 @@ import { requireProfile } from "@/lib/auth/server";
 import { getPublicEnv } from "@/lib/env/server";
 import { avatarPublicUrl } from "@/lib/profile/avatar";
 import { sinceYear } from "@/lib/profile/mappers";
-import { fetchProfileData } from "@/lib/profile/queries";
-import type { ProfileData } from "@/lib/profile/types";
+import { fetchMyLedger, fetchMyNotices, fetchProfileData } from "@/lib/profile/queries";
+import type { LedgerLine, Notice, ProfileData } from "@/lib/profile/types";
 
 export const metadata: Metadata = {
   title: p.metaMe,
@@ -39,8 +39,15 @@ async function MeContent() {
 
   let data: ProfileData;
   let supabaseUrl: string;
+  let notices: Notice[];
+  let ledger: LedgerLine[];
   try {
-    [data, { supabaseUrl }] = await Promise.all([fetchProfileData(user.id), getPublicEnv()]);
+    [data, { supabaseUrl }, notices, ledger] = await Promise.all([
+      fetchProfileData(user.id),
+      getPublicEnv(),
+      fetchMyNotices(),
+      fetchMyLedger(),
+    ]);
   } catch (error) {
     unstable_rethrow(error);
     console.error("Profil indisponible", error);
@@ -61,6 +68,8 @@ async function MeContent() {
           role,
         }}
         data={data}
+        notices={notices}
+        ledger={ledger}
       />
       <form action="/auth/signout" method="post" className="flex justify-center pt-2">
         <button type="submit" className="min-h-11 text-sm font-semibold underline underline-offset-4">

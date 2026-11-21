@@ -29,7 +29,7 @@ export function mobileModeFor(pathname: string): MobileMode {
 }
 
 export type NavItem = {
-  key: "map" | "leaderboard" | "album" | "profile" | "admin";
+  key: "map" | "leaderboard" | "stats" | "profile" | "admin";
   href: string;
   /** Réservé aux modérateurs et admins. */
   staff?: boolean;
@@ -40,7 +40,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { key: "map", href: "/", match: (p) => p === "/" || spotIdFromPath(p) !== null },
   { key: "leaderboard", href: "/leaderboard", match: (p) => p.startsWith("/leaderboard") },
-  { key: "album", href: "/me#album", match: () => false },
+  { key: "stats", href: "/stats", match: (p) => p.startsWith("/stats") || p.startsWith("/fil") },
   { key: "profile", href: "/me", match: (p) => p.startsWith("/me") || p.startsWith("/u/") },
   { key: "admin", href: "/admin/season", staff: true, match: (p) => p.startsWith("/admin") },
 ];
