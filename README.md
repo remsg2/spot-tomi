@@ -96,6 +96,14 @@ Les migrations doivent rester compatibles avec la version précédente de l'app
 | `dev` | aucune | `SUPABASE_DB_PASSWORD` (dev) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-dev`) |
 | `production` | *Required reviewers* (facultatif) | `SUPABASE_DB_PASSWORD` (prod) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-prod`) |
 
+### Données de démo (dev)
+
+Le workflow manuel **« Données de démo (dev) »** (*Actions → Run workflow*) remplit le
+projet **dev** : saisons d'exemple, 8 comptes `demo_*` et 5 000 stickers par défaut
+(`supabase/seed.sql`, fonction `seed_demo_spots`). Il complète jusqu'à la cible sans la
+dépasser et ne touche jamais la prod. Les stickers de démo n'ont pas de vraie photo : la
+fiche affiche le sticker de Tomi à la place.
+
 ## Comptes (Supabase Auth)
 
 - Connexion par **lien magique** ou **mot de passe** (`/login`). Google et Apple sont prêts

@@ -1,12 +1,17 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { BackIcon } from "@/components/map/icons";
-import { PointsBlock, PointsBreakdown } from "@/components/ui";
+import { PointsBlock, PointsBreakdown, Sticker } from "@/components/ui";
 import { tm } from "@/i18n/map.fr";
 import type { SpotPageData } from "@/lib/spots/server";
 import { AuthorActions, ReportForm, ShareButton, SpotFocus } from "./spot-client";
 
 const chip = "rounded-[6px] px-2 py-1 text-[11px] text-on-year";
+
+/** Photos des stickers de démo (supabase/seed.sql) : fichiers « {auteur}/demo-{uuid}.webp » inexistants. */
+export function isDemoPhoto(url: string): boolean {
+  return /\/demo-[0-9a-f-]{36}\.webp$/i.test(url);
+}
 
 /**
  * Fiche lieu (maquettes Fiche et Web) : photo, nom, lieu, auteur, date, badges,
@@ -35,16 +40,25 @@ export function SpotSheet({
       <SpotFocus id={spot.id} lng={spot.lng} lat={spot.lat} />
 
       <div className="relative h-[270px] shrink-0 overflow-hidden bg-soft md:mx-6 md:h-[168px] md:rounded-[18px]">
-        {/* Photo publique du bucket spot-photos (WebP sans EXIF), servie par Supabase. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={spot.photoUrl}
-          alt={tm.spot.photoAlt(spot.name)}
-          width={1024}
-          height={768}
-          fetchPriority="high"
-          className="h-full w-full object-cover"
-        />
+        {isDemoPhoto(spot.photoUrl) ? (
+          // Stickers de démo (base dev) : pas de vraie photo, le sticker en illustration.
+          <div className="flex h-full items-center justify-center">
+            <Sticker size={134} tilt={-7} label={tm.spot.photoAlt(spot.name)} />
+          </div>
+        ) : (
+          <>
+            {/* Photo publique du bucket spot-photos (WebP sans EXIF), servie par Supabase. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={spot.photoUrl}
+              alt={tm.spot.photoAlt(spot.name)}
+              width={1024}
+              height={768}
+              fetchPriority="high"
+              className="h-full w-full object-cover"
+            />
+          </>
+        )}
         <div className="absolute inset-x-4 top-[calc(16px+env(safe-area-inset-top))] flex justify-between md:inset-x-3 md:top-3 md:justify-end">
           <Link
             href="/"
