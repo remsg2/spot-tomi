@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import { PrimaryButton } from "@/components/ui";
 import { t } from "@/i18n/fr";
 import { authErrorMessage } from "@/lib/auth/errors";
@@ -22,6 +22,31 @@ const PROVIDER_ICONS: Record<OAuthProvider, ReactNode> = {
 };
 
 type Status = { kind: "idle" } | { kind: "pending" } | { kind: "error" | "info"; message: string };
+type Mode = "magic" | "password";
+
+/**
+ * Dernier mode de connexion réussi sur cet appareil : on rouvre directement le
+ * mot de passe, pour que le navigateur remplisse email et mot de passe.
+ */
+const MODE_KEY = "spot-tomi:connexion";
+
+function readStoredMode(): Mode | null {
+  try {
+    return window.localStorage.getItem(MODE_KEY) === "password" ? "password" : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeMode(mode: Mode) {
+  try {
+    window.localStorage.setItem(MODE_KEY, mode);
+  } catch {
+    // Stockage indisponible (navigation privée) : on garde le lien magique par défaut.
+  }
+}
+
+const noSubscription = () => () => {};
 
 const input =
   "min-h-12 w-full rounded-[14px] border border-line bg-card px-4 text-base text-text placeholder:text-muted focus:outline-3 focus:outline-offset-1 focus:outline-text";
@@ -34,7 +59,9 @@ const secondary =
  * Tous les retours passent par /auth/callback, qui vérifie le pseudo.
  */
 export function LoginForm({ next }: { next: string }) {
-  const [mode, setMode] = useState<"magic" | "password">("magic");
+  const storedMode = useSyncExternalStore(noSubscription, readStoredMode, () => null);
+  const [chosenMode, setMode] = useState<Mode | null>(null);
+  const mode: Mode = chosenMode ?? storedMode ?? "magic";
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const pending = status.kind === "pending";
 
@@ -90,6 +117,7 @@ export function LoginForm({ next }: { next: string }) {
         setStatus({ kind: "error", message: authErrorMessage(error) });
         return;
       }
+      storeMode("password");
       // Passe par le callback (route serveur, donc rechargement complet) pour vérifier le pseudo.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(`/auth/callback?next=${encodeURIComponent(next)}`);
@@ -138,13 +166,24 @@ export function LoginForm({ next }: { next: string }) {
         </>
       )}
 
-      <form className="flex flex-col gap-3" onSubmit={(event) => submit(event, mode === "magic" ? "magic" : "signIn")}>
+      <form
+        id="connexion"
+        method="post"
+        className="flex flex-col gap-3"
+        onSubmit={(event) => submit(event, mode === "magic" ? "magic" : "signIn")}
+      >
+        {/* « username » sur l'identifiant d'un formulaire de connexion : reconnu par les gestionnaires de mots de passe. */}
         <label className="flex flex-col gap-1.5 text-sm font-semibold">
           {t.auth.email}
           <input
+            id="email"
             name="email"
             type="email"
-            autoComplete="email"
+            autoComplete="username"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             required
             placeholder={t.auth.emailPlaceholder}
             className={input}
@@ -155,6 +194,7 @@ export function LoginForm({ next }: { next: string }) {
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             {t.auth.password}
             <input
+              id="password"
               name="password"
               type="password"
               autoComplete="current-password"
@@ -204,7 +244,9 @@ export function LoginForm({ next }: { next: string }) {
           type="button"
           className="min-h-11 self-start font-semibold underline underline-offset-4"
           onClick={() => {
-            setMode(mode === "magic" ? "password" : "magic");
+            const nextMode = mode === "magic" ? "password" : "magic";
+            setMode(nextMode);
+            storeMode(nextMode);
             setStatus({ kind: "idle" });
           }}
         >

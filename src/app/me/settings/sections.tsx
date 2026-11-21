@@ -187,7 +187,7 @@ export function ThemeSection() {
   );
 }
 
-export function PasswordSection() {
+export function PasswordSection({ email }: { email: string }) {
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -210,9 +210,19 @@ export function PasswordSection() {
     <Section title={t.settings.password}>
       <p className="text-sm text-muted">{t.settings.passwordIntro}</p>
       <form onSubmit={submit} className="flex flex-col gap-3">
+        {/* Identifiant (invisible) : le gestionnaire de mots de passe enregistre le nouveau avec le bon compte. */}
+        <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
         <label className="flex flex-col gap-1.5 text-sm font-semibold">
           {t.auth.password}
-          <input name="password" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
+          <input
+            id="new-password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            required
+            className={inputClass}
+          />
           <span className="text-xs font-normal text-muted">{t.auth.passwordHint}</span>
         </label>
         <button type="submit" disabled={pending} className={`${secondaryButtonClass} self-start`}>
