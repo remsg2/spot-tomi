@@ -89,13 +89,14 @@ test.describe("classement · aperçu", () => {
       const me = page.locator("a[data-me]");
       await expect(me).toBeVisible();
       await expect(me).toContainText("Remi · toi");
-      expect(await background(me)).toBe(ACCENT);
+      // La couleur d'exemple de la page est posée après le chargement : on l'attend.
+      await expect.poll(() => background(me)).toBe(ACCENT);
     } else {
       // Sur le podium : anneau couleur de l'année et « · toi ».
       const slot = page.locator('li[data-podium-rank="2"]');
       await expect(slot).toContainText("Remi · toi");
-      const ring = await slot.locator("[data-avatar]").evaluate((el) => getComputedStyle(el).boxShadow);
-      expect(ring).toContain(ACCENT);
+      const avatar = slot.locator("[data-avatar]");
+      await expect.poll(() => avatar.evaluate((el) => getComputedStyle(el).boxShadow)).toContain(ACCENT);
     }
   });
 

@@ -145,7 +145,8 @@ export const fr = {
     theme: "Thème",
     vibrations: "Vibrations",
     vibrationsIntro: "De petites vibrations quand tu touches un sticker, changes un filtre ou colles un sticker.",
-    vibrationsIos: "Sur iPhone (iOS 18 ou plus), ce sont de légers tics.",
+    vibrationsIos:
+      "Sur iPhone, Safari ne laisse pas un site faire vibrer le téléphone : un léger tic se fait sentir sur les filtres, « Coller le sticker », « Me localiser » et cet interrupteur. « Retour haptique système » doit être activé dans Réglages iPhone › Sons et vibrations.",
     vibrationsToggle: "Vibrations",
     password: "Mot de passe",
     passwordIntro: "Définis ou change ton mot de passe pour te connecter sans lien par email.",

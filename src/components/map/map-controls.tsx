@@ -2,6 +2,7 @@
 
 import { tm } from "@/i18n/map.fr";
 import { cn } from "@/lib/cn";
+import { HapticTouch } from "@/components/ui";
 import { haptic } from "@/lib/haptics";
 import { LocateIcon, MinusIcon, PlusIcon } from "./icons";
 import { useMapContext } from "./map-provider";
@@ -31,18 +32,21 @@ export function ZoomControls({ className }: { className?: string }) {
 export function LocateButton({ className }: { className?: string }) {
   const { commands } = useMapContext();
   return (
-    <button
-      type="button"
-      aria-label={tm.map.locate}
-      title={tm.map.locate}
-      onClick={() => {
-        haptic("tap");
-        commands.current?.locate();
-      }}
-      className={cn(squareButton, "rounded-[14px] shadow-card", className)}
-    >
-      <LocateIcon />
-    </button>
+    <span className={cn("relative flex", className)}>
+      <button
+        type="button"
+        aria-label={tm.map.locate}
+        title={tm.map.locate}
+        onClick={() => {
+          haptic("tap");
+          commands.current?.locate();
+        }}
+        className={cn(squareButton, "rounded-[14px] shadow-card")}
+      >
+        <LocateIcon />
+      </button>
+      <HapticTouch onActivate={() => commands.current?.locate()} />
+    </span>
   );
 }
 
