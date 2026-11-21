@@ -1,11 +1,25 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { PrimaryButton } from "@/components/ui";
 import { t } from "@/i18n/fr";
 import { authErrorMessage } from "@/lib/auth/errors";
+import { ENABLED_OAUTH_PROVIDERS, type OAuthProvider } from "@/lib/auth/providers";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { emailSchema, passwordSchema } from "@/lib/validation/profile";
+
+const PROVIDER_ICONS: Record<OAuthProvider, ReactNode> = {
+  google: (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.9-5.5 3.9-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.3 14.6 2.3 12 2.3 6.6 2.3 2.3 6.6 2.3 12s4.3 9.7 9.7 9.7c5.6 0 9.3-3.9 9.3-9.5 0-.6-.1-1.1-.2-1.6H12z" />
+    </svg>
+  ),
+  apple: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.7 1.3 10.2.8 1.2 1.8 2.6 3.1 2.5 1.3-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.4-.9-2.3-4.3zM14 5.4c.7-.8 1.2-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4z" />
+    </svg>
+  ),
+};
 
 type Status = { kind: "idle" } | { kind: "pending" } | { kind: "error" | "info"; message: string };
 
@@ -15,7 +29,8 @@ const secondary =
   "flex min-h-12 w-full items-center justify-center gap-3 rounded-[14px] border border-line bg-card px-4 text-[15px] font-semibold text-text shadow-card disabled:opacity-50";
 
 /**
- * Connexion : Google, Apple, lien magique ou mot de passe (Supabase Auth).
+ * Connexion : lien magique ou mot de passe, et Google / Apple quand ils sont
+ * activés dans src/lib/auth/providers.ts (Supabase Auth).
  * Tous les retours passent par /auth/callback, qui vérifie le pseudo.
  */
 export function LoginForm({ next }: { next: string }) {
@@ -27,7 +42,7 @@ export function LoginForm({ next }: { next: string }) {
     return `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
   }
 
-  async function oauth(provider: "google" | "apple") {
+  async function oauth(provider: OAuthProvider) {
     setStatus({ kind: "pending" });
     const { error } = await getSupabaseBrowserClient().auth.signInWithOAuth({
       provider,
@@ -98,26 +113,30 @@ export function LoginForm({ next }: { next: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3">
-        <button type="button" className={secondary} disabled={pending} onClick={() => oauth("google")}>
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.9-5.5 3.9-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.3 14.6 2.3 12 2.3 6.6 2.3 2.3 6.6 2.3 12s4.3 9.7 9.7 9.7c5.6 0 9.3-3.9 9.3-9.5 0-.6-.1-1.1-.2-1.6H12z" />
-          </svg>
-          {t.auth.google}
-        </button>
-        <button type="button" className={secondary} disabled={pending} onClick={() => oauth("apple")}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.7 1.3 10.2.8 1.2 1.8 2.6 3.1 2.5 1.3-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.4-.9-2.3-4.3zM14 5.4c.7-.8 1.2-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4z" />
-          </svg>
-          {t.auth.apple}
-        </button>
-      </div>
+      {ENABLED_OAUTH_PROVIDERS.length > 0 && (
+        <>
+          <div className="flex flex-col gap-3">
+            {ENABLED_OAUTH_PROVIDERS.map((provider) => (
+              <button
+                key={provider}
+                type="button"
+                className={secondary}
+                disabled={pending}
+                onClick={() => oauth(provider)}
+              >
+                {PROVIDER_ICONS[provider]}
+                {provider === "google" ? t.auth.google : t.auth.apple}
+              </button>
+            ))}
+          </div>
 
-      <div className="flex items-center gap-3 text-xs font-semibold text-muted" aria-hidden="true">
-        <span className="h-px flex-1 bg-line" />
-        {t.auth.or}
-        <span className="h-px flex-1 bg-line" />
-      </div>
+          <div className="flex items-center gap-3 text-xs font-semibold text-muted" aria-hidden="true">
+            <span className="h-px flex-1 bg-line" />
+            {t.auth.or}
+            <span className="h-px flex-1 bg-line" />
+          </div>
+        </>
+      )}
 
       <form className="flex flex-col gap-3" onSubmit={(event) => submit(event, mode === "magic" ? "magic" : "signIn")}>
         <label className="flex flex-col gap-1.5 text-sm font-semibold">
