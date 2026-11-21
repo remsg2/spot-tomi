@@ -13,6 +13,21 @@ test("la page de connexion propose l'email (Google et Apple désactivés)", asyn
   await expect(page.getByRole("button", { name: "Créer un compte" })).toBeVisible();
 });
 
+test("champs reconnus par les gestionnaires de mots de passe, mode mot de passe retenu", async ({ page }) => {
+  await page.goto("/login");
+  const email = page.getByLabel("Adresse email");
+  await expect(email).toHaveAttribute("type", "email");
+  await expect(email).toHaveAttribute("autocomplete", "username");
+  await page.getByRole("button", { name: "Utiliser un mot de passe" }).click();
+  await expect(page.getByLabel("Mot de passe")).toHaveAttribute("autocomplete", "current-password");
+  // Choix gardé sur l'appareil : email et mot de passe présents dès l'ouverture, prêts à être remplis.
+  await page.reload();
+  await expect(page.getByLabel("Mot de passe")).toBeVisible();
+  await page.getByRole("button", { name: "Utiliser un lien par email" }).click();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Recevoir un lien de connexion" })).toBeVisible();
+});
+
 for (const path of ["/me", "/me/settings", "/welcome"]) {
   test(`${path} demande d'être connecté`, async ({ page }) => {
     await page.goto(path);

@@ -1,0 +1,110 @@
+# Diagnostic d'un compte qui n'arrive pas à se connecter, sans rien modifier.
+#
+# Les journaux d'Actions de ce dépôt sont publics : rien d'identifiant n'est
+# affiché (ni email, ni IP, ni identifiant de compte, ni jeton). Seulement des
+# dates, des booléens, des compteurs et les messages d'erreur d'Auth, expurgés.
+#
+# Lancement : Actions → « Diagnostic connexion » → Run workflow (pseudo du compte).
+name: Diagnostic connexion
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Projet visé"
+        required: true
+        default: production
+        type: choice
+        options: [production, dev]
+      username:
+        description: "Pseudo du compte"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    name: Diagnostic · ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      USERNAME: ${{ inputs.username }}
+      API: https://api.supabase.com/v1/projects/${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - name: Pseudo valide
+        run: |
+          [[ "$USERNAME" =~ ^[A-Za-z0-9_]{3,20}$ ]] || { echo "::error::Pseudo invalide"; exit 1; }
+
+      - name: Réglages Auth (sans secrets)
+        run: |
+          curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "$API/config/auth" | jq '{
+            site_url, uri_allow_list, disable_signup, external_email_enabled, mailer_autoconfirm,
+            mailer_secure_email_change_enabled, mailer_otp_exp, mailer_otp_length, password_min_length,
+            rate_limit_email_sent, rate_limit_otp, rate_limit_verify, rate_limit_token_refresh,
+            smtp_personnalise: ((.smtp_host // "") != ""),
+            lien_magique_sujet: .mailer_subjects_magic_link,
+            lien_magique_avec_code: ((.mailer_templates_magic_link_content // "") | test("\\.Token\\b")),
+            lien_magique_avec_token_hash: ((.mailer_templates_magic_link_content // "") | test("TokenHash")),
+            lien_magique_avec_confirmation_url: ((.mailer_templates_magic_link_content // "") | test("ConfirmationURL")),
+            confirmation_avec_token_hash: ((.mailer_templates_confirmation_content // "") | test("TokenHash")),
+            sessions_single_per_user, sessions_timebox, sessions_inactivity_timeout,
+            refresh_token_rotation_enabled, security_refresh_token_reuse_interval, jwt_exp
+          }'
+
+      - name: État du compte
+        run: |
+          sql() { jq -n --arg q "$1" '{query: $q}' | curl -fsS -X POST -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" "$API/database/query" --data @-; }
+          WHERE="lower(p.username) = lower('$USERNAME')"
+          echo "## Compte"
+          sql "select p.username, p.role, p.created_at as profil_cree,
+                 u.created_at as compte_cree, u.email_confirmed_at is not null as email_confirme,
+                 u.last_sign_in_at as derniere_connexion,
+                 coalesce(u.encrypted_password, '') <> '' as a_un_mot_de_passe,
+                 u.banned_until as banni_jusqu_a, u.deleted_at as supprime_le, u.is_anonymous as anonyme,
+                 u.raw_app_meta_data->'providers' as fournisseurs,
+                 u.confirmation_sent_at as confirmation_envoyee, u.recovery_sent_at as recuperation_envoyee,
+                 coalesce(u.email_change, '') <> '' as changement_email_en_attente,
+                 (select count(*) from auth.sessions s where s.user_id = u.id) as sessions,
+                 (select max(coalesce(s.refreshed_at, s.updated_at)) from auth.sessions s where s.user_id = u.id) as derniere_activite_session,
+                 (select count(*) from auth.mfa_factors f where f.user_id = u.id) as facteurs_mfa
+               from public.profiles p join auth.users u on u.id = p.id where $WHERE" | jq .
+          echo "## Liens et codes demandés, non utilisés (7 jours)"
+          sql "select f.created_at as demande, f.authentication_method as methode, f.provider_type,
+                 f.auth_code_issued_at is not null as code_emis
+               from auth.flow_state f join public.profiles p on p.id = f.user_id
+               where $WHERE and f.created_at > now() - interval '7 days' order by f.created_at desc limit 20" | jq .
+          sql "select o.token_type as type, o.created_at as cree
+               from auth.one_time_tokens o join public.profiles p on p.id = o.user_id
+               where $WHERE order by o.created_at desc limit 10" | jq .
+          echo "## Journal d'audit (7 jours)"
+          sql "select a.created_at as quand, a.payload->>'action' as action, a.payload->'traits'->>'provider' as fournisseur
+               from auth.audit_log_entries a join public.profiles p on a.payload->>'actor_id' = p.id::text
+               where $WHERE and a.created_at > now() - interval '7 days' order by a.created_at desc limit 40" | jq .
+          sql "select p.id from public.profiles p where $WHERE" | jq -r '.[0].id // empty' > "$RUNNER_TEMP/user-id"
+
+      - name: Journaux d'Auth (3 jours, erreurs et événements du compte, expurgés)
+        run: |
+          USER_ID=$(cat "$RUNNER_TEMP/user-id")
+          for day in 2 1 0; do
+            start=$(date -u -d "-$((day + 1)) days" +%Y-%m-%dT%H:%M:%SZ)
+            end=$(date -u -d "-$day days" +%Y-%m-%dT%H:%M:%SZ)
+            curl -fsS -G -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "$API/analytics/endpoints/logs.all" \
+              --data-urlencode "sql=select timestamp, event_message from auth_logs order by timestamp desc limit 1000" \
+              --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end" \
+              | jq -r --arg id "$USER_ID" '
+                  (.result // [])[]
+                  | (.event_message | fromjson? // {msg: .}) as $e
+                  | select((($e.status // 0) >= 400) or ($e.level == "error") or ($e.level == "warning")
+                           or ($id != "" and (($e.actor_id // $e.user_id // "") == $id)))
+                  | [ ((.timestamp / 1000000) | floor | todate), ($e.level // ""), ($e.status // "" | tostring),
+                      ($e.method // ""), ($e.path // ""), ($e.action // ""), ($e.login_method // $e.grant_type // ""),
+                      ($e.error_code // ""), ($e.msg // $e.error // "") ]
+                  | @tsv' \
+              | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g; s/\b([0-9]{1,3}\.){3}[0-9]{1,3}\b/<ip>/g; s/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/<id>/g' \
+              || echo "Journaux indisponibles pour $start → $end"
+          done

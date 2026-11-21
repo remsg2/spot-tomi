@@ -53,7 +53,7 @@ async function SettingsContent() {
       />
       <HomeSection hasHome={hasHome} />
       <ThemeSection />
-      <PasswordSection />
+      <PasswordSection email={user.email ?? ""} />
       <DeleteAccountSection username={profile.username} />
     </>
   );
