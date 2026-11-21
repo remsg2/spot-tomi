@@ -1,11 +1,11 @@
--- Étape 5 : publication d'un sticker (create_spot, estimation, cache de
--- géocodage, bucket spot-photos), testée pour chaque rôle.
+-- Publication d'un sticker (create_spot, estimation, cache de géocodage, bucket
+-- spot-photos), testée pour chaque rôle. Cahier des charges V1.1 : publication directe,
+-- édition et date du collage choisies par le membre, commentaire facultatif.
 begin;
-select plan(76);
+select plan(89);
 
 -- Comptes de test -----------------------------------------------------------------
--- A : utilisateur avec domicile (Paris) ; B : autre utilisateur ; C : limite
--- quotidienne ; S : suspendu ; N : compte sans profil.
+-- A et B : utilisateurs ; C : limite quotidienne ; S : suspendu ; N : compte sans profil.
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000050a', 'a@example.test'),
   ('00000000-0000-0000-0000-00000000050b', 'b@example.test'),
@@ -17,10 +17,15 @@ insert into public.profiles (id, username, suspended_at) values
   ('00000000-0000-0000-0000-00000000050b', 'bruno_pub', null),
   ('00000000-0000-0000-0000-00000000050c', 'chloe_pub', null),
   ('00000000-0000-0000-0000-000000000505', 'suspendu_pub', now());
-insert into private.user_homes (user_id, home) values (
-  '00000000-0000-0000-0000-00000000050a',
-  extensions.st_setsrid(extensions.st_makepoint(2.35, 48.85), 4326)::extensions.geography
-);
+
+-- Éditions de test : 2024 à 2026 (en cours), 2023 archivée, 2027 à venir.
+delete from public.seasons;
+insert into public.seasons (year, color_hex, is_current, status) values
+  (2023, '#E8D44D', false, 'archived'),
+  (2024, '#F2C230', false, 'active'),
+  (2025, '#FF7A59', false, 'active'),
+  (2026, '#5B8DEF', true, 'active'),
+  (2027, '#7A4FD8', false, 'active');
 
 -- Pays de test en plein Pacifique Sud (aucune terre à moins de 25 km).
 insert into public.countries (iso2, iso3, name_fr, tier, geom) values (
@@ -51,14 +56,22 @@ create function pg_temp.pub(
   p_taken timestamptz default '2026-06-01 12:00:00+00',
   p_alt numeric default null,
   p_name text default null,
-  p_path text default null
+  p_path text default null,
+  p_year int default null,
+  p_comment text default null,
+  p_thumb text default null,
+  p_hash bigint default null
 ) returns uuid language plpgsql as $$
 declare
   v uuid;
+  v_path text := coalesce(p_path, p_author::text || '/' || gen_random_uuid()::text || '.webp');
 begin
   v := public.create_spot(
-    p_author, coalesce(p_name, '  Lieu   ' || p_label || ' '), p_lat, p_lng, p_alt, p_taken, p_gps, p_date,
-    coalesce(p_path, p_author::text || '/' || gen_random_uuid()::text || '.webp'), '  Ville test '
+    p_author => p_author, p_name => coalesce(p_name, '  Lieu   ' || p_label || ' '), p_lat => p_lat,
+    p_lng => p_lng, p_altitude_m => p_alt, p_taken_at => p_taken, p_gps_source => p_gps,
+    p_date_source => p_date, p_photo_path => v_path, p_city => '  Ville test ', p_year => p_year,
+    p_comment => p_comment, p_thumb_path => case when p_thumb = 'auto' then replace(v_path, '.webp', '.thumb.webp') else p_thumb end,
+    p_photo_hash => p_hash
   );
   insert into t_spots values (p_label, v);
   return v;
@@ -73,28 +86,29 @@ $$;
 
 select has_function(
   'public', 'create_spot',
-  array['uuid', 'text', 'double precision', 'double precision', 'numeric', 'timestamp with time zone', 'text', 'text', 'text', 'text'],
-  'create_spot existe avec la signature du contrat'
+  array['uuid', 'text', 'double precision', 'double precision', 'numeric', 'timestamp with time zone', 'text', 'text', 'text', 'text',
+        'integer', 'text', 'boolean', 'text', 'text', 'bigint'],
+  'create_spot existe avec la signature du contrat (édition, commentaire, site touristique, miniature, altitude, empreinte)'
 );
 select has_function('public', 'estimate_spot_points', 'la fonction d''estimation existe');
 select ok(
-  not has_function_privilege('anon', 'public.create_spot(uuid, text, float8, float8, numeric, timestamptz, text, text, text, text)', 'execute'),
+  not has_function_privilege('anon', 'public.create_spot(uuid, text, float8, float8, numeric, timestamptz, text, text, text, text, int, text, boolean, text, text, bigint)', 'execute'),
   'un visiteur ne peut pas exécuter create_spot'
 );
 select ok(
-  not has_function_privilege('authenticated', 'public.create_spot(uuid, text, float8, float8, numeric, timestamptz, text, text, text, text)', 'execute'),
+  not has_function_privilege('authenticated', 'public.create_spot(uuid, text, float8, float8, numeric, timestamptz, text, text, text, text, int, text, boolean, text, text, bigint)', 'execute'),
   'un utilisateur connecté ne peut pas exécuter create_spot'
 );
 select ok(
-  has_function_privilege('service_role', 'public.create_spot(uuid, text, float8, float8, numeric, timestamptz, text, text, text, text)', 'execute'),
+  has_function_privilege('service_role', 'public.create_spot(uuid, text, float8, float8, numeric, timestamptz, text, text, text, text, int, text, boolean, text, text, bigint)', 'execute'),
   'service_role peut exécuter create_spot'
 );
 select ok(
-  not has_function_privilege('anon', 'public.estimate_spot_points(float8, float8, numeric, timestamptz, text, text, text)', 'execute'),
+  not has_function_privilege('anon', 'public.estimate_spot_points(float8, float8, numeric, timestamptz, text, text, text, int)', 'execute'),
   'un visiteur ne peut pas estimer de points'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.estimate_spot_points(float8, float8, numeric, timestamptz, text, text, text)', 'execute'),
+  has_function_privilege('authenticated', 'public.estimate_spot_points(float8, float8, numeric, timestamptz, text, text, text, int)', 'execute'),
   'un utilisateur connecté peut estimer ses points'
 );
 select ok(
@@ -151,7 +165,7 @@ select throws_ok(
 select throws_ok(
   $$ select pg_temp.pub('a4', '00000000-0000-0000-0000-00000000050a', -44.1009, -115, p_gps => 'manual') $$,
   'ST004', null,
-  'la règle des 200 m compte aussi les stickers en attente'
+  'la règle des 200 m compte aussi les stickers placés à la main'
 );
 select lives_ok(
   $$ select pg_temp.pub('a5', '00000000-0000-0000-0000-00000000050a', -43.9973, -115) $$,
@@ -203,9 +217,43 @@ select throws_ok(
   'source de date inconnue : refusée'
 );
 select throws_ok(
-  $$ select pg_temp.pub('x6', '00000000-0000-0000-0000-00000000050b', -46.5, -115, p_taken => now() + interval '3 days') $$,
-  'ST005', 'Date de prise invalide.',
-  'date de prise dans le futur : refusée'
+  $$ select pg_temp.pub('x6', '00000000-0000-0000-0000-00000000050b', -46.5, -115, p_date => 'manual',
+       p_taken => now() + interval '3 days') $$,
+  'ST009', 'La date du collage ne peut pas être dans le futur.',
+  'date du collage dans le futur : refusée (ST009)'
+);
+select throws_ok(
+  $$ select pg_temp.pub('x10', '00000000-0000-0000-0000-00000000050b', -46.5, -115, p_date => 'manual',
+       p_taken => '2025-06-01 12:00+00', p_year => 2026) $$,
+  'ST009', 'La date du collage est antérieure à l''édition 2026.',
+  'un sticker 2026 ne peut pas avoir été collé en 2025 (ST009)'
+);
+select throws_ok(
+  $$ select pg_temp.pub('x11', '00000000-0000-0000-0000-00000000050b', -46.5, -115, p_year => 2031) $$,
+  'ST008', 'Cette édition n''est pas disponible.',
+  'édition inconnue : refusée (ST008)'
+);
+select throws_ok(
+  $$ select pg_temp.pub('x12', '00000000-0000-0000-0000-00000000050b', -46.5, -115, p_year => 2023,
+       p_taken => '2023-06-01 12:00+00') $$,
+  'ST008', null,
+  'édition archivée : refusée'
+);
+select throws_ok(
+  $$ select pg_temp.pub('x13', '00000000-0000-0000-0000-00000000050b', -46.5, -115, p_year => 2027) $$,
+  'ST008', null,
+  'édition à venir : refusée'
+);
+select throws_ok(
+  $$ select pg_temp.pub('x14', '00000000-0000-0000-0000-00000000050b', -46.5, -115, p_comment => repeat('a', 281)) $$,
+  'ST005', 'Commentaire trop long : 280 caractères au plus.',
+  'commentaire au-delà de comment_max_length : refusé'
+);
+select throws_ok(
+  $$ select pg_temp.pub('x15', '00000000-0000-0000-0000-00000000050b', -46.5, -115,
+       p_thumb => '00000000-0000-0000-0000-00000000050b/00000000-0000-4000-8000-0000000000ff.thumb.webp') $$,
+  'ST005', 'Chemin de miniature invalide.',
+  'une miniature qui ne correspond pas à la photo : refusée'
 );
 select throws_ok(
   $$ select pg_temp.pub('x7', '00000000-0000-0000-0000-00000000050b', -46.5, -115, p_alt => 12000) $$,
@@ -247,14 +295,16 @@ select throws_ok(
   'le 21e sticker de la journée est refusé (ST003)'
 );
 
--- Domicile : position publique décalée d'au moins 300 m à moins de 500 m.
+-- Édition, date du collage, commentaire, miniature et empreinte.
 select lives_ok(
-  $$ select pg_temp.pub('home', '00000000-0000-0000-0000-00000000050a', 48.8518, 2.35) $$,
-  'A publie à 200 m de son domicile'
+  $$ select pg_temp.pub('ed', '00000000-0000-0000-0000-00000000050a', -45.5, -112, p_year => 2024,
+       p_date => 'manual', p_taken => '2025-03-10 12:00+00', p_comment => '  Collé   avec Léa.  ',
+       p_thumb => 'auto', p_hash => 123456789) $$,
+  'A publie un sticker de l''édition 2024 collé en 2025, avec commentaire et miniature'
 );
 select lives_ok(
-  $$ select pg_temp.pub('away', '00000000-0000-0000-0000-00000000050a', 48.87, 2.35) $$,
-  'A publie à 2 km de son domicile'
+  $$ select pg_temp.pub('sim', '00000000-0000-0000-0000-00000000050b', -45.8, -112, p_hash => 123456791) $$,
+  'B publie une photo très proche de celle de A'
 );
 
 reset role;
@@ -262,11 +312,37 @@ reset role;
 -- Résultats ------------------------------------------------------------------------
 
 select is((pg_temp.spot('a1')).status, 'published'::public.spot_status, 'GPS et date dans la photo : publié');
-select is((pg_temp.spot('a2')).status, 'pending_review'::public.spot_status, 'position manuelle : en attente');
-select is((pg_temp.spot('a3')).status, 'pending_review'::public.spot_status, 'date d''envoi : en attente');
-select is((pg_temp.spot('a1')).year, 2026, 'l''année vient de la date de prise');
-select is((pg_temp.spot('a3')).taken_at, now(), 'sans date dans la photo, la date d''envoi est retenue (jamais celle du client)');
-select is((pg_temp.spot('a3')).year, extract(year from now() at time zone 'UTC')::int, 'sans date, l''année est celle de l''envoi');
+select is(
+  ((pg_temp.spot('a2')).status, (pg_temp.spot('a2')).needs_review, (pg_temp.spot('a2')).review_reason),
+  ('published'::public.spot_status, true, 'Position placée à la main'::text),
+  'position placée à la main : publié directement, « à vérifier » pour les modérateurs'
+);
+select is((pg_temp.spot('a3')).status, 'published'::public.spot_status, 'sans date dans la photo : publié directement');
+select is((pg_temp.spot('a1')).needs_review, false, 'GPS de la photo : rien à vérifier');
+select is((pg_temp.spot('a1')).year, 2026, 'sans édition choisie, celle de la date du collage');
+select is((pg_temp.spot('a3')).taken_at, now(), 'sans date dans la photo, l''heure du serveur est retenue (jamais celle du client)');
+select is((pg_temp.spot('a3')).year, 2026, 'sans date, l''édition en cours');
+select is(
+  ((pg_temp.spot('ed')).year, (pg_temp.spot('ed')).taken_at, (pg_temp.spot('ed')).date_source),
+  (2024, '2025-03-10 12:00+00'::timestamptz, 'manual'::text),
+  'l''édition choisie et la date saisie sont enregistrées'
+);
+select is((pg_temp.spot('ed')).comment, 'Collé avec Léa.', 'le commentaire est nettoyé (espaces)');
+select is((pg_temp.spot('a1')).comment, null, 'sans commentaire : null');
+select is(
+  (pg_temp.spot('ed')).thumb_path,
+  replace((pg_temp.spot('ed')).photo_path, '.webp', '.thumb.webp'),
+  'la miniature est enregistrée à côté de la photo'
+);
+select is(
+  ((pg_temp.spot('sim')).needs_review, (pg_temp.spot('sim')).review_reason),
+  (true, 'Photo très proche d''un autre sticker'::text),
+  'une photo très proche d''une autre : publiée, mais « à vérifier »'
+);
+select ok(
+  (select sum(points) from public.points_ledger where spot_id = (pg_temp.spot('ed')).id and year = 2024) = (pg_temp.spot('ed')).points_total,
+  'les points vont au journal, dans l''édition du sticker'
+);
 select is((pg_temp.spot('a1')).country_iso2, 'XA'::char(2), 'le pays est déduit du point (country_at)');
 select is((pg_temp.spot('a1')).city, 'Ville test', 'la ville est enregistrée sans espaces superflus');
 select is((pg_temp.spot('a1')).name, 'Lieu a1', 'le nom est nettoyé (espaces)');
@@ -292,20 +368,11 @@ select is(
 );
 select ok(
   (pg_temp.spot('a2')).points_total > 0 and exists (select 1 from public.spot_point_lines where spot_id = (pg_temp.spot('a2')).id),
-  'un sticker en attente a quand même ses points calculés'
+  'un sticker placé à la main a ses points'
 );
 select ok(
-  extensions.st_distance((pg_temp.spot('home')).public_location, (pg_temp.spot('home')).location) >= 300,
-  'à moins de 500 m du domicile, la position publique est décalée d''au moins 300 m'
-);
-select ok(
-  extensions.st_equals((pg_temp.spot('home')).public_location::extensions.geometry,
-    public.public_location_for('00000000-0000-0000-0000-00000000050a', (pg_temp.spot('home')).location)::extensions.geometry),
-  'la position publique est stable (même entrée, même sortie)'
-);
-select ok(
-  extensions.st_equals((pg_temp.spot('away')).public_location::extensions.geometry, (pg_temp.spot('away')).location::extensions.geometry),
-  'loin du domicile, la position publique est la position exacte'
+  extensions.st_equals((pg_temp.spot('a1')).public_location::extensions.geometry, (pg_temp.spot('a1')).location::extensions.geometry),
+  'la position publique est la position exacte'
 );
 
 -- Fenêtre glissante : un sticker de plus de 24 heures ne compte plus.
@@ -325,7 +392,8 @@ reset role;
 -- Estimation (utilisateur connecté) ---------------------------------------------------
 
 create temp table t_counts as
-  select (select count(*) from public.spots) as spots, (select count(*) from public.spot_point_lines) as lines;
+  select (select count(*) from public.spots) as spots, (select count(*) from public.spot_point_lines) as lines,
+         (select count(*) from public.points_ledger) as ledger;
 
 set local role authenticated;
 select pg_temp.login('00000000-0000-0000-0000-00000000050a');
@@ -337,8 +405,19 @@ select is(
 );
 select is(
   (public.estimate_spot_points(-41, -120, null, null, 'manual', 'exif') ->> 'status'),
-  'pending_review',
-  'estimation avec position manuelle : en attente'
+  'published',
+  'estimation avec position manuelle : publié aussi (publication directe)'
+);
+select results_eq(
+  $$ select (n ->> 'distanceM')::int < 60, (n ->> 'mine')::boolean
+     from (select public.estimate_spot_points(-44.0004, -115.0002, null, '2026-05-01 10:00:00+00', 'exif', 'exif') -> 'nearest' as n) t $$,
+  $$ values (true, false) $$,
+  'l''estimation signale le sticker le plus proche, à quelques mètres, d''un autre membre'
+);
+select is(
+  (public.estimate_spot_points(-41, -120, null, '2026-05-01 10:00:00+00', 'exif', 'exif', null, 2025) ->> 'year')::int,
+  2025,
+  'l''estimation suit l''édition choisie'
 );
 select is(
   (public.estimate_spot_points(-41, -120, null, '2026-05-01 10:00:00+00', 'exif', 'exif') ->> 'countryIso2'),
@@ -387,9 +466,9 @@ select throws_ok(
 reset role;
 
 select is(
-  ((select count(*) from public.spots), (select count(*) from public.spot_point_lines)),
-  (select (spots, lines) from t_counts),
-  'l''estimation ne laisse rien en base'
+  ((select count(*) from public.spots), (select count(*) from public.spot_point_lines), (select count(*) from public.points_ledger)),
+  (select (spots, lines, ledger) from t_counts),
+  'l''estimation ne laisse rien en base (ni sticker, ni lignes, ni journal)'
 );
 
 -- Cache du géocodage (service_role) ---------------------------------------------------

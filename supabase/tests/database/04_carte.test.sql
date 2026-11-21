@@ -1,7 +1,7 @@
 -- Étape 6 : carte (spots_in_bbox), rareté des pays et recherche,
 -- testées pour un visiteur, deux utilisateurs (A et B) et service_role.
 begin;
-select plan(49);
+select plan(54);
 
 -- Données -------------------------------------------------------------------------
 
@@ -33,7 +33,7 @@ returns extensions.geography language sql as $$
   select extensions.st_setsrid(extensions.st_makepoint(lng, lat), 4326)::extensions.geography
 $$;
 
--- s1 : publié à Paris, mais près d'un domicile → position publique décalée.
+-- s1 : publié à Paris (la position publique est la position exacte : plus de domicile).
 -- s2 : en attente (A) ; s3 : masqué (A) ; s4 : Ushuaïa (B), premier du pays ;
 -- s5 : Bhoutan (B), pays rare ; s6 / s7 : de part et d'autre de l'antiméridien.
 insert into public.spots (id, author_id, name, location, public_location, taken_at, year,
@@ -60,6 +60,7 @@ values
   ('00000000-0000-0000-0000-000000000c07', '00000000-0000-0000-0000-0000000000b6', 'Taveuni ouest',
    pg_temp.pt(-179.9, -16.8), pg_temp.pt(-179.9, -16.8), '2026-07-02', 2026, 'exif', 'exif', null, null,
    'b6/7.webp', 'published', false, 31);
+update public.spots set rarity_category = 'isole' where id = '00000000-0000-0000-0000-000000000c05';
 
 -- Identifiants des marqueurs renvoyés pour une zone et des filtres.
 create function pg_temp.ids(x1 float8, y1 float8, x2 float8, y2 float8, f jsonb default '{}')
@@ -136,19 +137,19 @@ select is(
 
 select is(
   pg_temp.feature('00000000-0000-0000-0000-000000000c01') -> 'geometry' -> 'coordinates',
-  '[2.35, 48.87]'::jsonb,
-  'la position renvoyée est la position publique, jamais la position exacte');
+  '[2.3375, 48.8583]'::jsonb,
+  'la position renvoyée est la position publique (la position exacte, sans domicile)');
 
 select is(
   (select array_agg(k order by k) from jsonb_object_keys(pg_temp.feature('00000000-0000-0000-0000-000000000c04') -> 'properties') k),
-  array['color', 'gold', 'id', 'pending', 'points'],
-  'propriétés légères : id, color, points, gold, pending');
+  array['color', 'gold', 'id', 'pending', 'points', 'year'],
+  'propriétés légères : id, color, year, points, gold, pending');
 
 select is(
   pg_temp.feature('00000000-0000-0000-0000-000000000c04') -> 'properties',
-  jsonb_build_object('id', '00000000-0000-0000-0000-000000000c04', 'color', '#FF7A59',
+  jsonb_build_object('id', '00000000-0000-0000-0000-000000000c04', 'color', '#FF7A59', 'year', 2025,
                      'points', 195, 'gold', true, 'pending', false),
-  'couleur de l''année du sticker, points et anneau doré');
+  'couleur et année de l''édition du sticker, points et anneau doré');
 
 select is(
   pg_temp.ids(-10, 40, 10, 52),
@@ -180,9 +181,17 @@ select is(pg_temp.ids(-180, -90, 180, 90, '{"authorId": "00000000-0000-0000-0000
   array['00000000-0000-0000-0000-000000000c01'], 'filtre personne : seulement ses stickers publiés');
 select is(pg_temp.ids(-180, -90, 180, 90, '{"rare": true}'),
   array['00000000-0000-0000-0000-000000000c04', '00000000-0000-0000-0000-000000000c05'],
-  'filtre « Rares » : anneau doré ou pays à 60 points de base et plus');
+  'filtre « Rares » : anneau doré, lieu isolé ou très rare');
 select is(pg_temp.ids(-180, -90, 180, 90, '{"rare": true, "years": [2026]}'),
   array['00000000-0000-0000-0000-000000000c05'], 'les filtres se combinent');
+select is(pg_temp.ids(-180, -90, 180, 90, '{"countries": ["xa", "XB"]}'),
+  array['00000000-0000-0000-0000-000000000c04', '00000000-0000-0000-0000-000000000c05'], 'filtre pays (codes ISO)');
+select is(pg_temp.ids(-180, -90, 180, 90, '{"from": "2026-05-15", "to": "2026-07-01"}'),
+  array['00000000-0000-0000-0000-000000000c05', '00000000-0000-0000-0000-000000000c06'],
+  'filtre période : dates du collage, bornes incluses');
+select throws_ok(
+  $$ select public.spots_in_bbox(-180, -90, 180, 90, '{"from": "pas une date"}') $$,
+  '22023', null, 'une période invalide est refusée');
 select throws_ok(
   $$ select public.spots_in_bbox(-180, -90, 180, 90, '{"mine": true}') $$,
   '28000', 'Connexion requise', '« Mes stickers » exige d''être connecté');
@@ -195,7 +204,14 @@ select is(
   array[1, 1, 1], 'country_rarity compte seulement les stickers publiés');
 select is(
   (select array_agg(base_points order by iso2) from public.country_rarity where iso2 in ('XA', 'XB', 'XF')),
-  array[25, 60, 10], 'country_rarity donne les points de base du barème');
+  array[100, 200, 100], 'country_rarity donne les points possibles : base, plus le bonus d''un pays rare');
+select results_eq(
+  $$ select id, distance_m > 0 from public.nearby_spots('00000000-0000-0000-0000-000000000c06') $$,
+  $$ values ('00000000-0000-0000-0000-000000000c07'::uuid, true) $$,
+  'stickers proches : de l''autre côté de l''antiméridien, les publiés seulement');
+select is_empty(
+  $$ select * from public.nearby_spots('00000000-0000-0000-0000-000000000c02') $$,
+  'pas de stickers proches pour un sticker non publié');
 
 -- Recherche
 select is(
@@ -248,7 +264,7 @@ select is(
   array['00000000-0000-0000-0000-000000000c04'], '« Mes stickers » de B, combiné à l''année');
 select is(
   pg_temp.feature('00000000-0000-0000-0000-000000000c01') -> 'geometry' -> 'coordinates',
-  '[2.35, 48.87]'::jsonb,
+  '[2.3375, 48.8583]'::jsonb,
   'connectée, B reçoit aussi la position publique du sticker de A');
 
 -- Visiteur : pas d'accès direct à spots ------------------------------------------------------

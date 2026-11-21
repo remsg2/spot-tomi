@@ -2,7 +2,7 @@
 -- modérateur, admin). Chaque action réussie doit écrire une ligne dans
 -- admin_audit_log ; chaque refus ne doit rien changer.
 begin;
-select plan(152);
+select plan(176);
 
 -- Comptes de test ------------------------------------------------------------------
 -- U : utilisateur ; R1, R2 : auteurs de signalements ; M : modérateur ; A : admin ;
@@ -103,6 +103,9 @@ create function pg_temp.audit_total() returns int language sql security definer 
   select count(*)::int from public.admin_audit_log
   where id > (select max_id from pg_temp.audit_baseline)
 $$;
+create function pg_temp.notice_title(p_user uuid, p_kind text) returns text language sql security definer as $$
+  select title from public.user_notices where user_id = p_user and kind = p_kind order by id desc limit 1
+$$;
 create function pg_temp.spot(p_id uuid) returns public.spots language sql security definer as $$
   select * from public.spots where id = p_id
 $$;
@@ -134,9 +137,12 @@ create function pg_temp.calls(p_kind text) returns text[] language sql as $$
     else array[
       $c$select public.admin_set_season(2031, '#5DB043', true)$c$,
       $c$select * from public.admin_missing_season_years()$c$,
-      $c$select public.admin_set_rule('bonus_first_city', 16)$c$,
+      $c$select public.admin_set_rule('bonus_touristique', 16)$c$,
       $c$select public.admin_set_country_tier('FR', 'lointain')$c$,
-      $c$select public.admin_recompute()$c$,
+      $c$select public.admin_recompute(null, 'Test des droits')$c$,
+      $c$select public.admin_adjust_points('00000000-0000-0000-0000-000000000801', 10, 'Test des droits')$c$,
+      $c$select public.admin_save_edition(2033, 'Édition 2033', '#5DB043')$c$,
+      $c$select * from public.admin_recent_errors()$c$,
       $c$select * from public.admin_list_users()$c$,
       $c$select public.admin_set_role('00000000-0000-0000-0000-000000000801', 'moderator')$c$,
       $c$select public.admin_suspend('00000000-0000-0000-0000-000000000801', true)$c$,
@@ -157,9 +163,9 @@ $$;
 -- Structure et droits ------------------------------------------------------------------
 
 select has_function('public', 'admin_set_season', array['integer', 'text', 'boolean'], 'admin_set_season existe');
-select has_function('public', 'admin_recompute', array['uuid'], 'admin_recompute existe');
+select has_function('public', 'admin_recompute', array['uuid', 'text'], 'admin_recompute existe (motif obligatoire)');
 select ok(
-  not has_function_privilege('anon', 'public.admin_validate_spot(uuid)', 'execute')
+  not has_function_privilege('anon', 'public.admin_validate_spot(uuid, text)', 'execute')
   and not has_function_privilege('anon', 'public.admin_set_role(uuid, public.user_role)', 'execute'),
   'un visiteur n''a aucun droit d''exécution sur les fonctions admin'
 );
@@ -265,14 +271,18 @@ select is(pg_temp.audit_count('spot.unhide', 'spot:00000000-0000-0000-0000-00000
   1, 'démasquer écrit une ligne dans le journal');
 select throws_ok($$ select public.admin_unhide_spot('00000000-0000-0000-0000-0000000081a3') $$, 'ST804', null, 'démasquer un sticker visible est refusé');
 
--- Lieu exceptionnel : recalcul.
-select lives_ok($$ select public.admin_set_exceptional('00000000-0000-0000-0000-0000000081a3', true) $$, 'le modérateur coche « lieu exceptionnel »');
-select ok((pg_temp.spot('00000000-0000-0000-0000-0000000081a3')).is_exceptional, 'le sticker est exceptionnel');
+-- Site remarquable (ancien « lieu exceptionnel ») : catégorie choisie, recalcul.
+select lives_ok($$ select public.admin_set_exceptional('00000000-0000-0000-0000-0000000081a3', true) $$, 'le modérateur marque un site remarquable');
+select ok((pg_temp.spot('00000000-0000-0000-0000-0000000081a3')).is_exceptional, 'le sticker est remarquable');
+select is((pg_temp.spot('00000000-0000-0000-0000-0000000081a3')).rarity_category::text, 'remarquable', 'sa catégorie de rareté est « remarquable »');
 select ok(
-  (pg_temp.spot('00000000-0000-0000-0000-0000000081a3')).points_total > ((pg_temp.audit_last('spot.exceptional', 'spot:00000000-0000-0000-0000-0000000081a3')).before ->> 'points_total')::int,
-  'cocher « exceptionnel » relance le calcul et ajoute le bonus');
-select is(pg_temp.audit_count('spot.exceptional', 'spot:00000000-0000-0000-0000-0000000081a3', '00000000-0000-0000-0000-000000000808'),
-  1, 'cocher « exceptionnel » écrit une ligne dans le journal');
+  (pg_temp.spot('00000000-0000-0000-0000-0000000081a3')).points_total > ((pg_temp.audit_last('spot.rarity', 'spot:00000000-0000-0000-0000-0000000081a3')).before ->> 'points_total')::int,
+  'marquer un site remarquable relance le calcul et ajoute le bonus');
+select is(pg_temp.audit_count('spot.rarity', 'spot:00000000-0000-0000-0000-0000000081a3', '00000000-0000-0000-0000-000000000808'),
+  1, 'marquer un site remarquable écrit une ligne dans le journal');
+select throws_ok(
+  $$ select public.admin_set_rarity('00000000-0000-0000-0000-0000000081a3', 'isole', '') $$,
+  '22023', null, 'changer la catégorie demande un motif');
 
 -- Supprimer.
 select is(
@@ -324,15 +334,15 @@ select is(
 
 -- Admin : barème --------------------------------------------------------------------------
 
-select lives_ok($$ select public.admin_set_rule('bonus_first_city', 16) $$, 'l''admin modifie un bonus');
-select is((select value from public.scoring_rules where key = 'bonus_first_city'), 16::numeric, 'le bonus est modifié');
-select is((select updated_by from public.scoring_rules where key = 'bonus_first_city'),
+select lives_ok($$ select public.admin_set_rule('bonus_touristique', 16) $$, 'l''admin modifie un bonus');
+select is((select value from public.scoring_rules where key = 'bonus_touristique'), 16::numeric, 'le bonus est modifié');
+select is((select updated_by from public.scoring_rules where key = 'bonus_touristique'),
   '00000000-0000-0000-0000-00000000080a'::uuid, 'l''auteur de la modification est enregistré');
-select is(pg_temp.audit_count('rule.set', 'rule:bonus_first_city', '00000000-0000-0000-0000-00000000080a'),
+select is(pg_temp.audit_count('rule.set', 'rule:bonus_touristique', '00000000-0000-0000-0000-00000000080a'),
   1, 'modifier une règle écrit une ligne dans le journal');
 select throws_ok($$ select public.admin_set_rule('bonus_inconnu', 1) $$, 'P0002', null, 'une règle inconnue est refusée');
-select throws_ok($$ select public.admin_set_rule('bonus_first_city', -1) $$, '22023', null, 'une valeur négative est refusée');
-select throws_ok($$ select public.admin_set_rule('neighbor_divisor', 0) $$, '22023', null, 'un diviseur nul est refusé');
+select throws_ok($$ select public.admin_set_rule('bonus_touristique', -1) $$, '22023', null, 'une valeur négative est refusée');
+select throws_ok($$ select public.admin_set_rule('comment_max_length', 5) $$, '22023', null, 'un commentaire de moins de 10 caractères est refusé');
 
 select lives_ok($$ select public.admin_set_country_tier('fr', 'rare') $$, 'l''admin change le niveau d''un pays');
 select is((select tier::text from public.countries where iso2 = 'FR'), 'rare', 'le niveau du pays est modifié');
@@ -340,13 +350,43 @@ select is(pg_temp.audit_count('country.tier', 'country:FR', '00000000-0000-0000-
   1, 'changer un niveau de pays écrit une ligne dans le journal');
 select throws_ok($$ select public.admin_set_country_tier('ZZ', 'rare') $$, 'P0002', null, 'un pays inconnu est refusé');
 
-select is((public.admin_recompute('00000000-0000-0000-0000-0000000081a1') ->> 'count')::int, 1, 'recalcul d''un sticker');
+select throws_ok($$ select public.admin_recompute('00000000-0000-0000-0000-0000000081a1') $$, '22023', null,
+  'un recalcul sans motif est refusé');
+select is((public.admin_recompute('00000000-0000-0000-0000-0000000081a1', 'Contrôle') ->> 'count')::int, 1, 'recalcul d''un sticker');
 select is(pg_temp.audit_count('points.recompute', 'spot:00000000-0000-0000-0000-0000000081a1', '00000000-0000-0000-0000-00000000080a'),
   1, 'le recalcul d''un sticker écrit une ligne dans le journal');
-select ok((public.admin_recompute() ->> 'count')::int >= 3, 'recalcul de tous les stickers');
+select ok((public.admin_recompute(null, 'Contrôle général') ->> 'count')::int >= 3, 'recalcul de tous les stickers');
 select is(pg_temp.audit_count('points.recompute', 'spots:all', '00000000-0000-0000-0000-00000000080a'),
   1, 'le recalcul de tous les stickers écrit une ligne dans le journal');
-select throws_ok($$ select public.admin_recompute('00000000-0000-0000-0000-0000000081ff') $$, 'P0002', null, 'recalcul d''un sticker inexistant refusé');
+select throws_ok($$ select public.admin_recompute('00000000-0000-0000-0000-0000000081ff', 'Contrôle') $$, 'P0002', null, 'recalcul d''un sticker inexistant refusé');
+
+-- Admin : correction manuelle des points --------------------------------------------------------
+
+select throws_ok($$ select public.admin_adjust_points('00000000-0000-0000-0000-000000000801', 50, '  ') $$, '22023', null,
+  'une correction sans motif est refusée');
+select lives_ok($$ select public.admin_adjust_points('00000000-0000-0000-0000-000000000801', -50, 'Doublon signalé') $$,
+  'l''admin retire 50 points avec un motif');
+select is(
+  (select points from public.points_ledger where user_id = '00000000-0000-0000-0000-000000000801' and kind = 'correction'),
+  -50, 'la correction est inscrite au journal de points');
+select is(pg_temp.audit_count('points.adjust', 'user:00000000-0000-0000-0000-000000000801', '00000000-0000-0000-0000-00000000080a'),
+  1, 'la correction écrit une ligne dans le journal d''administration');
+select is(
+  pg_temp.notice_title('00000000-0000-0000-0000-000000000801', 'points_adjusted'),
+  '-50 points', 'le membre est prévenu de la correction');
+
+-- Admin : éditions -------------------------------------------------------------------------------
+
+select lives_ok($$ select public.admin_save_edition(2033, 'Édition bleue', '#5B8DEF', 'active', false) $$, 'l''admin crée une édition');
+select is((select name from public.seasons where year = 2033), 'Édition bleue', 'le nom de l''édition est enregistré');
+select throws_ok($$ select public.admin_save_edition(2033, '', '#5B8DEF') $$, '22023', null, 'une édition sans nom est refusée');
+select lives_ok($$ select public.admin_save_edition(2033, 'Édition bleue', '#5B8DEF', 'archived', false) $$, 'l''admin archive une édition');
+select throws_ok($$ select public.admin_save_edition(2033, 'Édition bleue', '#5B8DEF', 'archived', true) $$, '22023', null,
+  'une édition archivée ne peut pas être l''édition en cours');
+select throws_ok($$ select public.admin_save_edition(2026, 'Édition 2026', '#5DB043') $$, 'ST805', null,
+  'la couleur d''une édition passée qui a des stickers est figée');
+select is(pg_temp.audit_count('edition.create', 'season:2033', '00000000-0000-0000-0000-00000000080a'),
+  1, 'créer une édition écrit une ligne dans le journal');
 
 -- Admin : rôles et suspension -----------------------------------------------------------
 
@@ -404,9 +444,9 @@ select is(
   (select count(*)::int from public.admin_audit_log
     where actor_id in ('00000000-0000-0000-0000-000000000808', '00000000-0000-0000-0000-00000000080a')
       and action in ('season.set', 'spot.validate', 'spot.hide', 'spot.unhide', 'spot.delete',
-                     'spot.exceptional', 'rule.set', 'country.tier', 'points.recompute',
-                     'user.role', 'user.suspend', 'user.unsuspend')),
-  18, 'chaque action réussie a écrit exactement une ligne dans admin_audit_log');
+                     'spot.rarity', 'rule.set', 'country.tier', 'points.recompute', 'points.adjust',
+                     'edition.create', 'edition.update', 'user.role', 'user.suspend', 'user.unsuspend')),
+  21, 'chaque action réussie a écrit exactement une ligne dans admin_audit_log');
 
 select * from finish();
 rollback;

@@ -1,4 +1,4 @@
--- Étape 3 : profils, rôles et domicile, testés pour chaque rôle
+-- Étape 3 : profils, rôles et pseudos réservés, testés pour chaque rôle
 -- (visiteur, utilisateur A, utilisateur B, admin).
 begin;
 select plan(31);
@@ -26,7 +26,7 @@ select ok((select relrowsecurity from pg_class where oid = 'public.profiles'::re
 select has_view('public', 'public_profiles', 'la vue public_profiles existe');
 select hasnt_column('public', 'public_profiles', 'role', 'la vue publique ne montre pas le rôle');
 select hasnt_column('public', 'public_profiles', 'suspended_at', 'la vue publique ne montre pas la suspension');
-select has_table('private', 'user_homes', 'la table private.user_homes existe');
+select hasnt_table('private', 'user_homes', 'plus de table des domiciles (cahier des charges V1.1)');
 
 -- Utilisateur A ---------------------------------------------------------------
 
@@ -65,18 +65,22 @@ select throws_ok(
   'un pseudo invalide est refusé par la base'
 );
 
--- Domicile arrondi à ~1 km.
-select lives_ok($$ select public.set_my_home(45.12345, 6.98765) $$, 'A enregistre son domicile');
-select results_eq(
-  $$ select lat, lng from public.get_my_home() $$,
-  $$ values (45.12::float8, 6.99::float8) $$,
-  'le domicile est arrondi à 0,01° (~1 km)'
+-- Plus de domicile : les anciennes fonctions restent, sans effet (version précédente de l'app).
+select lives_ok($$ select public.set_my_home(45.12345, 6.98765) $$, 'set_my_home ne fait plus rien, sans erreur');
+select is((select count(*)::int from public.get_my_home()), 0, 'get_my_home ne renvoie plus rien');
+
+-- Pseudos réservés.
+select throws_ok(
+  $$ update public.profiles set username = 'Admin' where id = '00000000-0000-0000-0000-00000000000a' $$,
+  'ST011', null,
+  'un pseudo réservé est refusé'
 );
 select throws_ok(
-  $$ select * from private.user_homes $$,
-  '42501', null,
-  'A ne peut pas lire la table des domiciles directement'
+  $$ update public.profiles set username = 'demo_lea2' where id = '00000000-0000-0000-0000-00000000000a' $$,
+  'ST011', null,
+  'les pseudos demo_* sont réservés aux comptes de démo'
 );
+select is(public.username_available('moderateur'), false, 'un pseudo réservé n''est pas disponible');
 
 -- Utilisateur B ---------------------------------------------------------------
 
@@ -102,11 +106,6 @@ select is(
   2,
   'B voit tous les pseudos dans la vue publique'
 );
-select is(
-  (select count(*)::int from public.get_my_home()),
-  0,
-  'B ne récupère jamais le domicile de A'
-);
 update public.profiles set username = 'pirate' where id = '00000000-0000-0000-0000-00000000000a';
 select is(
   (select username from public.public_profiles where id = '00000000-0000-0000-0000-00000000000a'),
@@ -125,12 +124,7 @@ select is((select count(*)::int from public.public_profiles), 2, 'un visiteur li
 select throws_ok(
   $$ select public.set_my_home(1, 1) $$,
   '42501', null,
-  'un visiteur ne peut pas enregistrer de domicile'
-);
-select throws_ok(
-  $$ select * from public.get_my_home() $$,
-  '42501', null,
-  'un visiteur ne peut pas lire de domicile'
+  'un visiteur n''appelle pas les anciennes fonctions du domicile'
 );
 
 -- Admin -----------------------------------------------------------------------
@@ -147,10 +141,9 @@ select is(public.is_admin(), true, 'l''admin est reconnu par is_admin()');
 reset role;
 delete from auth.users where id = '00000000-0000-0000-0000-00000000000a';
 select is(
-  (select count(*)::int from public.profiles where id = '00000000-0000-0000-0000-00000000000a')
-  + (select count(*)::int from private.user_homes where user_id = '00000000-0000-0000-0000-00000000000a'),
+  (select count(*)::int from public.profiles where id = '00000000-0000-0000-0000-00000000000a'),
   0,
-  'supprimer le compte supprime le profil et le domicile'
+  'supprimer le compte supprime le profil'
 );
 
 select * from finish();

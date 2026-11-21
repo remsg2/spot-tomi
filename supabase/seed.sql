@@ -7,10 +7,13 @@
 --   select public.seed_demo_spots(5000);
 -- Projets hébergés : workflow « Données de démo » (.github/workflows/demo.yml).
 
--- Saisons d'exemple (spécifications, 4.1 ; couleurs 2024-2026 à confirmer).
+-- Éditions d'exemple (couleurs 2024-2026 à confirmer). Imposées en dev, même si des
+-- stickers existent déjà : la couleur d'une édition passée est sinon figée.
+select set_config('spot_tomi.edition_color_unlock', 'on', false);
 update public.seasons set is_current = false where is_current and year <> 2026;
-insert into public.seasons (year, color_hex, is_current) values
-  (2024, '#F2C230', false),
-  (2025, '#FF7A59', false),
-  (2026, '#5B8DEF', true)
+insert into public.seasons (year, name, color_hex, is_current) values
+  (2024, 'Édition 2024', '#F2C230', false),
+  (2025, 'Édition 2025', '#FF7A59', false),
+  (2026, 'Édition 2026', '#5B8DEF', true)
 on conflict (year) do update set color_hex = excluded.color_hex, is_current = excluded.is_current;
+select set_config('spot_tomi.edition_color_unlock', '', false);

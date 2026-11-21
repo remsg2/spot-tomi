@@ -3,10 +3,11 @@
 -- leur identifiant d'auteur « de300000-0000-4000-8000-… » : voir clear.sql.
 
 -- Stickers de démo -----------------------------------------------------------------
--- Crée (une seule fois) 8 comptes demo_* avec profil, la plupart avec un domicile, puis
--- n stickers répartis dans le monde autour de lieux réels (surtout en France et en
--- Europe), datés de 2024 à aujourd'hui, et calcule leurs points du plus ancien au plus
--- récent. Environ 3 % en attente, 1 % masqués, 2 % de lieux exceptionnels.
+-- Crée (une seule fois) 8 comptes demo_* avec profil, puis n stickers répartis dans le
+-- monde autour de lieux réels (surtout en France et en Europe), datés de 2024 à
+-- aujourd'hui (édition de l'année du collage), et calcule leurs points du plus ancien au
+-- plus récent. Environ 1 % masqués, 2 % de sites remarquables, 3 % « à vérifier »
+-- (position à la main), 10 % près d'un site touristique, un quart avec un commentaire.
 -- Réservée au propriétaire de la base (postgres) : jamais exposée par l'API.
 
 create or replace function public.seed_demo_spots(n int default 200)
@@ -26,17 +27,17 @@ begin
 
   -- Comptes de démo (auth.users est géré par Supabase Auth en temps normal).
   create temporary table if not exists pg_temp.demo_users (
-    id uuid primary key, username text, home_lat float8, home_lng float8
+    id uuid primary key, username text
   ) on commit drop;
   insert into pg_temp.demo_users values
-    ('de300000-0000-4000-8000-000000000001', 'demo_lea', 48.86, 2.35),
-    ('de300000-0000-4000-8000-000000000002', 'demo_remi', 45.76, 4.84),
-    ('de300000-0000-4000-8000-000000000003', 'demo_hugo', 47.22, -1.55),
-    ('de300000-0000-4000-8000-000000000004', 'demo_camille', 44.84, -0.58),
-    ('de300000-0000-4000-8000-000000000005', 'demo_pierre', 48.85, 2.29),
-    ('de300000-0000-4000-8000-000000000006', 'demo_ines', 43.30, 5.37),
-    ('de300000-0000-4000-8000-000000000007', 'demo_malo', null, null),
-    ('de300000-0000-4000-8000-000000000008', 'demo_zoe', 50.63, 3.06)
+    ('de300000-0000-4000-8000-000000000001', 'demo_lea'),
+    ('de300000-0000-4000-8000-000000000002', 'demo_remi'),
+    ('de300000-0000-4000-8000-000000000003', 'demo_hugo'),
+    ('de300000-0000-4000-8000-000000000004', 'demo_camille'),
+    ('de300000-0000-4000-8000-000000000005', 'demo_pierre'),
+    ('de300000-0000-4000-8000-000000000006', 'demo_ines'),
+    ('de300000-0000-4000-8000-000000000007', 'demo_malo'),
+    ('de300000-0000-4000-8000-000000000008', 'demo_zoe')
   on conflict (id) do nothing;
 
   insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
@@ -48,13 +49,6 @@ begin
   insert into public.profiles (id, username)
   select d.id, d.username from pg_temp.demo_users d
   on conflict (id) do nothing;
-
-  insert into private.user_homes (user_id, home)
-  select d.id,
-    extensions.st_setsrid(extensions.st_makepoint(d.home_lng, d.home_lat), 4326)::extensions.geography
-  from pg_temp.demo_users d
-  where d.home_lat is not null
-  on conflict (user_id) do nothing;
 
   select array_agg(d.id order by d.id) into v_users from pg_temp.demo_users d;
 
@@ -125,8 +119,9 @@ begin
   ),
   inserted as (
     insert into public.spots (
-      author_id, name, location, public_location, altitude_m, taken_at, year, gps_source,
-      date_source, country_iso2, city, photo_path, status, is_exceptional, created_at
+      author_id, name, location, public_location, altitude_m, altitude_source, taken_at, year, gps_source,
+      date_source, country_iso2, city, photo_path, status, is_exceptional, rarity_override,
+      is_tourist_spot, needs_review, review_reason, comment, created_at
     )
     select
       p.author_id,
@@ -134,21 +129,31 @@ begin
              'Port', 'Marché', 'Musée', 'Arrêt de bus', 'Boîte aux lettres', 'Refuge'])
         [1 + floor(p.r_kind * 14)::int] || ' · ' || p.city,
       p.loc,
-      public.public_location_for(p.author_id, p.loc),
+      p.loc,
       round((p.alt + p.r_dist * 120)::numeric, 1),
-      p.taken_at,
-      extract(year from p.taken_at)::int,
       'exif',
+      p.taken_at,
+      -- Édition de l'année du collage si elle existe, sinon l'édition en cours.
+      coalesce(
+        (select se.year from public.seasons se where se.year = extract(year from p.taken_at)::int),
+        public.current_edition_year()
+      ),
+      case when p.r_status between 0.94 and 0.97 then 'manual' else 'exif' end,
       'exif',
       public.country_at(p.loc),
       p.city,
       p.author_id || '/demo-' || gen_random_uuid() || '.webp',
-      case
-        when p.r_status < 0.03 then 'pending_review'::public.spot_status
-        when p.r_status < 0.04 then 'hidden'::public.spot_status
-        else 'published'::public.spot_status
-      end,
+      case when p.r_status < 0.01 then 'hidden'::public.spot_status else 'published'::public.spot_status end,
       p.r_status > 0.98,
+      case when p.r_status > 0.98 then 'remarquable'::public.rarity_category end,
+      p.r_kind > 0.9,
+      p.r_status between 0.94 and 0.97,
+      case when p.r_status between 0.94 and 0.97 then 'Position placée à la main' end,
+      case when p.r_delay < 0.25 then
+        (array['Collé avec les copains en rentrant de balade.', 'Tomi a trouvé une belle vue !',
+               'Juste à côté de l''entrée.', 'Premier sticker du voyage.', 'Il y avait du vent ce jour-là.'])
+          [1 + floor(p.r_az * 5)::int]
+      end,
       least(now(), p.taken_at + p.r_delay * interval '3 days')
     from placed p
     returning id
@@ -159,7 +164,7 @@ begin
   for v_id in
     select s.id from public.spots s where s.id = any (v_ids) order by s.created_at, s.id
   loop
-    perform public.compute_spot_points(v_id);
+    perform public.compute_spot_points(v_id, 'Publication (démo)');
   end loop;
 
   return coalesce(array_length(v_ids, 1), 0);
