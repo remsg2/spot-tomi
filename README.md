@@ -96,6 +96,28 @@ Les migrations doivent rester compatibles avec la version précédente de l'app
 | `dev` | aucune | `SUPABASE_DB_PASSWORD` (dev) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-dev`) |
 | `production` | *Required reviewers* (facultatif) | `SUPABASE_DB_PASSWORD` (prod) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-prod`) |
 
+## Comptes (Supabase Auth)
+
+- Connexion par **lien magique** ou **mot de passe** (`/login`). Google et Apple sont prêts
+  mais désactivés : les ajouter à `ENABLED_OAUTH_PROVIDERS` (`src/lib/auth/providers.ts`)
+  après les avoir configurés dans Supabase (tableau ci-dessous). Tous
+  les retours passent par `/auth/callback`, qui envoie vers `/welcome` tant que le pseudo
+  n'est pas choisi.
+- `src/proxy.ts` rafraîchit la session et réserve `/me`, `/welcome`, `/spots/new` et
+  `/admin` aux connectés ; `/dev/*` répond 404 en production.
+- Domicile : `set_my_home` l'arrondit à 0,01° (~1 km) ; seul son propriétaire peut le relire
+  (`get_my_home`), et l'interface n'affiche jamais de coordonnées.
+- Suppression du compte : Edge Function `delete-account` (fichiers Storage puis compte Auth ;
+  profil, domicile et stickers suivent en cascade).
+
+**Réglages à faire dans chaque projet Supabase** (*Authentication → Sign In / Providers*) :
+
+| Fournisseur | À faire |
+| --- | --- |
+| Email | activé par défaut. L'envoi d'emails intégré est limité à quelques messages par heure : configurer un SMTP (*Authentication → Emails → SMTP Settings*) avant l'ouverture au public. |
+| Google | créer un client OAuth « Application Web » dans Google Cloud, avec l'URI de redirection `https://<ref>.supabase.co/auth/v1/callback`, puis coller l'ID et le secret dans Supabase. |
+| Apple | nécessite un compte Apple Developer (payant) : Services ID, clé « Sign in with Apple », même URI de redirection. |
+
 ## Image de Tomi
 
 Images provisoires tirées des maquettes dans `public/tomi/` (`tomi.png` pour le

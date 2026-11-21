@@ -15,5 +15,6 @@ export default defineConfig({
     environment: "node",
     // supabase/functions : code Deno pur, testé ici avec ses dépendances simulées.
     include: ["src/**/*.test.{ts,tsx}", "tests/unit/**/*.test.{ts,tsx}", "supabase/functions/**/*.test.ts"],
+    exclude: ["**/node_modules/**", ".claude/**"],
   },
 });

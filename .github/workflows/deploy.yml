@@ -101,19 +101,25 @@ jobs:
       - name: vercel deploy --prebuilt --prod
         run: vercel deploy --prebuilt --archive=tgz --prod --token=${{ secrets.VERCEL_TOKEN }}
 
-      # Quelques tentatives : le premier appel peut tomber pendant le démarrage.
-      # La réponse est toujours affichée, pour comprendre un échec.
+      # Juste après `vercel deploy`, l'adresse publique peut encore servir l'ancienne
+      # build quelques secondes : on réessaie jusqu'à ce qu'elle serve CE commit,
+      # en bonne santé et branchée sur la base de prod. La réponse est toujours affichée.
       - name: Contrôle de santé de la production
         run: |
-          for attempt in 1 2 3 4 5 6; do
+          for attempt in $(seq 1 12); do
             code=$(curl -sS -o health.json -w "%{http_code}" "$PRODUCTION_URL/api/health") || code=000
             echo "Tentative $attempt : HTTP $code"
             cat health.json 2>/dev/null; echo
-            [ "$code" = "200" ] && break
+            if jq -e --arg sha "${{ github.sha }}" --arg host "${{ vars.SUPABASE_PROJECT_REF }}.supabase.co" \
+              '.status == "ok" and .appEnv == "production" and .buildId == $sha and .supabaseHost == $host' \
+              health.json > /dev/null 2>&1; then
+              echo "Production saine, build $GITHUB_SHA en ligne."
+              exit 0
+            fi
             sleep 10
           done
-          jq -e --arg sha "${{ github.sha }}" --arg host "${{ vars.SUPABASE_PROJECT_REF }}.supabase.co" \
-            '.status == "ok" and .appEnv == "production" and .buildId == $sha and .supabaseHost == $host' health.json
+          echo "::error::La production ne sert pas la build attendue ou n'est pas en bonne santé."
+          exit 1
       # Uniquement des tests en lecture seule : ils tournent sur le vrai site.
       - name: Playwright contre la production
         env:

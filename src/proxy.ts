@@ -18,9 +18,21 @@ export async function proxy(request: NextRequest) {
   const appEnv = env.ok ? env.env.appEnv : env.appEnv;
 
   if (appEnv === "production" && (pathname === "/dev" || pathname.startsWith("/dev/"))) {
-    return new NextResponse(null, { status: 404 });
+    return new NextResponse("Page introuvable", {
+      status: 404,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
   }
-  if (!env.ok) return NextResponse.next();
+  const isProtected = PROTECTED.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  const toLogin = () => {
+    const login = request.nextUrl.clone();
+    login.pathname = "/login";
+    login.search = `?next=${encodeURIComponent(pathname + search)}`;
+    return NextResponse.redirect(login);
+  };
+
+  // Sans configuration Supabase, aucune session n'est possible.
+  if (!env.ok) return isProtected ? toLogin() : NextResponse.next();
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(env.env.supabaseUrl, env.env.supabaseKey, {
@@ -42,12 +54,8 @@ export async function proxy(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const isLoggedIn = Boolean(data?.claims?.sub);
 
-  const isProtected = PROTECTED.some((path) => pathname === path || pathname.startsWith(`${path}/`));
   if (isProtected && !isLoggedIn) {
-    const login = request.nextUrl.clone();
-    login.pathname = "/login";
-    login.search = `?next=${encodeURIComponent(pathname + search)}`;
-    const redirect = NextResponse.redirect(login);
+    const redirect = toLogin();
     for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
     return redirect;
   }

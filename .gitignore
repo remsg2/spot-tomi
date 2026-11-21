@@ -49,3 +49,6 @@ next-env.d.ts
 # supabase
 supabase/.branches
 supabase/.temp
+
+# copies de travail des agents Claude Code
+/.claude/

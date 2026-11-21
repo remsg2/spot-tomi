@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo_Black, Inter } from "next/font/google";
-import { Suspense, type CSSProperties } from "react";
+import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { t } from "@/i18n/fr";
 import { RuntimeEnv } from "@/lib/env/runtime-env";
-import { getCurrentYearColor } from "@/lib/season";
+import { YearColorStyle } from "@/lib/year-color-style";
 import "./globals.css";
 
 const inter = Inter({
@@ -32,18 +32,19 @@ export const viewport: Viewport = {
   ],
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const yearColor = await getCurrentYearColor();
-
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // suppressHydrationWarning : next-themes pose data-theme avant l'hydratation.
     <html
       lang="fr"
       suppressHydrationWarning
       className={`${inter.variable} ${archivoBlack.variable} h-full antialiased`}
-      style={{ "--year": yearColor } as CSSProperties}
     >
       <body className="flex min-h-full flex-col">
+        {/* Couleur de l'année : lue au runtime (jamais au build), voir src/lib/season.ts. */}
+        <Suspense fallback={null}>
+          <YearColorStyle />
+        </Suspense>
         <ThemeProvider>{children}</ThemeProvider>
         <Suspense fallback={null}>
           <RuntimeEnv />
