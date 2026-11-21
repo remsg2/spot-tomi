@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
-import { Logo, TabBar } from "@/components/ui";
+import { BackLink, Logo, TabBar } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 /**
@@ -9,19 +9,37 @@ import { cn } from "@/lib/cn";
  * web). À l'assemblage, le gabarit de l'étape 6 (src/components/shell) remplace
  * ce cadre et reçoit directement les panneaux.
  */
-export function ColumnPage({ children, className }: { children: ReactNode; className?: string }) {
+export function ColumnPage({
+  children,
+  className,
+  back,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Bouton retour en haut de la colonne (sous 768 px aussi, sauf `mobile: false`). */
+  back?: { href: string; label: string; mobile?: boolean };
+}) {
+  const backOnMobile = back !== undefined && back.mobile !== false;
   return (
     <div className="flex flex-1 flex-col md:items-center">
       <div
         data-column=""
         className="flex w-full flex-1 flex-col [--edge:var(--bg)] md:min-h-dvh md:max-w-[440px] md:border-x md:border-line md:bg-card md:[--edge:var(--card)]"
       >
-        <Link href="/" className="hidden self-start px-6 pt-[22px] md:inline-flex">
-          <Logo />
-        </Link>
+        <div className={cn("items-center gap-3 px-4 pt-4 md:flex md:px-6 md:pt-[22px]", backOnMobile ? "flex" : "hidden")}>
+          {back && (
+            <span className={backOnMobile ? "flex" : "hidden md:flex"}>
+              <BackLink href={back.href} label={back.label} />
+            </span>
+          )}
+          <Link href="/" className="hidden rounded-[10px] md:inline-flex">
+            <Logo />
+          </Link>
+        </div>
         <main
           className={cn(
-            "flex flex-1 flex-col gap-3.5 px-4 pt-5 pb-[calc(104px+env(safe-area-inset-bottom))] md:px-6 md:pt-4 md:pb-10",
+            "flex flex-1 flex-col gap-3.5 px-4 pb-[calc(104px+env(safe-area-inset-bottom))] md:px-6 md:pt-4 md:pb-10",
+            backOnMobile ? "pt-3" : "pt-5",
             className,
           )}
         >

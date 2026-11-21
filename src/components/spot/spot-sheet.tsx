@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { BackIcon } from "@/components/map/icons";
-import { PointsBlock, PointsBreakdown, Sticker } from "@/components/ui";
+import { BackLink, PointsBlock, PointsBreakdown, Sticker } from "@/components/ui";
 import { tm } from "@/i18n/map.fr";
 import { rulesFr } from "@/i18n/rules.fr";
 import type { SpotPageData } from "@/lib/spots/server";
@@ -61,13 +60,7 @@ export function SpotSheet({
           </>
         )}
         <div className="absolute inset-x-4 top-[calc(16px+env(safe-area-inset-top))] flex justify-between md:inset-x-3 md:top-3 md:justify-end">
-          <Link
-            href="/"
-            aria-label={tm.spot.back}
-            className="flex size-11 items-center justify-center rounded-full bg-card text-text shadow-[0_4px_12px_rgb(0_0_0/0.2)] md:hidden"
-          >
-            <BackIcon size={22} />
-          </Link>
+          <BackLink href="/" label={tm.spot.back} variant="floating" className="md:hidden" />
           <ShareButton name={spot.name} />
         </div>
       </div>

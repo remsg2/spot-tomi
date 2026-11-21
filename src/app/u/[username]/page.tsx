@@ -3,6 +3,7 @@ import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { ColumnPage, LoadError } from "@/components/leaderboard/column-page";
 import { ProfileSkeleton, ProfileView } from "@/components/profile/profile-view";
+import { t } from "@/i18n/fr";
 import { profileFr as p } from "@/i18n/profile.fr";
 import { fetchProfileData, fetchPublicProfile } from "@/lib/profile/queries";
 import { countsForScore } from "@/lib/profile/spots";
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: PageProps<"/u/[username]">): 
 /** Profil public d'un membre : stickers publiés seulement. */
 export default function UserProfilePage({ params }: PageProps<"/u/[username]">) {
   return (
-    <ColumnPage>
+    <ColumnPage back={{ href: "/leaderboard", label: t.nav.back }}>
       <Suspense fallback={<ProfileSkeleton />}>
         <UserProfileContent params={params} />
       </Suspense>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Logo, Sticker } from "@/components/ui";
+import { BackLink, Logo, Sticker } from "@/components/ui";
 import { t } from "@/i18n/fr";
 import { safeNextPath } from "@/lib/auth/next-path";
 import { getSessionUser } from "@/lib/auth/server";
@@ -12,7 +12,10 @@ export const metadata: Metadata = { title: t.auth.loginTitle };
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-8">
-      <Logo />
+      <div className="flex items-center gap-3">
+        <BackLink href="/" label={t.nav.back} />
+        <Logo />
+      </div>
       <div className="flex items-center gap-4">
         <Sticker size={84} tilt={-5} />
         <div className="flex flex-col gap-1">

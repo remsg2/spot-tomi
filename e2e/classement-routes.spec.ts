@@ -115,6 +115,23 @@ test.describe("connecté", () => {
     expect(rpcCalls("profile_stats")).toContainEqual({ p_user: ME });
   });
 
+  test("/me/settings : bouton retour vers le profil", async ({ page }) => {
+    await page.goto(`${next.url}/me/settings`);
+    const back = page.getByRole("link", { name: "Retour au profil" });
+    await expect(back).toHaveAttribute("href", "/me");
+    await back.click();
+    await expect(page).toHaveURL(/\/me$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Remi");
+  });
+
+  test("/u/<pseudo> : bouton retour, vers le classement à l'ouverture directe", async ({ page }) => {
+    await page.goto(`${next.url}/u/Lea`);
+    const back = page.getByTestId("back-link").filter({ visible: true });
+    await expect(back).toHaveAccessibleName("Retour");
+    await back.click();
+    await expect(page).toHaveURL(/\/leaderboard$/);
+  });
+
   test("/u/<soi-même> : vue publique, sans les stickers en attente", async ({ page }) => {
     await page.goto(`${next.url}/u/Remi`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Remi");

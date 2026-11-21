@@ -28,6 +28,18 @@ export const fr = {
     add: "Ajouter un sticker",
     album: "Album",
     profile: "Profil",
+    back: "Retour",
+    backToMap: "Retour à la carte",
+  },
+  notFound: {
+    title: "Page introuvable",
+    body: "Cette page n'existe pas ou a été déplacée.",
+    map: "Retour à la carte",
+  },
+  error: {
+    title: "La page n'a pas pu s'afficher",
+    body: "Un problème est survenu. Réessaie dans un instant.",
+    retry: "Réessayer",
   },
   points: {
     unit: "pts",
