@@ -167,7 +167,7 @@ select ok(
   pg_get_function_result('public.admin_list_users(text, integer)'::regprocedure) !~* '(email|home|domicile)',
   'la liste des utilisateurs ne contient ni email ni domicile'
 );
-select is(public.schema_version(), '20261126000000_admin', 'schema_version est à jour');
+select ok(public.schema_version() >= '20261126000000_admin', 'schema_version inclut la migration admin');
 
 -- Contraste WCAG calculé en SQL.
 select ok(abs(private.contrast_ratio('#000000', '#FFFFFF') - 21) < 1e-9, 'contraste noir sur blanc = 21');

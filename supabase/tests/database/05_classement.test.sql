@@ -104,7 +104,7 @@ select ok(
   ),
   'un index unique permet le rafraîchissement concurrent'
 );
-select is(public.schema_version(), '20261125000000_classement', 'schema_version est à jour');
+select ok(public.schema_version() >= '20261125000000_classement', 'schema_version inclut la migration classement');
 
 -- Rafraîchissement : service_role seulement ---------------------------------------------
 
