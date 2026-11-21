@@ -68,16 +68,18 @@ describe("affichage", () => {
     expect(ordinal(2)).toBe("2ᵉ");
   });
 
-  it("lignes de points : base sans « + », puce dorée pour le premier du pays", () => {
+  it("lignes de points : base sans « + », puce dorée pour le premier du pays (adaptateur de l'étape 4)", () => {
     const lines = toPointLines([
-      { ruleKey: "base", label: "Pays lointain", detail: null, points: 25 },
+      { ruleKey: "base_country", label: "Pays lointain", detail: null, points: 25 },
       { ruleKey: "first_country", label: "Premier sticker du pays", detail: "Argentine", points: 50 },
+      { ruleKey: "home_distance", label: "Loin de chez toi", detail: "13 000 km", points: 65 },
       { ruleKey: "neighbor_malus", label: "Voisin à moins de 200 m", detail: null, points: -56 },
     ]);
     expect(lines.map((line) => [line.key, line.isBase, line.tone, line.detail])).toEqual([
-      ["base", true, "base", undefined],
+      ["base_country", true, "base", undefined],
       ["first_country", false, "gold", "Argentine"],
-      ["neighbor_malus", false, "year", undefined],
+      ["home_distance", false, "year", "13 000 km"],
+      ["neighbor_malus", false, "base", undefined],
     ]);
   });
 });

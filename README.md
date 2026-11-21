@@ -118,6 +118,19 @@ Les migrations doivent rester compatibles avec la version précédente de l'app
 | Google | créer un client OAuth « Application Web » dans Google Cloud, avec l'URI de redirection `https://<ref>.supabase.co/auth/v1/callback`, puis coller l'ID et le secret dans Supabase. |
 | Apple | nécessite un compte Apple Developer (payant) : Services ID, clé « Sign in with Apple », même URI de redirection. |
 
+## Publication d'un sticker (`/spots/new`)
+
+- Dans le navigateur : lecture EXIF (exifr) **avant tout envoi**, conversion HEIC à la
+  demande (heic-to), réencodage canvas en WebP de 2048 px au plus, sans aucune métadonnée
+  (libwebp en WebAssembly si le navigateur n'encode pas le WebP, comme Safari), puis envoi
+  dans `spot-photos/{user_id}/{uuid}.webp`.
+- Edge Function `publish-spot` : vérifie le jeton, refuse tout WebP qui contient encore
+  EXIF, XMP, ICC ou un chunk inconnu, cherche la ville (Photon par défaut ; secret
+  facultatif `GEOCODER_URL` : autre URL Photon, URL Nominatim ou `none`), puis appelle
+  `create_spot` (limites, statut, points ; codes d'erreur `ST001` à `ST006`).
+- `/dev/publish` : le même parcours avec des services simulés (tests Playwright).
+  Photos de test : `python3 e2e/fixtures/make-fixtures.py` (Pillow).
+
 ## Image de Tomi
 
 Images provisoires tirées des maquettes dans `public/tomi/` (`tomi.png` pour le

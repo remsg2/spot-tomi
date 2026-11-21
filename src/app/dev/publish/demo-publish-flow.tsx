@@ -24,11 +24,11 @@ declare global {
 }
 
 const LINES = [
-  { ruleKey: "base", label: "Pays lointain", detail: "Argentine, points de base", points: 25 },
+  { ruleKey: "base_country", label: "Pays lointain", detail: "Argentine, points de base", points: 25 },
   { ruleKey: "first_country", label: "Premier sticker du pays", detail: null, points: 50 },
   { ruleKey: "first_city", label: "Première ville", detail: "Ushuaïa", points: 15 },
   { ruleKey: "isolation", label: "Isolement", detail: "1 240 km du sticker le plus proche", points: 40 },
-  { ruleKey: "home", label: "Loin de chez toi", detail: "13 000 km", points: 65 },
+  { ruleKey: "home_distance", label: "Loin de chez toi", detail: "13 000 km", points: 65 },
 ];
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

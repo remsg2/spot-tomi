@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type DragEvent } from "react";
 import { Sticker } from "@/components/ui";
 import { tp } from "@/i18n/publish.fr";
 import { cn } from "@/lib/cn";
@@ -10,6 +10,8 @@ import { AlertIcon, CameraIcon, ImageIcon, Spinner } from "./icons";
 
 export type PhotoStepStatus = "idle" | "reading" | "converting";
 export type PhotoStepError = keyof typeof tp.photo.errors;
+
+const subscribe = () => () => {};
 
 const choiceClass =
   "relative flex min-h-12 cursor-pointer items-center justify-center gap-2.5 rounded-[14px] px-4 text-[15px] font-bold focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-text";
@@ -26,7 +28,10 @@ export function PhotoStep({
 }) {
   const [dragging, setDragging] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // Avant l'hydratation, un fichier choisi serait perdu : les choix restent désactivés.
+  const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   const busy = status !== "idle";
+  const disabled = busy || !hydrated;
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
@@ -43,7 +48,7 @@ export function PhotoStep({
     event.preventDefault();
     setDragging(false);
     const file = event.dataTransfer.files?.[0];
-    if (file && !busy) onFile(file);
+    if (file && !disabled) onFile(file);
   }
 
   return (
@@ -53,7 +58,7 @@ export function PhotoStep({
       <div
         onDragOver={(event) => {
           event.preventDefault();
-          if (!busy) setDragging(true);
+          if (!disabled) setDragging(true);
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={drop}
@@ -71,7 +76,7 @@ export function PhotoStep({
         </div>
 
         <div className="flex w-full flex-col gap-2.5" aria-busy={busy}>
-          <label className={cn(choiceClass, "bg-year text-on-year lg:hidden", busy && "pointer-events-none opacity-50")}>
+          <label className={cn(choiceClass, "bg-year text-on-year lg:hidden", disabled && "pointer-events-none opacity-50")}>
             <CameraIcon />
             {tp.photo.take}
             <input
@@ -79,7 +84,7 @@ export function PhotoStep({
               accept={ACCEPTED_PHOTO_TYPES}
               capture="environment"
               className="sr-only"
-              disabled={busy}
+              disabled={disabled}
               onChange={pick}
               data-testid="photo-camera"
             />
@@ -88,7 +93,7 @@ export function PhotoStep({
             className={cn(
               choiceClass,
               "border border-line bg-bg text-text lg:border-0 lg:bg-year lg:text-on-year",
-              busy && "pointer-events-none opacity-50",
+              disabled && "pointer-events-none opacity-50",
             )}
           >
             <ImageIcon />
@@ -97,7 +102,7 @@ export function PhotoStep({
               type="file"
               accept={ACCEPTED_PHOTO_TYPES}
               className="sr-only"
-              disabled={busy}
+              disabled={disabled}
               onChange={pick}
               data-testid="photo-input"
             />

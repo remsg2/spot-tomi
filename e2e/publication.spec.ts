@@ -1,40 +1,27 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import exifr from "exifr";
-import { inspectWebp } from "../supabase/functions/_shared/webp-metadata";
+import { choosePhoto, expectNoMetadata, GPS_PHOTO, METADATA_NEEDLES, metadataTraces, PLAIN_PHOTO, webpSize } from "./support/photo-checks";
 
 /*
  * Étape 5 : parcours de publication dans un vrai navigateur, sur le banc
  * d'essai /dev/publish (le vrai parcours, services serveur simulés : pas de
  * Supabase en CI). Le critère « le fichier stocké ne contient aucune donnée
  * EXIF » est vérifié ici sur une vraie photo JPEG avec GPS, XMP et ICC.
+ * La vraie route /spots/new est testée dans publication-routes.spec.ts.
  */
 
 const isProduction = process.env.EXPECTED_APP_ENV === "production";
-const GPS_PHOTO = "e2e/fixtures/sticker-gps.jpg";
-const PLAIN_PHOTO = "e2e/fixtures/sticker-sans-gps.jpg";
 
 type DemoWindow = Window & {
   __spotTomiUpload?: { path: string; type: string; size: number; base64: string };
   __spotTomiPublishInput?: Record<string, unknown>;
 };
 
-/** Dimensions lues dans l'en-tête VP8 / VP8X du WebP. */
-function webpSize(bytes: Buffer): { width: number; height: number } {
-  const chunk = bytes.toString("latin1", 12, 16);
-  if (chunk === "VP8X") {
-    return { width: 1 + bytes.readUIntLE(24, 3), height: 1 + bytes.readUIntLE(27, 3) };
-  }
-  if (chunk === "VP8 ") {
-    return { width: bytes.readUInt16LE(26) & 0x3fff, height: bytes.readUInt16LE(28) & 0x3fff };
-  }
-  throw new Error(`Chunk inattendu : ${chunk}`);
-}
-
 async function chooseAndReview(page: Page, photo: string) {
   await page.goto("/dev/publish");
   await expect(page.getByRole("heading", { name: "Ta photo du sticker" })).toBeVisible();
-  await page.getByTestId("photo-input").setInputFiles(photo);
+  await choosePhoto(page, photo);
   await expect(page.getByRole("list", { name: "Vérification de la photo" })).toBeVisible();
 }
 
@@ -42,32 +29,6 @@ async function uploadedWebp(page: Page): Promise<{ path: string; type: string; b
   const upload = await page.evaluate(() => (window as DemoWindow).__spotTomiUpload);
   expect(upload, "la photo a été envoyée").toBeTruthy();
   return { path: upload!.path, type: upload!.type, bytes: Buffer.from(upload!.base64, "base64") };
-}
-
-/** Traces des métadonnées de la photo d'origine (EXIF, TIFF, GPS, XMP, ICC, textes de l'appareil). */
-const METADATA_NEEDLES: Array<[string, Buffer]> = [
-  ["signature EXIF", Buffer.from("Exif\0\0", "latin1")],
-  ["en-tête TIFF (Intel)", Buffer.from([0x49, 0x49, 0x2a, 0x00])],
-  ["en-tête TIFF (Motorola)", Buffer.from([0x4d, 0x4d, 0x00, 0x2a])],
-  ["marque de l'appareil", Buffer.from("SpotTomiTest", "latin1")],
-  ["modèle de l'appareil", Buffer.from("Appareil de test", "latin1")],
-  ["date EXIF", Buffer.from("2026:03:14", "latin1")],
-  ["XMP", Buffer.from("ns.adobe.com", "latin1")],
-  ["position XMP", Buffer.from("54,48", "latin1")],
-  ["profil ICC", Buffer.from("acsp", "latin1")],
-];
-
-function metadataTraces(bytes: Buffer): string[] {
-  return METADATA_NEEDLES.filter(([, needle]) => bytes.includes(needle)).map(([name]) => name);
-}
-
-async function expectNoMetadata(bytes: Buffer) {
-  const inspection = inspectWebp(bytes);
-  expect(inspection.problems).toEqual([]);
-  expect(inspection.metadata).toEqual([]);
-  expect(inspection.chunks.every((id) => ["VP8 ", "VP8L", "VP8X", "ALPH"].includes(id))).toBe(true);
-  // Contrôle indépendant du parseur RIFF : aucune trace dans les octets.
-  expect(metadataTraces(bytes)).toEqual([]);
 }
 
 test("témoin : la photo d'origine contient bien GPS, EXIF, XMP et ICC", async () => {
@@ -108,7 +69,7 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     const upload = await uploadedWebp(page);
     expect(upload.path).toMatch(/^00000000-0000-4000-8000-000000000001\/[0-9a-f-]{36}\.webp$/);
     expect(upload.type).toBe("image/webp");
-    await expectNoMetadata(upload.bytes);
+    expectNoMetadata(upload.bytes);
     // Orientation EXIF appliquée (4032 × 3024 tournée de 90°), 2048 px au plus.
     expect(webpSize(upload.bytes)).toEqual({ width: 1536, height: 2048 });
 
@@ -139,7 +100,7 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     await expect(page.getByRole("heading", { name: "Sticker collé !" })).toBeVisible({ timeout: 30_000 });
     const upload = await uploadedWebp(page);
     expect(upload.type).toBe("image/webp");
-    await expectNoMetadata(upload.bytes);
+    expectNoMetadata(upload.bytes);
     expect(webpSize(upload.bytes)).toEqual({ width: 1536, height: 2048 });
   });
 
@@ -178,12 +139,12 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
 
     const input = await page.evaluate(() => (window as DemoWindow).__spotTomiPublishInput);
     expect(input).toMatchObject({ gpsSource: "manual", dateSource: "upload", takenAt: null, altitude: null });
-    await expectNoMetadata((await uploadedWebp(page)).bytes);
+    expectNoMetadata((await uploadedWebp(page)).bytes);
   });
 
   test("format non pris en charge : message clair", async ({ page }) => {
     await page.goto("/dev/publish");
-    await page.getByTestId("photo-input").setInputFiles("e2e/fixtures/webp-propre.webp");
+    await choosePhoto(page, "e2e/fixtures/webp-propre.webp");
     await expect(page.getByText("Format non pris en charge : choisis une photo JPEG, HEIC ou PNG.")).toBeVisible();
   });
 
