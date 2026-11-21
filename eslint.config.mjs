@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Fonctions Edge : code Deno, hors du projet Next.
+    "supabase/functions/**",
+    // Copies de travail des agents (git worktrees).
+    ".claude/**",
   ]),
 ]);
 

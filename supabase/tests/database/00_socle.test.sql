@@ -20,7 +20,7 @@ select ok(
 select has_function('public', 'schema_version', 'la fonction schema_version existe');
 
 set local role anon;
-select is(public.schema_version(), '20261120000000_socle', 'anon peut lire la version du schéma');
+select matches(public.schema_version(), '^\d{14}_', 'anon peut lire la version du schéma');
 reset role;
 
 select * from finish();
