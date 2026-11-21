@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import { formatCoordinates, formatTakenAt, tp, type PublishErrorKey } from "@/i18n/publish.fr";
 import { cn } from "@/lib/cn";
 import type { PreparedPhoto } from "@/lib/publish/browser-image";
 import { PLACE_NAME_MAX, type DateSource } from "@/lib/publish/contract";
+import { isAppleMobile } from "@/lib/publish/device-position";
 import { distanceMeters, type LatLng } from "@/lib/publish/geo";
 import { EstimatePanel, type EstimateState } from "./estimate-panel";
 import { FlowHeader } from "./flow-header";
@@ -13,11 +14,18 @@ import { PickerPane } from "./picker-pane";
 import { StickButton } from "./stick-button";
 
 export type PositionState = {
-  /** exif : position de la photo, ajustable de `radius` m ; manual : placée sur la carte. */
-  source: "exif" | "manual";
+  /**
+   * exif : position de la photo ; device : position du téléphone, photo prise à
+   * l'instant (toutes deux ajustables de `radius` m) ; manual : placée sur la carte.
+   */
+  source: "exif" | "device" | "manual";
   origin: LatLng | null;
   point: LatLng | null;
+  /** Altitude de la source (photo ou téléphone), jamais pour une position manuelle. */
+  altitude: number | null;
 };
+
+const noSubscription = () => () => {};
 
 export type NameError = keyof typeof tp.review.errors;
 
@@ -84,6 +92,8 @@ export function ReviewStep(props: Props) {
   const country = estimate.kind === "ready" ? estimate.data.countryNameFr : null;
   const point = position.point;
   const moved = position.origin && point ? Math.round(distanceMeters(position.origin, point)) : 0;
+  const appleMobile = useSyncExternalStore(noSubscription, isAppleMobile, () => false);
+  const dateVerified = props.dateSource !== "upload";
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
@@ -103,13 +113,13 @@ export function ReviewStep(props: Props) {
     "flex min-h-11 shrink-0 items-center rounded-full px-3 text-[13px] font-bold underline decoration-2 underline-offset-4 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-text lg:hidden";
 
   let positionRow: ReactNode;
-  if (position.source === "exif" && point) {
+  if (position.source !== "manual" && point) {
     const coords = formatCoordinates(point.lat, point.lng);
     positionRow = (
       <CheckRow
         tone="ok"
         icon={<CheckIcon size={16} />}
-        label={tp.review.gpsLabel}
+        label={position.source === "device" ? tp.review.deviceLabel : tp.review.gpsLabel}
         value={`${tp.review.gpsValue(country, coords)}${moved >= 1 ? ` · ${tp.review.gpsMoved(moved)}` : ""}`}
         action={
           <button type="button" className={actionClass} onClick={() => setPickerOpen(true)}>
@@ -163,20 +173,22 @@ export function ReviewStep(props: Props) {
           <ul aria-label={tp.review.checksLabel}>
             {positionRow}
             <CheckRow
-              tone={props.dateSource === "exif" ? "ok" : "todo"}
-              icon={props.dateSource === "exif" ? <CheckIcon size={16} /> : <AlertIcon size={15} />}
+              tone={dateVerified ? "ok" : "todo"}
+              icon={dateVerified ? <CheckIcon size={16} /> : <AlertIcon size={15} />}
               label={tp.review.dateLabel}
               value={
                 props.dateSource === "exif" && photo.meta.takenAtLocal
                   ? formatTakenAt(photo.meta.takenAtLocal)
-                  : tp.review.dateMissing
+                  : props.dateSource === "device"
+                    ? tp.review.dateDevice
+                    : tp.review.dateMissing
               }
             />
             <CheckRow
               tone="ok"
               icon={<CheckIcon size={16} />}
               label={tp.review.yearLabel}
-              value={props.dateSource === "exif" ? tp.review.yearFromDate(props.year) : tp.review.yearFromUpload(props.year)}
+              value={dateVerified ? tp.review.yearFromDate(props.year) : tp.review.yearFromUpload(props.year)}
             />
           </ul>
           <div className="flex items-center gap-3 py-2.5">
@@ -188,6 +200,11 @@ export function ReviewStep(props: Props) {
         </div>
 
         {pending && <p className="text-xs leading-[1.4] text-muted">{tp.review.pendingNotice}</p>}
+        {position.source === "manual" && appleMobile && (
+          <p data-testid="ios-location-tip" className="text-xs leading-[1.4] font-semibold text-muted">
+            {tp.review.iosTip}
+          </p>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-3">
@@ -246,7 +263,7 @@ export function ReviewStep(props: Props) {
       <PickerPane
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        origin={position.source === "exif" ? position.origin : null}
+        origin={position.source !== "manual" ? position.origin : null}
         value={point}
         fallbackCenter={props.fallbackCenter}
         radius={props.editRadius}

@@ -44,13 +44,16 @@ export const publishFr = {
   photo: {
     heading: "Ta photo du sticker",
     intro:
-      "Prends le sticker collé en photo, avec le lieu autour. La position et la date de la photo serviront à le placer sur la carte.",
+      "Prends le sticker collé en photo, avec le lieu autour. La position et la date de la photo (ou celles du téléphone si tu la prends maintenant) serviront à le placer sur la carte.",
+    iosTip:
+      "Sur iPhone, dans la galerie : touche « Options » et active « Lieu » pour garder la position de la photo.",
     take: "Prendre une photo",
     choose: "Choisir une photo",
     drop: "Ou dépose ta photo ici",
     dropActive: "Lâche la photo pour l'ajouter",
     formats: "JPEG, HEIC ou PNG · 20 Mo maximum",
     reading: "Lecture de la photo…",
+    locating: "Position du téléphone…",
     converting: "Conversion de la photo HEIC…",
     errors: {
       too_big: "Photo trop lourde : 20 Mo maximum.",
@@ -65,6 +68,7 @@ export const publishFr = {
     changePhoto: "Changer la photo",
     checksLabel: "Vérification de la photo",
     gpsLabel: "Position GPS de la photo",
+    deviceLabel: "Position du téléphone (photo prise à l'instant)",
     gpsValue: (country: string | null, coords: string) => (country ? `${country} · ${coords}` : coords),
     gpsMoved: (distance: number) => `déplacée de ${meters.format(distance)} m`,
     adjust: "Ajuster",
@@ -76,6 +80,9 @@ export const publishFr = {
     move: "Déplacer",
     dateLabel: "Date de prise",
     dateMissing: "Absente de la photo : date d'envoi",
+    dateDevice: "Photo prise à l'instant",
+    iosTip:
+      "Sur iPhone, la position de la photo n'est transmise que si « Lieu » est activé dans « Options » de la galerie. Tu peux aussi prendre la photo depuis l'app, sur place.",
     yearLabel: "Sticker de l'année",
     yearFromDate: (year: number) => `${year}, d'après la date`,
     yearFromUpload: (year: number) => `${year}, année de l'envoi`,

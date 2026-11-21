@@ -46,8 +46,13 @@ export const placeNameSchema = z
       .max(PLACE_NAME_MAX, { error: "name_too_long" }),
   );
 
-export const gpsSourceSchema = z.enum(["exif", "manual"]);
-export const dateSourceSchema = z.enum(["exif", "upload"]);
+/**
+ * Sources de la position et de la date : la photo (exif), le téléphone pour une
+ * photo prise à l'instant (device : vérifiée comme exif), ou à défaut la main /
+ * l'heure d'envoi (manual / upload : sticker en attente de modération).
+ */
+export const gpsSourceSchema = z.enum(["exif", "device", "manual"]);
+export const dateSourceSchema = z.enum(["exif", "device", "upload"]);
 export type GpsSource = z.infer<typeof gpsSourceSchema>;
 export type DateSource = z.infer<typeof dateSourceSchema>;
 
@@ -63,7 +68,7 @@ export const publishInputSchema = z
     dateSource: dateSourceSchema,
     name: placeNameSchema,
   })
-  .refine((input) => input.dateSource === "upload" || input.takenAt !== null, {
+  .refine((input) => input.dateSource !== "exif" || input.takenAt !== null, {
     error: "taken_at_required",
     path: ["takenAt"],
   });

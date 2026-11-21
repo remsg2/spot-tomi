@@ -101,8 +101,8 @@ create table public.spots (
   altitude_m numeric,
   taken_at timestamptz not null,
   year int not null,                     -- ⚠︎ pas de FK vers seasons : année sans couleur = gris
-  gps_source text not null check (gps_source in ('exif', 'manual')),
-  date_source text not null check (date_source in ('exif', 'upload')),
+  gps_source text not null check (gps_source in ('exif', 'device', 'manual')),  -- device : migration capture
+  date_source text not null check (date_source in ('exif', 'device', 'upload')),
   country_iso2 char(2) references public.countries (iso2),
   city text,
   photo_path text not null,
@@ -212,7 +212,8 @@ génération de stickers de démo (utilisée plus tard pour 5 000 stickers).
   p_photo_path text, p_city text) returns uuid` — `service_role` seulement : contrôle la
   suspension, la limite quotidienne, la règle « un sticker par 200 m et par jour »,
   déduit `country_iso2` (`ST_Contains`), `year` (de `taken_at`), le statut
-  (`pending_review` si `gps_source = 'manual'` ou `date_source = 'upload'`),
+  (`pending_review` si `gps_source = 'manual'` ou `date_source = 'upload'` ; les sources `device`,
+  position et heure du téléphone pour une photo prise à l'instant, comptent comme vérifiées),
   `public_location` (via `public_location_for`), insère puis appelle
   `compute_spot_points`. Erreurs SQL avec `errcode` dédiés et messages français.
 - Edge Function `supabase/functions/publish-spot` : entrée JSON

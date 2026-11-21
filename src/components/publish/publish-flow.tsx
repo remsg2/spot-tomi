@@ -11,7 +11,7 @@ import {
   type GpsSource,
   type PublishResult,
 } from "@/lib/publish/contract";
-import type { PhotoMetadata } from "@/lib/publish/exif";
+import { isFreshPhoto, readDevicePosition, type PhotoOrigin } from "@/lib/publish/device-position";
 import type { LatLng } from "@/lib/publish/geo";
 import { PublishError, type PublishServices } from "@/lib/publish/services";
 import { statusFor } from "@/lib/publish/status";
@@ -38,7 +38,7 @@ export type PublishFlowProps = {
 
 const BLOCKING_ESTIMATE_ERRORS: PublishErrorKey[] = ["suspended", "missing_profile", "unauthorized"];
 const PHOTO_ERRORS: PhotoStepError[] = ["too_big", "unsupported", "empty", "decode"];
-const NO_POSITION: PositionState = { source: "manual", origin: null, point: null };
+const NO_POSITION: PositionState = { source: "manual", origin: null, point: null, altitude: null };
 
 function errorCode(error: unknown): PublishErrorKey {
   if (error instanceof PublishError) return error.code;
@@ -56,6 +56,8 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
   const [photo, setPhoto] = useState<PreparedPhoto | null>(null);
   const [position, setPosition] = useState<PositionState>(NO_POSITION);
   const [uploadYear, setUploadYear] = useState(0);
+  /** Photo prise à l'instant : la date et la position du téléphone valent celles de la photo. */
+  const [fresh, setFresh] = useState(false);
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<NameError | null>(null);
   const [estimate, setEstimate] = useState<EstimateState>({ kind: "waiting" });
@@ -73,7 +75,7 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
     [],
   );
 
-  const dateSource: DateSource = photo?.meta.takenAt ? "exif" : "upload";
+  const dateSource: DateSource = photo?.meta.takenAt ? "exif" : fresh ? "device" : "upload";
   const gpsSource: GpsSource = position.source;
   const pending = statusFor(gpsSource, dateSource) === "pending_review";
   const year =
@@ -89,7 +91,7 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
         ? estimate.code
         : null;
 
-  function requestEstimate(point: LatLng, gps: GpsSource, meta: PhotoMetadata) {
+  function requestEstimate(point: LatLng, gps: GpsSource, altitude: number | null, takenAt: string | null, date: DateSource) {
     const seq = ++estimateSeq.current;
     clearTimeout(estimateTimer.current);
     setEstimate((previous) => ({
@@ -101,10 +103,10 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
         const data = await services.estimate({
           lat: point.lat,
           lng: point.lng,
-          altitude: gps === "exif" ? meta.altitude : null,
-          takenAt: meta.takenAt,
+          altitude: gps === "manual" ? null : altitude,
+          takenAt,
           gpsSource: gps,
-          dateSource: meta.takenAt ? "exif" : "upload",
+          dateSource: date,
         });
         if (seq === estimateSeq.current) setEstimate({ kind: "ready", data });
       } catch (error) {
@@ -113,21 +115,35 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
     }, 300);
   }
 
-  async function handleFile(file: File) {
+  async function handleFile(file: File, origin: PhotoOrigin) {
     setStep({ kind: "photo", status: "reading", error: null });
     try {
       const next = await preparePhoto(file, (status) => setStep({ kind: "photo", status, error: null }));
+      const isFresh = isFreshPhoto(origin, next.meta.takenAt);
+      let nextPosition: PositionState = next.meta.gps
+        ? { source: "exif", origin: next.meta.gps, point: next.meta.gps, altitude: next.meta.altitude }
+        : NO_POSITION;
+      // Sans GPS dans la photo (Safari le retire sur iPhone) : position du téléphone si elle vient d'être prise.
+      if (!next.meta.gps && isFresh) {
+        setStep({ kind: "photo", status: "locating", error: null });
+        const device = await readDevicePosition();
+        if (device) nextPosition = { source: "device", origin: device.point, point: device.point, altitude: device.altitude };
+      }
+      const nextDateSource: DateSource = next.meta.takenAt ? "exif" : isFresh ? "device" : "upload";
+
       if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
       previewUrl.current = next.previewUrl;
       prepared.current = { blob: null, path: null };
       setPhoto(next);
+      setFresh(isFresh);
       setUploadYear(new Date().getUTCFullYear());
-      const gps = next.meta.gps;
-      setPosition(gps ? { source: "exif", origin: gps, point: gps } : NO_POSITION);
+      setPosition(nextPosition);
       estimateSeq.current += 1;
       clearTimeout(estimateTimer.current);
       setEstimate({ kind: "waiting" });
-      if (gps) requestEstimate(gps, "exif", next.meta);
+      if (nextPosition.point) {
+        requestEstimate(nextPosition.point, nextPosition.source, nextPosition.altitude, next.meta.takenAt, nextDateSource);
+      }
       setStep({ kind: "review" });
     } catch (error) {
       const reason = error instanceof PhotoError ? error.reason : "decode";
@@ -142,7 +158,7 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
   function handlePositionChange(point: LatLng) {
     if (!photo) return;
     setPosition((current) => ({ ...current, point }));
-    requestEstimate(point, position.source, photo.meta);
+    requestEstimate(point, position.source, position.altitude, photo.meta.takenAt, dateSource);
   }
 
   async function publish(cleanName: string) {
@@ -168,7 +184,7 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
         photoPath: prepared.current.path,
         lat: point.lat,
         lng: point.lng,
-        altitude: gpsSource === "exif" ? photo.meta.altitude : null,
+        altitude: gpsSource === "manual" ? null : position.altitude,
         takenAt: photo.meta.takenAt,
         gpsSource,
         dateSource,
@@ -205,6 +221,7 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
     prepared.current = { blob: null, path: null };
     estimateSeq.current += 1;
     setPhoto(null);
+    setFresh(false);
     setPosition(NO_POSITION);
     setName("");
     setNameError(null);

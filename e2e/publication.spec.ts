@@ -142,6 +142,48 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     expectNoMetadata((await uploadedWebp(page)).bytes);
   });
 
+  test("photo prise dans l'app sans GPS (Safari sur iPhone) : position et heure du téléphone, publiée", async ({ page, context }) => {
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation({ latitude: -54.8019, longitude: -68.303, accuracy: 15 });
+    await page.goto("/dev/publish");
+    const camera = page.getByTestId("photo-camera");
+    await expect(camera).toBeEnabled();
+    await camera.setInputFiles(PLAIN_PHOTO);
+    await expect(page.getByRole("list", { name: "Vérification de la photo" })).toBeVisible();
+
+    await expect(page.getByText("Position du téléphone (photo prise à l'instant)")).toBeVisible();
+    await expect(page.getByText("Argentine · 54,80° S, 68,30° O")).toBeVisible();
+    await expect(page.getByText("Photo prise à l'instant", { exact: true })).toBeVisible();
+    await expect(page.getByText(/un modérateur vérifie le sticker/)).toHaveCount(0);
+    await expect(page.getByTestId("estimate")).toContainText("195");
+
+    await page.getByLabel("Nom du lieu").fill("Panneau du port");
+    await page.getByRole("button", { name: "Coller le sticker" }).click();
+    await expect(page.getByRole("heading", { name: "Sticker collé !" })).toBeVisible({ timeout: 30_000 });
+    const input = await page.evaluate(() => (window as DemoWindow).__spotTomiPublishInput);
+    expect(input).toMatchObject({ gpsSource: "device", dateSource: "device", takenAt: null, lat: -54.8019, lng: -68.303 });
+    expectNoMetadata((await uploadedWebp(page)).bytes);
+  });
+
+  test("photo prise dans l'app, position refusée : à placer sur la carte, en attente", async ({ page }) => {
+    await page.goto("/dev/publish");
+    const camera = page.getByTestId("photo-camera");
+    await expect(camera).toBeEnabled();
+    await camera.setInputFiles(PLAIN_PHOTO);
+    await expect(page.getByText("Pas de GPS dans la photo : place-le sur la carte")).toBeVisible();
+    // La date reste celle de la prise (à l'instant) ; la position manuelle impose la modération.
+    await expect(page.getByText("Photo prise à l'instant", { exact: true })).toBeVisible();
+    await expect(page.getByText(/un modérateur vérifie le sticker/)).toBeVisible();
+  });
+
+  test("photo de la galerie sans GPS : la position du téléphone n'est pas utilisée", async ({ page, context }) => {
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation({ latitude: -54.8019, longitude: -68.303, accuracy: 15 });
+    await chooseAndReview(page, PLAIN_PHOTO);
+    await expect(page.getByText("Pas de GPS dans la photo : place-le sur la carte")).toBeVisible();
+    await expect(page.getByText("Absente de la photo : date d'envoi")).toBeVisible();
+  });
+
   test("format non pris en charge : message clair", async ({ page }) => {
     await page.goto("/dev/publish");
     await choosePhoto(page, "e2e/fixtures/webp-propre.webp");
@@ -192,4 +234,19 @@ test("/spots/new demande d'être connecté", async ({ page }) => {
   test.skip(!process.env.EXPECTED_SUPABASE_HOST, "proxy actif seulement avec Supabase configuré");
   await page.goto("/spots/new");
   await expect(page).toHaveURL(/\/login\?next=%2Fspots%2Fnew$/);
+});
+
+test.describe("sur iPhone", () => {
+  test.skip(isProduction, "banc d'essai réservé au développement");
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1",
+  });
+
+  test("conseils pour garder la position : « Options » puis « Lieu » dans la galerie", async ({ page }) => {
+    await page.goto("/dev/publish");
+    await expect(page.getByTestId("ios-tip")).toContainText("active « Lieu »");
+    await choosePhoto(page, PLAIN_PHOTO);
+    await expect(page.getByTestId("ios-location-tip")).toBeVisible();
+  });
 });
