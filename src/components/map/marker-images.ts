@@ -1,10 +1,16 @@
 /**
  * Dessin des images de marqueurs et de groupes, une fois par apparence, pour
- * MapLibre (map.addImage). Reprend fidèlement MapMarker et ClusterStack
+ * MapLibre (map.addImage). Reprend fidèlement MapMarker et ClusterBubble
  * (src/components/ui) : 5 000 stickers deviennent quelques dizaines d'images
  * partagées, rendues par le GPU, au lieu de 5 000 éléments DOM.
  */
-import { clusterCountLabel, clusterTileSize, clusterTileTilt, type ClusterSpec } from "@/lib/map/clusters";
+import {
+  CLUSTER_STICKER_SIZE,
+  CLUSTER_STICKER_STEP,
+  clusterCountLabel,
+  clusterStickerTilt,
+  type ClusterSpec,
+} from "@/lib/map/clusters";
 import { MARKER_PADDING, markerFontSize, markerRadius, selectionRing, type MarkerSpec } from "@/lib/map/markers";
 import { MAP_COLORS } from "@/lib/map/style";
 import type { ThemeName } from "@/lib/map/types";
@@ -154,94 +160,62 @@ export function drawMarker(spec: MarkerSpec, assets: MarkerAssets, ratio: number
   return { data: ctx.getImageData(0, 0, canvas.width, canvas.height), pixelRatio: ratio };
 }
 
-/** Pastille du nombre de stickers, sous le sticker de chaque année. */
-const COUNT_HEIGHT = 18;
-const COUNT_FONT_SIZE = 11;
-/** Décalage de la carte du dessous, qui donne l'effet de pile. */
-const STACK_OFFSET = { x: 4, y: -4, tilt: 9 };
-const CLUSTER_PADDING = 10;
+/** Bulle d'un groupe : hauteur, police du total, anneau et marge pour l'ombre. */
+const BUBBLE_HEIGHT = 34;
+const BUBBLE_FONT_SIZE = 16;
+const BUBBLE_RING = 3;
+const BUBBLE_SHADOW = 14;
 
 /**
- * Groupe de stickers : une rangée d'une pile par année présente (la plus
- * ancienne à gauche), chaque pile du sticker de Tomi de son année avec son
- * nombre de stickers dans une pastille noire. Les années ne se mélangent jamais.
+ * Bulle d'un groupe : les mini-stickers de Tomi des années présentes (la plus
+ * ancienne à gauche), puis le nombre total de stickers, sans détail par année.
  */
 export function drawCluster(spec: ClusterSpec, assets: MarkerAssets, ratio: number): DrawnImage {
   const colors = MAP_COLORS[spec.theme];
-  const font = `${COUNT_FONT_SIZE}px ${assets.displayFont}`;
+  const label = clusterCountLabel(spec.total);
+  const font = `${BUBBLE_FONT_SIZE}px ${assets.displayFont}`;
   const measure = createCanvas(1, 1, 1).ctx;
   measure.font = font;
+  const textWidth = Math.ceil(measure.measureText(label).width);
 
-  const tiles = spec.groups.map((group, index) => {
-    const label = clusterCountLabel(group.count);
-    return {
-      ...group,
-      label,
-      size: clusterTileSize(group.count),
-      tilt: clusterTileTilt(index),
-      pill: Math.max(COUNT_HEIGHT + 4, Math.ceil(measure.measureText(label).width) + 12),
-    };
-  });
+  const stickersWidth = CLUSTER_STICKER_SIZE + (spec.colors.length - 1) * CLUSTER_STICKER_STEP;
+  const padLeft = 7;
+  const gap = 7;
+  const padRight = 13;
+  const bubbleWidth = padLeft + stickersWidth + gap + textWidth + padRight;
+  const margin = BUBBLE_RING + BUBBLE_SHADOW;
+  const { canvas, ctx } = createCanvas(bubbleWidth + margin * 2, BUBBLE_HEIGHT + margin * 2, ratio);
+  const x0 = margin;
+  const y0 = margin;
 
-  // Centres des piles : légèrement chevauchées, sans que les pastilles se touchent.
-  const centers = [0];
-  for (let i = 1; i < tiles.length; i += 1) {
-    const a = tiles[i - 1];
-    const b = tiles[i];
-    centers.push(centers[i - 1] + Math.max((a.size + b.size) / 2 - 4, (a.pill + b.pill) / 2 + 3));
-  }
-  const first = tiles[0];
-  const last = tiles[tiles.length - 1];
-  const left = -Math.max(first.size / 2 + 3, first.pill / 2 + 2);
-  const right = centers[centers.length - 1] + Math.max(last.size / 2 + STACK_OFFSET.x + 4, last.pill / 2 + 2);
-  const maxSize = Math.max(...tiles.map((tile) => tile.size));
+  // Anneau de la couleur des cartes et ombre douce, comme les pastilles de l'app.
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+  ctx.shadowBlur = 16 * ratio;
+  ctx.shadowOffsetY = 6 * ratio;
+  const outer = BUBBLE_HEIGHT + BUBBLE_RING * 2;
+  roundRect(ctx, x0 - BUBBLE_RING, y0 - BUBBLE_RING, bubbleWidth + BUBBLE_RING * 2, outer, outer / 2);
+  ctx.fillStyle = colors.card;
+  ctx.fill();
+  ctx.restore();
 
-  // Image symétrique : son centre (ancre de l'icône) est le centre du groupe.
-  const halfWidth = Math.ceil((right - left) / 2) + CLUSTER_PADDING;
-  const halfHeight = Math.ceil(maxSize / 2 + COUNT_HEIGHT / 2 + 6) + CLUSTER_PADDING;
-  const { canvas, ctx } = createCanvas(halfWidth * 2, halfHeight * 2, ratio);
-  const originX = halfWidth - (right + left) / 2;
-  const bottom = halfHeight + maxSize / 2 - 4; // bas commun des stickers
+  roundRect(ctx, x0, y0, bubbleWidth, BUBBLE_HEIGHT, BUBBLE_HEIGHT / 2);
+  ctx.fillStyle = BAND;
+  ctx.fill();
 
-  tiles.forEach((tile, i) => {
+  spec.colors.forEach((color, i) => {
     ctx.save();
-    ctx.translate(originX + centers[i], bottom - tile.size / 2);
-    if (tile.count > 1) {
-      ctx.save();
-      ctx.translate(STACK_OFFSET.x, STACK_OFFSET.y);
-      ctx.rotate((tile.tilt + STACK_OFFSET.tilt) * DEG);
-      drawStickerFace(ctx, tile.size, tile.color, assets, spec.theme, ratio);
-      roundRect(ctx, -tile.size / 2, -tile.size / 2, tile.size, tile.size, markerRadius(tile.size));
-      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
-      ctx.fill();
-      ctx.restore();
-    }
-    ctx.rotate(tile.tilt * DEG);
-    drawStickerFace(ctx, tile.size, tile.color, assets, spec.theme, ratio);
+    ctx.translate(x0 + padLeft + CLUSTER_STICKER_SIZE / 2 + i * CLUSTER_STICKER_STEP, y0 + BUBBLE_HEIGHT / 2);
+    ctx.rotate(clusterStickerTilt(i) * DEG);
+    drawStickerFace(ctx, CLUSTER_STICKER_SIZE, color, assets, spec.theme, ratio);
     ctx.restore();
   });
 
-  // Pastilles par-dessus toutes les piles, cerclées de la couleur des cartes.
   ctx.font = font;
-  ctx.textAlign = "center";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  tiles.forEach((tile, i) => {
-    const x = originX + centers[i];
-    const y = bottom + 3;
-    ctx.save();
-    ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
-    ctx.shadowBlur = 6 * ratio;
-    ctx.shadowOffsetY = 2 * ratio;
-    roundRect(ctx, x - tile.pill / 2 - 2, y - COUNT_HEIGHT / 2 - 2, tile.pill + 4, COUNT_HEIGHT + 4, COUNT_HEIGHT / 2 + 2);
-    ctx.fillStyle = colors.card;
-    ctx.fill();
-    ctx.restore();
-    roundRect(ctx, x - tile.pill / 2, y - COUNT_HEIGHT / 2, tile.pill, COUNT_HEIGHT, COUNT_HEIGHT / 2);
-    ctx.fillStyle = BAND;
-    ctx.fill();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillText(tile.label, x, y + 1);
-  });
+  ctx.fillText(label, x0 + padLeft + stickersWidth + gap, y0 + BUBBLE_HEIGHT / 2 + 1);
 
   return { data: ctx.getImageData(0, 0, canvas.width, canvas.height), pixelRatio: ratio };
 }

@@ -14,7 +14,7 @@ tout ce qui n'est pas précisé ici ; en cas de contradiction, **ce document l'e
   `getSupabaseServerClient()` (`src/lib/supabase/server.ts`) ; côté client,
   `getSupabaseBrowserClient()` (`src/lib/supabase/client.ts`) ; session :
   `getSessionUser()`, `requireUser()`, `requireProfile()` (`src/lib/auth/server.ts`).
-- **Design system** : utiliser `src/components/ui` (Sticker, MapMarker, ClusterStack,
+- **Design system** : utiliser `src/components/ui` (Sticker, MapMarker, ClusterBubble,
   PointsBlock, PointsBreakdown, AnimatedPointsBreakdown, PrimaryButton/PrimaryLink,
   TabBar, AlbumTile, ScoreCapsule, Logo) et les jetons Tailwind (`bg-bg`, `bg-card`,
   `text-muted`, `bg-year`, `text-on-year`, `bg-band`, `border-line`, `font-display`…).

@@ -7,7 +7,6 @@ import {
   clusterKeyFromProperties,
   clusterProperties,
   clusterSlots,
-  clusterTileSize,
   parseClusterKey,
   sameSlots,
   slotProperty,
@@ -65,10 +64,10 @@ describe("créneaux d'années des groupes", () => {
   });
 });
 
-describe("groupes par année", () => {
+describe("groupes : bulle avec les années présentes et le total", () => {
   const slots = clusterSlots(SEASONS, collection([]));
 
-  it("compte les stickers de chaque année sans jamais les additionner entre elles", () => {
+  it("compte les stickers de chaque année (pour savoir lesquelles sont présentes)", () => {
     const props = aggregate(slots, ["#5B8DEF", "#F2C230", "#5B8DEF", "#5B8DEF"]);
     expect(props[slotProperty(0)]).toBe(1); // 2024
     expect(props[slotProperty(1)]).toBe(0); // 2025
@@ -91,49 +90,40 @@ describe("groupes par année", () => {
     }
   });
 
-  it("clé lisible : une année par sticker, la plus ancienne d'abord", () => {
+  it("clé : total et couleurs des années présentes, la plus ancienne d'abord, sans détail par année", () => {
     const props = aggregate(slots, ["#5B8DEF", "#F2C230", "#5B8DEF"]);
     const key = clusterKeyFromProperties(slots, props, "light");
-    expect(key).toBe("c|light|3|#F2C230:1|#5B8DEF:2");
-    expect(parseClusterKey(key)).toEqual({
-      theme: "light",
-      groups: [
-        { color: "#F2C230", count: 1 },
-        { color: "#5B8DEF", count: 2 },
-      ],
-    });
+    expect(key).toBe("c|light|3|#F2C230|#5B8DEF");
+    expect(parseClusterKey(key)).toEqual({ theme: "light", total: 3, colors: ["#F2C230", "#5B8DEF"] });
   });
 
-  it("les stickers d'une année sans créneau forment un groupe gris", () => {
-    const props = aggregate(slots, ["#5B8DEF", "#ABCDEF", "#ABCDEF"]);
+  it("même image pour deux groupes de même total et mêmes années", () => {
+    const a = aggregate(slots, ["#5B8DEF", "#F2C230", "#5B8DEF"]);
+    const b = aggregate(slots, ["#F2C230", "#F2C230", "#5B8DEF"]);
+    expect(clusterKeyFromProperties(slots, a, "dark")).toBe(clusterKeyFromProperties(slots, b, "dark"));
+  });
+
+  it("sans année reconnue : un sticker gris", () => {
+    const props = aggregate(slots, ["#ABCDEF", "#ABCDEF"]);
     expect(parseClusterKey(clusterKeyFromProperties(slots, props, "dark"))).toEqual({
       theme: "dark",
-      groups: [
-        { color: "#5B8DEF", count: 1 },
-        { color: CLUSTER_FALLBACK, count: 2 },
-      ],
+      total: 2,
+      colors: [CLUSTER_FALLBACK],
     });
   });
 
   it("refuse les clés qui ne sont pas des groupes", () => {
     expect(parseClusterKey("m|26|#F2C230|0|0||0|light")).toBeNull();
     expect(parseClusterKey("c|light|0")).toBeNull();
-    expect(parseClusterKey("c|sepia|3|#F2C230:3")).toBeNull();
-    expect(parseClusterKey("c|light|3|rouge:3")).toBeNull();
+    expect(parseClusterKey("c|sepia|3|#F2C230")).toBeNull();
+    expect(parseClusterKey("c|light|3|rouge")).toBeNull();
   });
 });
 
-describe("dessin des groupes", () => {
-  it("nombre de stickers écrit en entier, abrégé dès 10 000", () => {
+describe("total de la bulle", () => {
+  it("en français, abrégé dès 10 000", () => {
     expect(clusterCountLabel(7)).toBe("7");
-    expect(clusterCountLabel(4829)).toBe("4829");
+    expect(clusterCountLabel(4829).replace(/\s/g, " ")).toBe("4 829");
     expect(clusterCountLabel(12_400)).toBe("12k");
-  });
-
-  it("le sticker d'une année grandit avec son nombre de stickers", () => {
-    expect(clusterTileSize(2)).toBe(34);
-    expect(clusterTileSize(10)).toBe(40);
-    expect(clusterTileSize(99)).toBe(40);
-    expect(clusterTileSize(100)).toBe(46);
   });
 });

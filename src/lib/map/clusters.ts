@@ -1,14 +1,14 @@
 /**
- * Regroupement des stickers par année (couches GL de MapLibre).
+ * Regroupement des stickers sur la carte (couches GL de MapLibre).
  *
- * Un groupe ne mélange jamais les années : il est dessiné comme une rangée de
- * stickers de Tomi, un par année présente dans la zone, chacun de la couleur
- * de son année et avec son nombre de stickers. Les années ne sont connues que
- * par leur couleur (propriété `color` de spots_in_bbox) : chaque couleur occupe
- * un « créneau » de comptage dans les clusterProperties de la source, dans
- * l'ordre des années (la plus ancienne à gauche).
+ * Chaque groupe est une bulle : les stickers de Tomi des années présentes dans
+ * le groupe (un par année, de la couleur de l'année, la plus ancienne à
+ * gauche) et le nombre total de stickers, sans détail par année. Les années ne
+ * sont connues que par leur couleur (propriété `color` de spots_in_bbox) :
+ * chaque couleur occupe un « créneau » de comptage dans les clusterProperties
+ * de la source, dans l'ordre des années ; un créneau non nul = année présente.
  *
- * La clé d'image décrit le groupe (`c|thème|total|#COULEUR:n|…`) ; l'expression
+ * La clé d'image décrit la bulle (`c|thème|total|#COULEUR|…`) ; l'expression
  * MapLibre calcule la même clé que `clusterKeyFromProperties` (tests unitaires).
  */
 import type { ExpressionSpecification } from "maplibre-gl";
@@ -18,12 +18,12 @@ const HEX = /^#[0-9A-Fa-f]{6}$/;
 /** Couleur des stickers sans année connue (même gris que les marqueurs). */
 export const CLUSTER_FALLBACK = "#9A9A94";
 
-export type ClusterGroup = { color: string; count: number };
-
 export type ClusterSpec = {
   theme: ThemeName;
-  /** Stickers de chaque année présente, dans l'ordre des années. */
-  groups: ClusterGroup[];
+  /** Nombre total de stickers du groupe. */
+  total: number;
+  /** Couleurs des années présentes, dans l'ordre des années. */
+  colors: string[];
 };
 
 /** Propriété de cluster qui compte les stickers du créneau `index`. */
@@ -58,10 +58,12 @@ export function clusterProperties(slots: readonly string[]): Record<string, Expr
 
 /** Même calcul que clusterKeyFromProperties, évalué par MapLibre pour chaque groupe. */
 export function clusterIconExpression(slots: readonly string[], theme: ThemeName): ExpressionSpecification {
-  const parts: ExpressionSpecification[] = slots.map((color, i) => {
-    const count: ExpressionSpecification = ["to-number", ["get", slotProperty(i)], 0];
-    return ["case", [">", count, 0], ["concat", `|${color}:`, ["to-string", count]], ""];
-  });
+  const parts: ExpressionSpecification[] = slots.map((color, i) => [
+    "case",
+    [">", ["to-number", ["get", slotProperty(i)], 0], 0],
+    `|${color}`,
+    "",
+  ]);
   return ["concat", `c|${theme}|`, ["to-string", ["get", "point_count"]], ...parts];
 }
 
@@ -72,44 +74,36 @@ export function clusterKeyFromProperties(
 ): string {
   let key = `c|${theme}|${Number(properties.point_count)}`;
   slots.forEach((color, i) => {
-    const count = Number(properties[slotProperty(i)] ?? 0);
-    if (count > 0) key += `|${color}:${count}`;
+    if (Number(properties[slotProperty(i)] ?? 0) > 0) key += `|${color}`;
   });
   return key;
 }
 
 /**
- * Lit une clé d'image de groupe. Les stickers qui ne tombent dans aucun créneau
- * (couleur inconnue au moment du regroupement) forment un groupe gris final.
+ * Lit une clé d'image de groupe. Sans aucune année reconnue (couleur inconnue
+ * au moment du regroupement), la bulle montre un sticker gris.
  */
 export function parseClusterKey(key: string): ClusterSpec | null {
-  const [tag, theme, total, ...rest] = key.split("|");
+  const [tag, theme, total, ...colors] = key.split("|");
   if (tag !== "c" || (theme !== "light" && theme !== "dark")) return null;
   const count = Number(total);
   if (!Number.isInteger(count) || count < 1) return null;
-  const groups: ClusterGroup[] = [];
-  for (const part of rest) {
-    const [color, n] = part.split(":");
-    const value = Number(n);
-    if (!HEX.test(color) || !Number.isInteger(value) || value < 1) return null;
-    groups.push({ color, count: value });
-  }
-  const other = count - groups.reduce((sum, group) => sum + group.count, 0);
-  if (other > 0) groups.push({ color: CLUSTER_FALLBACK, count: other });
-  return { theme, groups };
+  if (colors.some((color) => !HEX.test(color))) return null;
+  return { theme, total: count, colors: colors.length > 0 ? colors : [CLUSTER_FALLBACK] };
 }
 
-/** Nombre écrit sous le sticker d'une année : « 4829 », puis « 12k » dès 10 000. */
+const countFormat = new Intl.NumberFormat("fr-FR");
+
+/** Nombre total écrit dans la bulle : « 4 829 », puis « 12k » dès 10 000. */
 export function clusterCountLabel(count: number): string {
-  return count < 10_000 ? String(count) : `${Math.floor(count / 1000)}k`;
+  return count < 10_000 ? countFormat.format(count) : `${Math.floor(count / 1000)}k`;
 }
 
-/** Taille du sticker d'une année dans un groupe, selon son nombre de stickers. */
-export function clusterTileSize(count: number): 34 | 40 | 46 {
-  return count < 10 ? 34 : count < 100 ? 40 : 46;
-}
+/** Côté des mini-stickers de la bulle, et leur décalage (ils se chevauchent). */
+export const CLUSTER_STICKER_SIZE = 22;
+export const CLUSTER_STICKER_STEP = 15;
 
-/** Inclinaison du sticker de rang `index` (alternée, comme collés à la main). */
-export function clusterTileTilt(index: number): number {
-  return [-5, 4, -3, 5, -4][index % 5];
+/** Inclinaison du mini-sticker de rang `index` (alternée, comme collés à la main). */
+export function clusterStickerTilt(index: number): number {
+  return [-6, 5, -4, 6, -5][index % 5];
 }
