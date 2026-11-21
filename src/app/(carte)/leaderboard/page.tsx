@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { LoadError } from "@/components/leaderboard/column-page";
 import { LeaderboardPanel, LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-panel";
 import { leaderboardFr as l } from "@/i18n/leaderboard.fr";
+import { rulesFr } from "@/i18n/rules.fr";
 import { getSessionUser } from "@/lib/auth/server";
 import { parseCriterion, parsePeriod } from "@/lib/leaderboard/leaderboard";
 import { fetchCurrentSeason, fetchLeaderboard } from "@/lib/leaderboard/queries";
@@ -25,6 +27,9 @@ export default function LeaderboardPage({ searchParams }: PageProps<"/leaderboar
       <Suspense fallback={<LeaderboardSkeleton />}>
         <LeaderboardContent searchParams={searchParams} />
       </Suspense>
+      <Link href="/points" className="inline-flex min-h-11 items-center self-start text-sm font-semibold underline underline-offset-4">
+        {rulesFr.link}
+      </Link>
     </div>
   );
 }

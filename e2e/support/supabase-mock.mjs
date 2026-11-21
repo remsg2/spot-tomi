@@ -220,6 +220,15 @@ const server = createServer(async (req, res) => {
       country_rarity: COUNTRY_RARITY,
       public_spots: SPOTS,
       spot_point_lines: Object.entries(LINES).flatMap(([spot_id, lines]) => lines.map((l) => ({ spot_id, ...l }))),
+      // Barème (page /points) : valeurs par défaut, numeric renvoyé en texte comme PostgREST.
+      scoring_rules: [
+        { key: "tier_courant", value: "10" }, { key: "tier_lointain", value: "25" },
+        { key: "tier_rare", value: "60" }, { key: "tier_extreme", value: "150" },
+      ],
+      countries: [
+        { name_fr: "Argentine", tier: "lointain" }, { name_fr: "Bhoutan", tier: "rare" },
+        { name_fr: "Corée du Nord", tier: "extreme" }, { name_fr: "France", tier: "courant" },
+      ],
     };
     if (table in tables) return send(res, 200, pick(applyFilters(tables[table], params), params.get("select")));
     // Vue de l'étape 7 absente, comme tant qu'elle n'est pas livrée.
