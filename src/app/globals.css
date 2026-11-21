@@ -1,33 +1,76 @@
 @import "tailwindcss";
 
+/* Le thème sombre suit l'attribut data-theme posé par next-themes. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /*
  * Jetons du design system (spécifications, section 5.1).
- * --year est la couleur de l'année en cours : elle sera injectée côté serveur
- * depuis la table seasons (étape 2 et 8). Valeur de repli : gris neutre.
+ *
+ * Définis sur [data-theme] et pas seulement sur :root, pour qu'un bloc puisse
+ * forcer un thème (page /dev/design : clair et sombre côte à côte).
+ *
+ * --year est la couleur de l'année en cours : le layout racine l'injecte
+ * côté serveur. Valeur de repli : gris neutre des années sans couleur.
+ * --band et --year sont identiques en clair et en sombre : c'est l'identité.
  */
-:root {
+:root,
+[data-theme="light"] {
   --bg: #f3f1eb;
   --card: #ffffff;
+  --soft: #e7e4dc;
   --text: #121212;
   --muted: #5c5b57;
   --line: #e2dfd6;
+  --dash: #c9c5ba;
   --map-water: #dedcd3;
   --map-land: #fbfaf7;
-  --band: #111111;
-  --gold: #e9b52f;
-  --year: #9a9a94;
+  --marker-edge: #ffffff;
+  --panel: #111111;
+  --shadow: 0 2px 10px rgb(30 25 10 / 0.12);
+  --shadow-lg: 0 12px 32px rgb(30 25 10 / 0.18);
   color-scheme: light;
 }
 
+:root {
+  --band: #111111;
+  --on-year: #111111;
+  --gold: #e9b52f;
+  --year: #9a9a94;
+}
+
+[data-theme="dark"] {
+  --bg: #0e0e10;
+  --card: #1a1a1d;
+  --soft: #232327;
+  --text: #f4f3ef;
+  --muted: #a6a5a0;
+  --line: #2e2e33;
+  --dash: #3a3a40;
+  --map-water: #0b0c0e;
+  --map-land: #222226;
+  --marker-edge: #1a1a1d;
+  --panel: #1a1a1d;
+  --shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+/* Sans JavaScript, le script de next-themes ne tourne pas : on suit le système. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #0e0e10;
     --card: #1a1a1d;
+    --soft: #232327;
     --text: #f4f3ef;
     --muted: #a6a5a0;
     --line: #2e2e33;
+    --dash: #3a3a40;
     --map-water: #0b0c0e;
     --map-land: #222226;
+    --marker-edge: #1a1a1d;
+    --panel: #1a1a1d;
+    --shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
     color-scheme: dark;
   }
 }
@@ -35,18 +78,67 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-card: var(--card);
+  --color-soft: var(--soft);
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-dash: var(--dash);
   --color-band: var(--band);
+  --color-on-year: var(--on-year);
   --color-gold: var(--gold);
   --color-year: var(--year);
+  --color-panel: var(--panel);
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-display: var(--font-archivo-black), var(--font-inter), sans-serif;
+  --shadow-card: var(--shadow);
+  --shadow-card-lg: var(--shadow-lg);
 }
 
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
+}
+
+/* Animations « sticker collé » (désactivées si l'utilisateur réduit les animations). */
+@keyframes sticker-slap {
+  0% {
+    opacity: 0;
+    transform: scale(1.7) rotate(-14deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.94) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes line-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-sticker-slap {
+  animation: sticker-slap 650ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.animate-line-in {
+  animation: line-in 380ms ease-out both;
+  animation-delay: calc(700ms + var(--line-index, 0) * 420ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sticker-slap,
+  .animate-line-in {
+    animation: none;
+  }
 }
