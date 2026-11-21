@@ -96,13 +96,22 @@ Les migrations doivent rester compatibles avec la version précédente de l'app
 | `dev` | aucune | `SUPABASE_DB_PASSWORD` (dev) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-dev`) |
 | `production` | *Required reviewers* (facultatif) | `SUPABASE_DB_PASSWORD` (prod) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-prod`) |
 
-### Données de démo (dev)
+### Données de démo
 
-Le workflow manuel **« Données de démo (dev) »** (*Actions → Run workflow*) remplit le
-projet **dev** : saisons d'exemple, 8 comptes `demo_*` et 5 000 stickers par défaut
-(`supabase/seed.sql`, fonction `seed_demo_spots`). Il complète jusqu'à la cible sans la
-dépasser et ne touche jamais la prod. Les stickers de démo n'ont pas de vraie photo : la
-fiche affiche le sticker de Tomi à la place.
+Le workflow manuel **« Données de démo »** (*Actions → Run workflow*) agit sur le projet
+choisi (`dev` ou `production`) :
+
+- **remplir** : 8 comptes `demo_*` et 5 000 stickers par défaut
+  (`supabase/demo/generator.sql`), en complétant jusqu'à la cible sans la dépasser.
+  Saisons d'exemple 2024-2026 : imposées en dev, ajoutées en production seulement si
+  aucune n'existe (une couleur choisie dans l'admin n'est jamais écrasée) ;
+- **vider** : supprime les comptes `demo_*` et tout ce qui leur appartient
+  (`supabase/demo/clear.sql`), puis recalcule les points des vrais stickers, calculés
+  pendant la démo en tenant compte des stickers de démo. En production, le générateur
+  est aussi retiré.
+
+Les stickers de démo n'ont pas de vraie photo : la fiche affiche le sticker de Tomi.
+En production, la démo est **publique** (carte et classement).
 
 ## Comptes (Supabase Auth)
 

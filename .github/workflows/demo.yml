@@ -1,0 +1,92 @@
+# Données de démo sur un projet Supabase hébergé : 8 comptes demo_* et des stickers
+# répartis dans le monde (supabase/demo/generator.sql).
+#
+# - remplir : complète jusqu'à la cible sans la dépasser (par lots de 500), rejouable.
+#   En dev, saisons d'exemple 2024-2026 (seed.sql) ; en production, seulement si
+#   aucune saison n'existe (jamais de couleur écrasée).
+# - vider : supprime les comptes demo_* et tout ce qui leur appartient, puis recalcule
+#   les points des vrais stickers (calculés en tenant compte de la démo). En production,
+#   le générateur est aussi supprimé.
+#
+# Lancement : Actions → « Données de démo » → Run workflow.
+name: Données de démo
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Projet visé"
+        required: true
+        default: dev
+        type: choice
+        options: [dev, production]
+      action:
+        description: "Remplir ou vider"
+        required: true
+        default: remplir
+        type: choice
+        options: [remplir, vider]
+      target:
+        description: "Nombre total de stickers de démo (pour « remplir »)"
+        required: true
+        default: "5000"
+        type: string
+
+permissions:
+  contents: read
+
+# Jamais en même temps qu'un déploiement (migrations) ni qu'un autre remplissage.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  demo:
+    name: ${{ inputs.action }} · ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      TARGET: ${{ inputs.target }}
+      DEMO_AUTHORS: "author_id::text like 'de300000-0000-4000-8000-%'"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: "3.2.0"
+      - name: Cible valide
+        if: inputs.action == 'remplir'
+        run: |
+          [[ "$TARGET" =~ ^[0-9]+$ ]] && [ "$TARGET" -le 20000 ] || { echo "::error::Cible invalide : $TARGET"; exit 1; }
+      - run: supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
+
+      - name: Saisons d'exemple (dev)
+        if: inputs.action == 'remplir' && inputs.environment == 'dev'
+        run: supabase db query --remote --yes --file supabase/seed.sql
+      - name: Saisons d'exemple, seulement si absentes (production)
+        if: inputs.action == 'remplir' && inputs.environment == 'production'
+        run: supabase db query --remote --yes --file supabase/demo/seasons-if-missing.sql
+      - name: Générateur de démo
+        if: inputs.action == 'remplir'
+        run: supabase db query --remote --yes --file supabase/demo/generator.sql
+      - name: Stickers de démo (par lots de 500)
+        if: inputs.action == 'remplir'
+        run: |
+          for lot in $(seq 1 $(( TARGET / 500 + 2 ))); do
+            echo "Lot $lot"
+            supabase db query --remote --yes "select public.seed_demo_spots(least(500, greatest(0, $TARGET - (select count(*)::int from public.spots where $DEMO_AUTHORS)))) as ajoutes"
+          done
+          supabase db query --remote --yes "select public.refresh_leaderboard()"
+
+      - name: Vider la démo
+        if: inputs.action == 'vider'
+        run: supabase db query --remote --yes --file supabase/demo/clear.sql
+      - name: Retirer le générateur (production)
+        if: inputs.action == 'vider' && inputs.environment == 'production'
+        run: supabase db query --remote --yes "drop function if exists public.seed_demo_spots(int)"
+
+      - name: Bilan
+        run: |
+          supabase db query --remote --read-only "select count(*) as stickers_demo from public.spots where $DEMO_AUTHORS"
+          supabase db query --remote --read-only "select status, count(*) from public.spots group by status order by status"
