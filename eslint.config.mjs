@@ -16,6 +16,9 @@ const eslintConfig = defineConfig([
     "supabase/functions/**",
     // Copies de travail des agents (git worktrees).
     ".claude/**",
+    // Fichiers générés au build (worker MapLibre copié, service worker Serwist).
+    "public/vendor/**",
+    "public/sw.js",
   ]),
 ]);
 
