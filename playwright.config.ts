@@ -1,11 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Bout en bout. En CI, PLAYWRIGHT_BASE_URL pointe vers le déploiement staging.
- * En local, l'app de production est démarrée sur le port 3000.
+ * Bout en bout. Après un déploiement, PLAYWRIGHT_BASE_URL pointe vers la
+ * production : ces tests doivent donc rester en lecture seule.
+ * Sinon, la build locale est démarrée sur le port 3000.
  */
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
-const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 // Navigateur déjà installé ailleurs (ex. conteneur de dev) : chemin explicite.
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH;
 
@@ -19,10 +19,6 @@ export default defineConfig({
     baseURL,
     trace: "off",
     launchOptions: executablePath ? { executablePath } : undefined,
-    // Les déploiements Vercel hors production sont protégés : jeton de contournement.
-    extraHTTPHeaders: bypassSecret
-      ? { "x-vercel-protection-bypass": bypassSecret, "x-vercel-set-bypass-cookie": "true" }
-      : undefined,
   },
   projects: [
     { name: "mobile", use: { ...devices["Pixel 7"] } },
@@ -32,7 +28,8 @@ export default defineConfig({
     ? undefined
     : {
         command: "npm run start",
-        url: "http://localhost:3000/api/health",
+        // Page d'accueil : /api/health répond 503 sans Supabase configuré.
+        url: "http://localhost:3000/",
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
       },

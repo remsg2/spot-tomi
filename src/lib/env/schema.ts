@@ -3,8 +3,8 @@ import { z } from "zod";
 /**
  * Configuration propre à chaque environnement (local, staging, production).
  *
- * Ces valeurs ne sont JAMAIS lues au moment du build : la même build est
- * promue de staging à production. Elles sont lues au runtime côté serveur,
+ * Ces valeurs ne sont JAMAIS lues au moment du build : une build ne dépend
+ * d'aucun environnement. Elles sont lues au runtime côté serveur,
  * puis transmises au navigateur par le layout racine (voir RuntimeEnv).
  */
 export const APP_ENVS = ["local", "staging", "production"] as const;

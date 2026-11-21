@@ -3,7 +3,7 @@ import { BUILD_ID, getPublicEnvResult } from "@/lib/env/server";
 
 /**
  * Contrôle de santé utilisé par la CI après chaque déploiement :
- * - buildId identique sur staging et prod = même build promue ;
+ * - buildId = le commit déployé ;
  * - appEnv et supabaseHost prouvent que la config vient bien du runtime ;
  * - schemaVersion prouve que les migrations sont appliquées au bon projet.
  */

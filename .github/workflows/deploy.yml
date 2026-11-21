@@ -1,13 +1,13 @@
-# Étapes 2 et 3 du pipeline (spécifications, section 8.3).
+# Déploiement (sans environnement de staging).
 #
-# Une seule build : `vercel build` tourne une fois, sa sortie est conservée
-# comme artefact, déployée sur staging, testée, puis la MÊME sortie est
-# déployée en production après validation manuelle (environnement GitHub
-# « production » protégé). Rien n'est reconstruit entre les deux.
+# Sur chaque merge dans main :
+#   1. les migrations sont appliquées sur Supabase dev (une migration cassée
+#      échoue ici, avant de toucher la prod) ;
+#   2. migrations et fonctions sur Supabase prod, build Vercel, contrôle du
+#      bundle, déploiement en production, puis tests contre le site en ligne.
 #
-# Staging = environnement Preview de Vercel (offre Hobby, sans environnement
-# personnalisé), avec une adresse fixe attribuée par alias. Ses variables
-# (APP_ENV=staging, Supabase dev) sont celles de l'environnement Preview.
+# L'environnement GitHub « production » peut exiger une validation manuelle
+# (Required reviewers) : le job attend alors ton feu vert.
 name: Déploiement
 
 on:
@@ -28,42 +28,10 @@ env:
   SUPABASE_CLI_VERSION: "3.2.0"
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-  # Adresse fixe du staging (modifiable par la variable de dépôt du même nom).
-  VERCEL_STAGING_ALIAS: ${{ vars.VERCEL_STAGING_ALIAS || 'spot-tomi-staging.vercel.app' }}
+  # Adresse publique de la production (modifiable par la variable de dépôt du même nom).
+  PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://spot-tomi.vercel.app' }}
 
 jobs:
-  build:
-    name: Build unique
-    runs-on: ubuntu-latest
-    outputs:
-      fingerprint: ${{ steps.fingerprint.outputs.value }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      - run: npm install --global vercel@${{ env.VERCEL_CLI_VERSION }}
-      - name: Réglages du projet Vercel
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-      - name: vercel build (une seule fois)
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-      - name: Aucune URL Supabase dans le bundle client
-        run: node scripts/check-bundle.mjs .vercel/output/static
-      - name: Empreinte de la build
-        id: fingerprint
-        run: echo "value=$(node scripts/vercel-output.mjs fingerprint)" >> "$GITHUB_OUTPUT"
-      # Les fichiers .env tirés par `vercel pull` ne sont PAS inclus.
-      - name: Archive de la build
-        run: tar -czf vercel-build.tgz .vercel/output .vercel/project.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: vercel-build
-          path: vercel-build.tgz
-          retention-days: 30
-          if-no-files-found: error
-
   dev:
     name: Supabase dev · migrations et fonctions
     runs-on: ubuntu-latest
@@ -86,13 +54,16 @@ jobs:
             echo "Aucune fonction Edge à déployer."
           fi
 
-  staging:
-    name: Staging · déploiement et Playwright
-    needs: [build, dev]
+  production:
+    name: Production · migrations, build et déploiement
+    needs: dev
     runs-on: ubuntu-latest
     environment:
-      name: dev
-      url: https://${{ env.VERCEL_STAGING_ALIAS }}
+      name: production
+      url: ${{ env.PRODUCTION_URL }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -101,25 +72,41 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm install --global vercel@${{ env.VERCEL_CLI_VERSION }}
-      - uses: actions/download-artifact@v4
+      - uses: supabase/setup-cli@v1
         with:
-          name: vercel-build
-      - run: tar -xzf vercel-build.tgz
-      - name: Même build que celle construite
-        run: test "$(node scripts/vercel-output.mjs fingerprint)" = "${{ needs.build.outputs.fingerprint }}"
-      - run: node scripts/vercel-output.mjs retarget preview
-      - name: vercel deploy --prebuilt sur staging (Preview)
-        id: deploy
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      # Migrations d'abord : elles doivent rester compatibles avec l'app en place.
+      - run: supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
+      - run: supabase db push
+      - name: Fonctions Edge
         run: |
-          url=$(vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }})
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-      - name: Adresse fixe du staging
-        run: vercel alias set "${{ steps.deploy.outputs.url }}" "$VERCEL_STAGING_ALIAS" --token=${{ secrets.VERCEL_TOKEN }}
-      - name: Playwright contre staging
+          if compgen -G "supabase/functions/*/index.ts" > /dev/null; then
+            supabase functions deploy --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
+          else
+            echo "Aucune fonction Edge à déployer."
+          fi
+
+      - name: Réglages du projet Vercel
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: vercel build
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Aucune URL Supabase dans le bundle client
+        run: node scripts/check-bundle.mjs .vercel/output/static
+      - name: vercel deploy --prebuilt --prod
+        run: vercel deploy --prebuilt --archive=tgz --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Contrôle de santé de la production
+        run: |
+          health=$(curl -fsS "$PRODUCTION_URL/api/health")
+          echo "$health"
+          echo "$health" | jq -e --arg sha "${{ github.sha }}" --arg host "${{ vars.SUPABASE_PROJECT_REF }}.supabase.co" \
+            '.status == "ok" and .appEnv == "production" and .buildId == $sha and .supabaseHost == $host'
+      # Uniquement des tests en lecture seule : ils tournent sur le vrai site.
+      - name: Playwright contre la production
         env:
-          PLAYWRIGHT_BASE_URL: https://${{ env.VERCEL_STAGING_ALIAS }}
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-          EXPECTED_APP_ENV: staging
+          PLAYWRIGHT_BASE_URL: ${{ env.PRODUCTION_URL }}
+          EXPECTED_APP_ENV: production
           EXPECTED_BUILD_ID: ${{ github.sha }}
           EXPECTED_SUPABASE_HOST: ${{ vars.SUPABASE_PROJECT_REF }}.supabase.co
         run: |
@@ -131,53 +118,3 @@ jobs:
           name: playwright-report
           path: playwright-report
           retention-days: 14
-
-  production:
-    name: Production · migrations et promotion de la même build
-    needs: [build, staging]
-    runs-on: ubuntu-latest
-    # Environnement protégé : validation manuelle requise dans GitHub.
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - run: npm install --global vercel@${{ env.VERCEL_CLI_VERSION }}
-      - uses: supabase/setup-cli@v1
-        with:
-          version: ${{ env.SUPABASE_CLI_VERSION }}
-      # Migrations d'abord : elles doivent rester compatibles avec l'app en place.
-      - run: supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
-      - run: supabase db push
-      - name: Fonctions Edge
-        run: |
-          if compgen -G "supabase/functions/*/index.ts" > /dev/null; then
-            supabase functions deploy --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
-          else
-            echo "Aucune fonction Edge à déployer."
-          fi
-      - uses: actions/download-artifact@v4
-        with:
-          name: vercel-build
-      - run: tar -xzf vercel-build.tgz
-      - name: Même build que celle testée sur staging
-        run: test "$(node scripts/vercel-output.mjs fingerprint)" = "${{ needs.build.outputs.fingerprint }}"
-      - name: vercel deploy --prebuilt --prod
-        id: deploy
-        run: |
-          url=$(vercel deploy --prebuilt --archive=tgz --prod --token=${{ secrets.VERCEL_TOKEN }})
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-      - name: Contrôle de santé de la production
-        env:
-          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-        run: |
-          health=$(curl -fsS -H "x-vercel-protection-bypass: $BYPASS" "${{ steps.deploy.outputs.url }}/api/health")
-          echo "$health"
-          echo "$health" | jq -e --arg sha "${{ github.sha }}" --arg host "${{ vars.SUPABASE_PROJECT_REF }}.supabase.co" \
-            '.status == "ok" and .appEnv == "production" and .buildId == $sha and .supabaseHost == $host'

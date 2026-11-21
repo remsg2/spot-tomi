@@ -23,41 +23,40 @@ npm run dev
 | `npm run test:db` | Tests pgTAP sur la base locale (`supabase/tests/database`) |
 | `npm run check:bundle` | Vérifie qu'aucune URL ou clé Supabase n'est dans le bundle client |
 
-## Une build pour deux environnements
+## Configuration lue au runtime
 
 Next.js grave les variables `NEXT_PUBLIC_*` dans le bundle au build. L'app n'en utilise
-**aucune** pour la configuration :
+**aucune** pour la configuration, qui ne dépend donc jamais de la build :
 
 - `src/lib/env/server.ts` lit `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `APP_ENV`
   **au runtime** (`await connection()`).
 - `<RuntimeEnv />`, rendu dans le layout racine, les transmet au navigateur dans un
   `<script type="application/json">`, lu par `src/lib/env/client.ts`.
 - `/api/health` renvoie `appEnv`, `buildId` (le commit construit), l'hôte Supabase
-  et la version du schéma : la CI s'en sert pour prouver que staging et prod servent
-  la même build, chacune branchée sur son propre projet Supabase.
+  et la version du schéma : la CI s'en sert pour vérifier la production après chaque
+  déploiement.
 
-`scripts/check-bundle.mjs` (CI) et `e2e/socle.spec.ts` (contre le déploiement)
+`scripts/check-bundle.mjs` (CI) et `e2e/socle.spec.ts` (contre le site déployé)
 échouent si une URL Supabase apparaît dans un fichier JS.
 
 ## Pipeline (`.github/workflows`)
 
+Il n'y a pas d'environnement de staging : Supabase dev sert au développement local et à
+vérifier les migrations avant la prod.
+
 1. **Pull request** (`ci.yml`) : lint, typecheck, Vitest, build, contrôle du bundle,
    Playwright sur la build locale, migrations + pgTAP sur une base Supabase locale.
 2. **Merge sur `main`** (`deploy.yml`) :
-   `vercel build --prod` **une seule fois** → artefact → migrations et fonctions sur
-   `spot-tomi-dev` → `vercel deploy --prebuilt` en Preview, avec l'adresse fixe
-   `spot-tomi-staging.vercel.app` → Playwright contre staging.
-3. **Validation manuelle** (environnement GitHub `production` protégé) : migrations et
-   fonctions sur `spot-tomi-prod`, puis la **même** sortie est déployée avec
-   `vercel deploy --prebuilt --prod`, et `/api/health` est vérifié.
-4. **Retour arrière** (`rollback.yml`, manuel) : `vercel rollback <déploiement>`.
+   1. migrations et fonctions sur `spot-tomi-dev` : une migration cassée échoue ici ;
+   2. job `production` (validation manuelle si l'environnement GitHub l'exige) :
+      migrations et fonctions sur `spot-tomi-prod`, `vercel build`, contrôle du bundle,
+      `vercel deploy --prebuilt --prod`, puis `/api/health` et Playwright contre le
+      site en ligne.
+3. **Retour arrière** (`rollback.yml`, manuel) : `vercel rollback <déploiement>`,
+   sans reconstruction.
 
-`vercel deploy --prebuilt` refuse une sortie construite pour une autre cible. Comme
-aucune valeur d'environnement n'est lue au build, la sortie est identique pour toutes
-les cibles, sauf le champ `target` de `.vercel/output/builds.json`.
-`scripts/vercel-output.mjs` modifie ce seul champ et calcule une empreinte SHA-256
-de tout le reste. La CI vérifie que cette empreinte est la même au build, sur staging
-et en production.
+Les tests Playwright tournent sur le vrai site : ils doivent rester **en lecture
+seule**. Les tests qui écrivent des données tournent sur la base locale de la CI.
 
 Les migrations doivent rester compatibles avec la version précédente de l'app
 (ajouter avant de retirer) : la base de prod change avant le code de prod.
@@ -66,46 +65,36 @@ Les migrations doivent rester compatibles avec la version précédente de l'app
 
 ### Supabase
 
-1. Créer deux projets : `spot-tomi-dev` et `spot-tomi-prod`.
-2. Dans chacun, *Authentication → URL Configuration* : *Site URL* = domaine de
-   l'environnement (domaine de test pour dev, domaine public pour prod) et
-   *Redirect URLs* correspondantes. Les fournisseurs Google et Apple arrivent à l'étape 3.
-3. Créer un jeton d'accès personnel (*Account → Access Tokens*) pour la CI.
+1. Deux projets : `spot-tomi-dev` (développement) et `spot-tomi-prod`.
+2. *Authentication → URL Configuration* :
+   - dev : *Site URL* `http://localhost:3000`, *Redirect URLs* `http://localhost:3000/**` ;
+   - prod : *Site URL* = adresse de production, *Redirect URLs* = la même suivie de `/**`.
+3. Un jeton d'accès personnel (*Account → Access Tokens*) pour la CI.
 
 ### Vercel (offre Hobby)
 
-Les environnements personnalisés demandent l'offre Pro : le staging utilise donc
-l'environnement **Preview**, avec l'adresse fixe `spot-tomi-staging.vercel.app`
-attribuée par la CI (modifiable avec la variable de dépôt `VERCEL_STAGING_ALIAS`).
-En passant à Pro, il suffira de créer un environnement `staging` et de déployer avec
-`--environment=staging`.
-
-1. Créer le projet `spot-tomi` (Framework Preset Next.js, Node.js 22.x) sans le
-   relier au dépôt : `vercel.json` désactive de toute façon les déploiements Git
-   automatiques, seule la CI déploie.
-2. Variables d'environnement (ni `NEXT_PUBLIC_`, ni valeur au build) :
-
-   | Variable | Preview (staging) | Production |
-   | --- | --- | --- |
-   | `APP_ENV` | `staging` | `production` |
-   | `SUPABASE_URL` | URL de `spot-tomi-dev` | URL de `spot-tomi-prod` |
-   | `SUPABASE_PUBLISHABLE_KEY` | clé publishable dev | clé publishable prod |
-
-3. *Settings → Deployment Protection* : garder *Standard Protection* (staging privé,
-   production publique) et créer un secret *Protection Bypass for Automation*.
+1. Projet `spot-tomi`. `vercel.json` désactive les déploiements Git automatiques
+   (seule la CI déploie) et place les fonctions à Paris (`cdg1`) ; `package.json`
+   fixe Node.js 22.
+2. Variables d'environnement **Production** uniquement (ni `NEXT_PUBLIC_`, ni valeur
+   au build) : `APP_ENV=production`, `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY` de
+   `spot-tomi-prod`.
 
 ### GitHub
 
-*Settings → Secrets and variables → Actions*, secrets du dépôt :
-`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`,
-`VERCEL_AUTOMATION_BYPASS_SECRET`, `SUPABASE_ACCESS_TOKEN`.
+*Settings → Secrets and variables → Actions* :
+
+- secrets du dépôt : `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`,
+  `SUPABASE_ACCESS_TOKEN` ;
+- variable du dépôt `PRODUCTION_URL`, seulement si l'adresse de production n'est pas
+  `https://spot-tomi.vercel.app`.
 
 *Settings → Environments* :
 
 | Environnement | Protection | Secret | Variable |
 | --- | --- | --- | --- |
 | `dev` | aucune | `SUPABASE_DB_PASSWORD` (dev) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-dev`) |
-| `production` | *Required reviewers* | `SUPABASE_DB_PASSWORD` (prod) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-prod`) |
+| `production` | *Required reviewers* (facultatif) | `SUPABASE_DB_PASSWORD` (prod) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-prod`) |
 
 ## Image de Tomi
 

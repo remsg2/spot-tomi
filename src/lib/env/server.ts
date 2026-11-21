@@ -23,5 +23,5 @@ export async function getPublicEnv() {
   return result.env;
 }
 
-/** Identifiant de la build, gravé au build exprès : il prouve que staging et prod servent la même. */
+/** Identifiant de la build (le commit), gravé au build exprès : la CI vérifie le déploiement avec. */
 export const BUILD_ID = process.env.SPOT_TOMI_BUILD_ID ?? "dev";
