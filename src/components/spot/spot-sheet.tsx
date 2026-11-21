@@ -60,9 +60,20 @@ export function SpotSheet({
         className="relative h-[270px] shrink-0 touch-none overflow-hidden bg-soft select-none md:mx-6 md:h-[168px] md:touch-auto md:rounded-[18px] md:select-auto"
       >
         {isDemoPhoto(spot.photoUrl) ? (
-          // Stickers de démo (base dev) : pas de vraie photo, le sticker en illustration.
+          // Stickers de démo : pas de vraie photo, le sticker officiel de l'édition en illustration.
           <div className="flex h-full items-center justify-center">
-            <Sticker size={134} tilt={-7} label={tm.spot.photoAlt(spot.name)} />
+            {spot.editionVisualUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={spot.editionVisualUrl}
+                alt={tm.spot.photoAlt(spot.name)}
+                width={170}
+                height={170}
+                className="size-[170px] -rotate-6 rounded-[14px] shadow-card-lg md:size-[132px]"
+              />
+            ) : (
+              <Sticker size={134} tilt={-7} label={tm.spot.photoAlt(spot.name)} />
+            )}
           </div>
         ) : (
           <>

@@ -10,6 +10,8 @@ export type EditionOption = {
   name: string;
   colorHex: string;
   isCurrent: boolean;
+  /** Visuel officiel du sticker de cette édition, s'il existe. */
+  visualUrl?: string | null;
 };
 
 /** « 2026-03-14 » dans le fuseau de l'appareil. */

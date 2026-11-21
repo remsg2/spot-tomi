@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { getMyProfile, getSessionUser, type Profile, type SessionUser } from "@/lib/auth/server";
 import { getPublicEnv } from "@/lib/env/server";
+import { editionVisualUrl } from "@/lib/editions";
 import { publicStorageUrl } from "@/lib/map/data";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { toPointLines, type SpotPointLineRow } from "./lines";
@@ -31,6 +32,8 @@ export type SpotPageData = {
   lines: ReturnType<typeof toPointLines>;
   comment: string | null;
   editionName: string;
+  /** Visuel officiel du sticker de l'édition (fiche sans photo). */
+  editionVisualUrl: string | null;
   rarityCategory: string | null;
   rarityReason: string | null;
 };
@@ -197,6 +200,7 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
       lines,
       comment: spot.comment,
       editionName: spot.edition_name,
+      editionVisualUrl: editionVisualUrl(spot.year, null, null),
       rarityCategory: spot.rarity_category,
       rarityReason: spot.rarity_reason,
     };
@@ -247,6 +251,7 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
     lines,
     comment: own.comment,
     editionName: edition?.name ?? `Édition ${own.year}`,
+    editionVisualUrl: editionVisualUrl(own.year, null, null),
     rarityCategory: own.rarity_category,
     rarityReason: own.rarity_reason,
   };

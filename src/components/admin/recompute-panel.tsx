@@ -16,7 +16,7 @@ export function RecomputePanel({
   recomputeAll,
 }: {
   recomputeSpot: (form: FormData) => Promise<ActionResult>;
-  recomputeAll: () => Promise<ActionResult>;
+  recomputeAll: (form: FormData) => Promise<ActionResult>;
 }) {
   const ids = useId();
   const [one, setOne] = useState<ActionResult | null>(null);
@@ -52,12 +52,20 @@ export function RecomputePanel({
             spellCheck={false}
             className={cn(input, "flex-1 font-mono text-sm")}
           />
-          <SubmitButton className={buttonGhost}>{ta.scoring.recomputeOneSubmit}</SubmitButton>
         </div>
+        <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+          {ta.scoring.recomputeReason}
+          <input name="reason" required minLength={3} maxLength={200} placeholder={ta.scoring.recomputeReasonPlaceholder} className={input} />
+        </label>
+        <SubmitButton className={cn(buttonGhost, "self-start")}>{ta.scoring.recomputeOneSubmit}</SubmitButton>
         <ActionMessage result={one} />
       </form>
 
-      <form action={async () => setAll(await recomputeAll())} className="flex flex-wrap gap-2 border-t border-line pt-3">
+      <form action={async (form) => setAll(await recomputeAll(form))} className="flex flex-wrap gap-2 border-t border-line pt-3">
+        <label className="flex basis-full flex-col gap-1 text-xs font-semibold text-muted">
+          {ta.scoring.recomputeReason}
+          <input name="reason" required minLength={3} maxLength={200} placeholder={ta.scoring.recomputeReasonPlaceholder} className={input} />
+        </label>
         <ConfirmAction
           trigger={ta.scoring.recomputeAll}
           question={ta.scoring.recomputeAllConfirm}

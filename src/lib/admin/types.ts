@@ -2,7 +2,12 @@ import type { CountryTier, UserRole } from "@/lib/validation/admin";
 
 export type SpotStatus = "published" | "pending_review" | "hidden";
 
-export type SpotReport = { reason: string | null; created_at: string; reporter_username: string | null };
+export type SpotReport = {
+  reason: string | null;
+  created_at: string;
+  reporter_username: string | null;
+  status?: "pending" | "accepted" | "rejected";
+};
 
 /** Ligne de admin_moderation_queue() / admin_search_spots() : position exacte comprise. */
 export type ModerationItem = {
@@ -19,7 +24,7 @@ export type ModerationItem = {
   taken_at: string;
   created_at: string;
   gps_source: "exif" | "device" | "manual";
-  date_source: "exif" | "device" | "upload";
+  date_source: "exif" | "device" | "manual" | "upload";
   lat: number;
   lng: number;
   public_lat: number;
@@ -31,12 +36,52 @@ export type ModerationItem = {
   is_first_in_country: boolean;
   report_count: number;
   reports: SpotReport[];
+  needs_review?: boolean;
+  review_reason?: string | null;
+  comment?: string | null;
+  rarity_category?: string | null;
+  rarity_override?: string | null;
+  rarity_reason?: string | null;
+  thumb_path?: string | null;
 };
 
 /** Élément de la file, avec l'URL publique de sa photo (calculée côté serveur). */
 export type ModerationEntry = ModerationItem & { photo_url: string | null };
 
 export type Season = { year: number; color_hex: string; is_current: boolean };
+
+/** Ligne de list_editions() (onglet Éditions). */
+export type Edition = {
+  year: number;
+  name: string;
+  color_hex: string;
+  visual_path: string | null;
+  status: "active" | "archived";
+  is_current: boolean;
+  selectable: boolean;
+  color_locked: boolean;
+  spot_count: number;
+};
+
+export type AdminBadge = {
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  active: boolean;
+  unlocked: number;
+};
+
+export type AppError = {
+  id: number;
+  created_at: string;
+  source: string;
+  message: string;
+  digest: string | null;
+  path: string | null;
+  user_agent: string | null;
+  username: string | null;
+};
 export type MissingSeasonYear = { year: number; spot_count: number };
 
 export type ScoringRule = { key: string; value: number; updated_at: string };

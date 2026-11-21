@@ -2,8 +2,11 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type {
+  AdminBadge,
   AdminUser,
+  AppError,
   AuditEntry,
+  Edition,
   CountryRow,
   MissingSeasonYear,
   ModerationEntry,
@@ -104,4 +107,33 @@ export async function listUsers(query: string): Promise<AdminUser[]> {
 
 export async function getAuditRecent(limit = 100): Promise<AuditEntry[]> {
   return rpc<AuditEntry>("admin_audit_recent", { p_limit: limit });
+}
+
+export async function getEditions(): Promise<Edition[]> {
+  return rpc<Edition>("list_editions");
+}
+
+export async function getRecentErrors(limit = 100): Promise<AppError[]> {
+  return rpc<AppError>("admin_recent_errors", { p_limit: limit });
+}
+
+export async function getBadges(): Promise<AdminBadge[]> {
+  const supabase = await getSupabaseServerClient();
+  const [{ data: badges, error }, { data: unlocked }] = await Promise.all([
+    supabase.from("badges").select("id, code, name, description, icon, active, position").order("position"),
+    supabase.from("user_badges").select("badge_id"),
+  ]);
+  if (error) throw new AdminDataError("badges", error.code);
+  const counts = new Map<number, number>();
+  for (const row of (unlocked ?? []) as Array<{ badge_id: number }>) {
+    counts.set(row.badge_id, (counts.get(row.badge_id) ?? 0) + 1);
+  }
+  return ((badges ?? []) as unknown as Array<Omit<AdminBadge, "unlocked"> & { id: number }>).map((badge) => ({
+    code: badge.code,
+    name: badge.name,
+    description: badge.description,
+    icon: badge.icon,
+    active: badge.active,
+    unlocked: counts.get(badge.id) ?? 0,
+  }));
 }

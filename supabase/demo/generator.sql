@@ -4,13 +4,13 @@
 
 -- Stickers de démo -----------------------------------------------------------------
 -- Crée (une seule fois) 8 comptes demo_* avec profil, puis n stickers répartis dans le
--- monde autour de lieux réels (surtout en France et en Europe), datés de 2024 à
+-- monde autour de lieux réels (surtout en France et en Europe), datés de 2025 à
 -- aujourd'hui (édition de l'année du collage), et calcule leurs points du plus ancien au
 -- plus récent. Environ 1 % masqués, 2 % de sites remarquables, 3 % « à vérifier »
 -- (position à la main), 10 % près d'un site touristique, un quart avec un commentaire.
 -- Réservée au propriétaire de la base (postgres) : jamais exposée par l'API.
 
-create or replace function public.seed_demo_spots(n int default 200)
+create or replace function public.seed_demo_spots(n int default 100)
 returns int
 language plpgsql
 volatile
@@ -111,7 +111,7 @@ begin
         15000 * sqrt(d.r_dist), 2 * pi() * d.r_az
       ) as loc,
       v_users[1 + floor(d.r_user * array_length(v_users, 1))::int] as author_id,
-      timestamptz '2024-01-01' + d.r_date * (now() - timestamptz '2024-01-01') as taken_at
+      timestamptz '2025-01-01' + d.r_date * (now() - timestamptz '2025-01-01') as taken_at
     from draws d
     cross join lateral (
       select * from weighted w where w.cum >= d.r_anchor * w.total order by w.cum limit 1

@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { EditionsManager } from "@/components/admin/editions-manager";
 import { ModerationList } from "@/components/admin/moderation-list";
 import { SeasonEditor } from "@/components/admin/season-editor";
 import { smallTitle } from "@/components/admin/styles";
 import { ta } from "@/i18n/admin.fr";
 import { requireStaff } from "@/lib/admin/auth";
-import { getMissingSeasonYears, getModerationQueue, getSeasons } from "@/lib/admin/data";
-import { applySeasonAction, moderateSpotAction, setExceptionalAction } from "../actions";
+import { getEditions, getMissingSeasonYears, getModerationQueue, getSeasons } from "@/lib/admin/data";
+import { getPublicEnv } from "@/lib/env/server";
+import { applySeasonAction, moderateSpotAction, saveEditionAction, setExceptionalAction, setRarityAction } from "../actions";
 import { AdminSkeleton } from "../skeleton";
 
 export const metadata: Metadata = { title: ta.tabs.season };
 
-/** Onglet Couleur (admin) : docs/maquettes/Admin.dc.html. */
+/** Onglet Éditions (admin) : couleur de l'édition en cours (maquette Admin), puis toutes les éditions. */
 export default function SeasonPage() {
   return (
     <Suspense fallback={<AdminSkeleton />}>
@@ -23,10 +25,12 @@ export default function SeasonPage() {
 
 async function SeasonContent() {
   await requireStaff("admin", "/admin/season");
-  const [seasons, missingYears, queue] = await Promise.all([
+  const [seasons, missingYears, queue, editions, { supabaseUrl }] = await Promise.all([
     getSeasons(),
     getMissingSeasonYears(),
     getModerationQueue(),
+    getEditions(),
+    getPublicEnv(),
   ]);
   const current = seasons.find((season) => season.is_current) ?? null;
   // Rendu à la requête (après lecture de la session) : l'année civile est celle du jour.
@@ -43,6 +47,8 @@ async function SeasonContent() {
         action={applySeasonAction}
       />
 
+      <EditionsManager editions={editions} action={saveEditionAction} supabaseUrl={supabaseUrl} />
+
       {todo.length > 0 && (
         <section aria-labelledby="season-to-moderate" className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between gap-3">
@@ -56,7 +62,7 @@ async function SeasonContent() {
           <ModerationList
             entries={todo.slice(0, 2)}
             empty={ta.moderation.empty}
-            actions={{ moderate: moderateSpotAction, setExceptional: setExceptionalAction }}
+            actions={{ moderate: moderateSpotAction, setExceptional: setExceptionalAction, setRarity: setRarityAction }}
           />
         </section>
       )}

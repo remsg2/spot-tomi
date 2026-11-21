@@ -5,6 +5,7 @@ import { tp } from "@/i18n/publish.fr";
 import { requireProfile } from "@/lib/auth/server";
 import { DEFAULT_COMMENT_MAX, DEFAULT_EDIT_RADIUS_M } from "@/lib/publish/contract";
 import { toEditionOptions } from "@/lib/editions";
+import { getPublicEnv } from "@/lib/env/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: tp.metaTitle };
@@ -24,13 +25,14 @@ async function NewSpot() {
   const { user } = await requireProfile("/spots/new");
   const supabase = await getSupabaseServerClient();
 
-  const [rules, editions] = await Promise.all([
+  const [rules, editions, { supabaseUrl }] = await Promise.all([
     supabase
       .from("scoring_rules")
       .select("key, value")
       .in("key", ["edit_radius_m", "comment_max_length"])
       .returns<Array<{ key: string; value: number }>>(),
     supabase.rpc("list_editions"),
+    getPublicEnv(),
   ]);
 
   const rule = (key: string) => Number(rules.data?.find((row) => row.key === key)?.value);
@@ -42,7 +44,7 @@ async function NewSpot() {
       userId={user.id}
       editRadius={Number.isFinite(radius) && radius > 0 ? radius : DEFAULT_EDIT_RADIUS_M}
       commentMax={Number.isFinite(commentMax) && commentMax > 0 ? commentMax : DEFAULT_COMMENT_MAX}
-      editions={toEditionOptions(editions.data)}
+      editions={toEditionOptions(editions.data, supabaseUrl)}
     />
   );
 }

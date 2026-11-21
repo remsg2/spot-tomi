@@ -8,6 +8,7 @@ import { Sticker } from "@/components/ui";
 import { tm } from "@/i18n/map.fr";
 import { ts } from "@/i18n/stats.fr";
 import { getSessionUser } from "@/lib/auth/server";
+import { editionVisualUrl } from "@/lib/editions";
 import { fetchFeed } from "@/lib/stats/queries";
 
 export const metadata: Metadata = { title: ts.feed.title, description: ts.feed.metaDescription };
@@ -53,7 +54,19 @@ async function FeedContent({ searchParams }: Pick<PageProps<"/fil">, "searchPara
               <Link href={`/spots/${item.id}`} className="relative block aspect-[4/3] bg-soft">
                 {isDemoPhoto(item.photoUrl) ? (
                   <span className="flex h-full items-center justify-center">
-                    <Sticker size={110} tilt={-7} label={tm.spot.photoAlt(item.name)} />
+                    {editionVisualUrl(item.year, null, null) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={editionVisualUrl(item.year, null, null) ?? ""}
+                        alt={tm.spot.photoAlt(item.name)}
+                        width={150}
+                        height={150}
+                        loading="lazy"
+                        className="size-[150px] -rotate-6 rounded-[12px] shadow-card-lg"
+                      />
+                    ) : (
+                      <Sticker size={110} tilt={-7} label={tm.spot.photoAlt(item.name)} />
+                    )}
                   </span>
                 ) : (
                   // Miniature (480 px) si elle existe, sinon la photo.

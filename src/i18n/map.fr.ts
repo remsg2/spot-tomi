@@ -10,6 +10,14 @@ function plural(count: number, one: string, many: string) {
   return `${integer.format(count)} ${count > 1 ? many : one}`;
 }
 
+/** « 2026-03-14 » → « 14 mars 2026 ». */
+function shortDay(day: string): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  return Number.isNaN(date.getTime())
+    ? day
+    : new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date);
+}
+
 export const mapFr = {
   shell: {
     column: "Panneau",
@@ -42,18 +50,28 @@ export const mapFr = {
       small: "-20",
       medium: "20-79",
       large: "80+ pts",
-      gold: "Premier du pays ou lieu exceptionnel",
+      gold: "Premier du pays ou site remarquable",
       group: "Groupe : années présentes et nombre de stickers",
+      conquest: "Pays (carte dézoomée) : plus foncé avec plus de stickers, gris s'il est encore vierge",
     },
   },
   filters: {
     label: "Filtres",
     open: "Filtres",
     title: "Filtrer les stickers",
-    years: "Année",
-    year: (year: number) => `Année ${year}`,
+    years: "Édition",
+    year: (year: number) => `Édition ${year}`,
     rare: "Rares",
-    rareHint: "Anneau doré ou pays à 60 points et plus",
+    rareHint: "Premier du pays, site remarquable, lieu isolé ou très rare",
+    countries: "Pays",
+    countryPlaceholder: "Un pays",
+    clearCountry: (name: string) => `Retirer le filtre ${name}`,
+    period: "Période du collage",
+    from: "Du",
+    to: "Au",
+    clearPeriod: "Retirer la période",
+    periodChip: (from: string | null, to: string | null) =>
+      from && to ? `${shortDay(from)} → ${shortDay(to)}` : from ? `Depuis le ${shortDay(from)}` : `Jusqu'au ${shortDay(to ?? "")}`,
     mine: "Mes stickers",
     mineLogin: "Connecte-toi pour voir tes stickers",
     person: "Personne",

@@ -91,8 +91,8 @@ describe("barème", () => {
     for (const raw of ["", "-1", "abc", "1e9", "Infinity"]) {
       expect(parseRuleValue("bonus_first_city", raw).ok, raw).toBe(false);
     }
-    expect(parseRuleValue("neighbor_divisor", "0")).toEqual({ ok: false, error: ta.scoring.divisorInvalid });
-    expect(parseRuleValue("neighbor_divisor", "4").ok).toBe(true);
+    expect(parseRuleValue("comment_max_length", "5")).toEqual({ ok: false, error: ta.scoring.commentInvalid });
+    expect(parseRuleValue("comment_max_length", "280").ok).toBe(true);
   });
 
   it("refuse une clé de règle mal formée", () => {

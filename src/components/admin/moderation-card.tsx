@@ -21,10 +21,16 @@ import { SubmitButton } from "./submit-button";
 export type ModerationActions = {
   moderate: (form: FormData) => Promise<ActionResult>;
   setExceptional: (form: FormData) => Promise<ActionResult>;
+  setRarity?: (form: FormData) => Promise<ActionResult>;
 };
+
+const CATEGORIES = ["courant", "touristique", "remarquable", "isole", "tres_rare"] as const;
 
 function statusBadge(entry: ModerationEntry) {
   if (entry.status === "hidden") return <span className={neutralBadge}>{ta.moderation.status.hidden}</span>;
+  if (entry.status === "published" && entry.needs_review) {
+    return <span className={warnBadge}>{ta.moderation.status.review(entry.review_reason ?? null)}</span>;
+  }
   if (entry.status === "pending_review") {
     const label =
       entry.gps_source === "manual"
@@ -63,13 +69,16 @@ export function ModerationCard({
   const title = ta.moderation.by(entry.name, entry.author_username);
   const moved =
     Math.abs(entry.lat - entry.public_lat) > 1e-7 || Math.abs(entry.lng - entry.public_lng) > 1e-7;
-  const canValidate = entry.status !== "published" || entry.report_count > 0;
+  const canValidate = entry.status !== "published" || entry.report_count > 0 || Boolean(entry.needs_review);
 
   async function moderate(form: FormData) {
     onResult(entry.id, await actions.moderate(form));
   }
   async function toggleExceptional(form: FormData) {
     onResult(entry.id, await actions.setExceptional(form));
+  }
+  async function setRarity(form: FormData) {
+    if (actions.setRarity) onResult(entry.id, await actions.setRarity(form));
   }
 
   return (
@@ -106,8 +115,24 @@ export function ModerationCard({
         </div>
       </div>
 
+      {entry.comment && (
+        <p className="rounded-[10px] bg-soft px-2.5 py-1.5 text-sm">
+          <span className="block text-xs font-bold text-muted">{ta.moderation.comment}</span>
+          {entry.comment}
+        </p>
+      )}
+
       <form action={moderate} className="flex flex-wrap gap-2">
         <input type="hidden" name="spotId" value={entry.id} />
+        <label className="flex basis-full flex-col gap-1 text-xs font-semibold text-muted">
+          {ta.moderation.reasonLabel}
+          <input
+            name="reason"
+            maxLength={200}
+            placeholder={ta.moderation.reasonPlaceholder}
+            className="min-h-11 rounded-[12px] border border-line bg-card px-3 text-sm text-text"
+          />
+        </label>
         {canValidate && (
           <SubmitButton name="intent" value="validate" className={cn(buttonYear, "flex-1")}>
             {ta.moderation.validate}
@@ -190,11 +215,46 @@ export function ModerationCard({
                 {entry.reports.map((report, index) => (
                   <li key={`${report.created_at}-${index}`} className="rounded-[10px] bg-soft px-2.5 py-1.5">
                     <p className="font-semibold">{report.reason || ta.moderation.reportNoReason}</p>
-                    <p className="text-xs text-muted">{ta.moderation.reportBy(report.reporter_username, report.created_at)}</p>
+                    <p className="text-xs text-muted">
+                      {ta.moderation.reportBy(report.reporter_username, report.created_at)}
+                      {report.status ? ` · ${ta.moderation.reportStatus[report.status] ?? report.status}` : ""}
+                    </p>
                   </li>
                 ))}
               </ul>
             </section>
+          )}
+
+          {actions.setRarity && (
+            <form action={setRarity} className="flex flex-col gap-2 rounded-[12px] border border-line p-2.5">
+              <input type="hidden" name="spotId" value={entry.id} />
+              <span className="text-xs font-bold text-muted">{ta.moderation.rarityTitle}</span>
+              {entry.rarity_reason && <span className="text-xs text-muted">{entry.rarity_reason}</span>}
+              <select
+                name="category"
+                defaultValue={entry.rarity_override ?? "auto"}
+                className="min-h-11 rounded-[12px] border border-line bg-card px-2 text-sm font-semibold"
+              >
+                <option value="auto">
+                  {ta.moderation.rarityAuto(ta.moderation.categories[entry.rarity_category ?? "courant"] ?? "")}
+                </option>
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {ta.moderation.categories[category]}
+                  </option>
+                ))}
+              </select>
+              <input
+                name="reason"
+                required
+                minLength={3}
+                maxLength={200}
+                placeholder={ta.moderation.rarityReason}
+                aria-label={ta.moderation.rarityReason}
+                className="min-h-11 rounded-[12px] border border-line bg-card px-3 text-sm"
+              />
+              <SubmitButton className={buttonGhost}>{ta.moderation.raritySubmit}</SubmitButton>
+            </form>
           )}
 
           <form action={toggleExceptional} key={String(entry.is_exceptional)}>

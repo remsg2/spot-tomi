@@ -9,10 +9,17 @@ import type { ActionResult, SeasonActionResult } from "@/lib/admin/types";
 import { getSessionUser } from "@/lib/auth/server";
 import { SEASON_CACHE_TAG } from "@/lib/season";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { adminBadgesFr, adminEditionsFr } from "@/i18n/admin.fr";
 import {
+  parseAdjustForm,
+  parseBadgeForm,
   parseCountryTierForm,
+  parseDeleteUserForm,
+  parseEditionForm,
   parseExceptionalForm,
   parseModerationForm,
+  parseRarityForm,
+  parseReasonForm,
   parseRoleForm,
   parseRuleForm,
   parseSeasonForm,
@@ -78,28 +85,29 @@ export async function moderateSpotAction(form: FormData): Promise<ActionResult> 
   const supabase = await sessionClient();
   if (!supabase) return fail(ta.errors.signedOut);
 
-  const { spotId, intent } = parsed.data;
+  const { spotId, intent, reason } = parsed.data;
   const fn = {
     validate: "admin_validate_spot",
     hide: "admin_hide_spot",
     unhide: "admin_unhide_spot",
     delete: "admin_delete_spot",
   }[intent];
-  const { data, error } = await supabase.rpc(fn, { p_spot_id: spotId });
+  const { data, error } = await supabase.rpc(fn, { p_spot_id: spotId, p_reason: reason });
   if (error) return fail(adminErrorMessage(error));
-  const spot = data as Spot & { photo_path?: unknown };
+  const spot = data as Spot & { photo_path?: unknown; thumb_path?: unknown };
   const name = spot.name;
 
   let message: string;
   if (intent === "delete") {
-    // Le sticker est supprimé (et journalisé) : on efface ensuite sa photo,
-    // avec la session du modérateur (politique Storage de la migration admin).
+    // Le sticker est supprimé (et journalisé) : on efface ensuite sa photo et sa
+    // miniature, avec la session du modérateur (politique Storage de la migration admin).
     const photoPath = spot.photo_path;
     let removed = false;
     if (typeof photoPath === "string" && photoPath !== "") {
-      const { data: files, error: storageError } = await supabase.storage
-        .from(SPOT_PHOTOS_BUCKET)
-        .remove([photoPath]);
+      const paths = [photoPath, typeof spot.thumb_path === "string" ? spot.thumb_path : null].filter(
+        (path): path is string => Boolean(path),
+      );
+      const { data: files, error: storageError } = await supabase.storage.from(SPOT_PHOTOS_BUCKET).remove(paths);
       removed = !storageError && (files?.length ?? 0) > 0;
     }
     message = removed || typeof photoPath !== "string"
@@ -139,6 +147,64 @@ export async function setExceptionalAction(form: FormData): Promise<ActionResult
   };
 }
 
+export async function setRarityAction(form: FormData): Promise<ActionResult> {
+  const parsed = parseRarityForm(form);
+  if (!parsed.ok) return fail(parsed.error);
+  const supabase = await sessionClient();
+  if (!supabase) return fail(ta.errors.signedOut);
+
+  const { data, error } = await supabase.rpc("admin_set_rarity", {
+    p_spot_id: parsed.data.spotId,
+    p_category: parsed.data.category,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return fail(adminErrorMessage(error));
+  const spot = data as Spot;
+  invalidatePublicData();
+  return { ok: true, message: ta.moderation.rarityDone(spot.name, spot.points_total) };
+}
+
+// Éditions ------------------------------------------------------------------------
+
+export async function saveEditionAction(form: FormData): Promise<ActionResult> {
+  const parsed = parseEditionForm(form);
+  if (!parsed.ok) return fail(parsed.error);
+  const supabase = await sessionClient();
+  if (!supabase) return fail(ta.errors.signedOut);
+
+  const { year, name, colorHex, status, makeCurrent, visualPath } = parsed.data;
+  const { error } = await supabase.rpc("admin_save_edition", {
+    p_year: year,
+    p_name: name,
+    p_color_hex: colorHex,
+    p_status: status,
+    p_make_current: makeCurrent,
+    p_visual_path: visualPath,
+  });
+  if (error) return fail(adminErrorMessage(error));
+  updateTag(SEASON_CACHE_TAG);
+  invalidatePublicData();
+  return { ok: true, message: adminEditionsFr.saved(name) };
+}
+
+// Badges --------------------------------------------------------------------------
+
+export async function saveBadgeAction(form: FormData): Promise<ActionResult> {
+  const parsed = parseBadgeForm(form);
+  if (!parsed.ok) return fail(parsed.error);
+  const supabase = await sessionClient();
+  if (!supabase) return fail(ta.errors.signedOut);
+  const { error } = await supabase.rpc("admin_set_badge", {
+    p_code: parsed.data.code,
+    p_active: parsed.data.active,
+    p_name: parsed.data.name,
+    p_description: parsed.data.description,
+  });
+  if (error) return fail(adminErrorMessage(error));
+  refresh();
+  return { ok: true, message: adminBadgesFr.saved(parsed.data.name) };
+}
+
 // Barème ------------------------------------------------------------------------
 
 export async function saveRuleAction(form: FormData): Promise<ActionResult> {
@@ -172,10 +238,12 @@ export async function saveCountryTierAction(form: FormData): Promise<ActionResul
 export async function recomputeSpotAction(form: FormData): Promise<ActionResult> {
   const parsed = parseSpotIdForm(form);
   if (!parsed.ok) return fail(parsed.error);
+  const reason = parseReasonForm(form);
+  if (!reason.ok) return fail(reason.error);
   const supabase = await sessionClient();
   if (!supabase) return fail(ta.errors.signedOut);
 
-  const { data, error } = await supabase.rpc("admin_recompute", { p_spot_id: parsed.data });
+  const { data, error } = await supabase.rpc("admin_recompute", { p_spot_id: parsed.data, p_reason: reason.data });
   if (error) return fail(adminErrorMessage(error));
   const result = data as { name: string; points_before: number; points_after: number };
   invalidatePublicData();
@@ -185,11 +253,13 @@ export async function recomputeSpotAction(form: FormData): Promise<ActionResult>
   };
 }
 
-export async function recomputeAllAction(): Promise<ActionResult> {
+export async function recomputeAllAction(form: FormData): Promise<ActionResult> {
+  const reason = parseReasonForm(form);
+  if (!reason.ok) return fail(reason.error);
   const supabase = await sessionClient();
   if (!supabase) return fail(ta.errors.signedOut);
 
-  const { data, error } = await supabase.rpc("admin_recompute", { p_spot_id: null });
+  const { data, error } = await supabase.rpc("admin_recompute", { p_spot_id: null, p_reason: reason.data });
   if (error) return fail(adminErrorMessage(error));
   const result = data as { count: number; points_before: number; points_after: number };
   invalidatePublicData();
@@ -234,4 +304,44 @@ export async function setSuspendedAction(form: FormData): Promise<ActionResult> 
     ok: true,
     message: parsed.data.suspended ? ta.roles.suspended(user.username) : ta.roles.unsuspended(user.username),
   };
+}
+
+// Membres : correction de points et suppression de compte ------------------------------------
+
+export async function adjustPointsAction(form: FormData): Promise<ActionResult> {
+  const parsed = parseAdjustForm(form);
+  if (!parsed.ok) return fail(parsed.error);
+  const supabase = await sessionClient();
+  if (!supabase) return fail(ta.errors.signedOut);
+  const { data, error } = await supabase.rpc("admin_adjust_points", {
+    p_user: parsed.data.userId,
+    p_points: parsed.data.points,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return fail(adminErrorMessage(error));
+  const result = data as { username: string; points: number };
+  invalidatePublicData();
+  return { ok: true, message: ta.roles.adjusted(result.username, Number(result.points)) };
+}
+
+/**
+ * Suppression du compte d'un membre : l'Edge Function delete-account (clé service)
+ * vérifie que l'appelant est admin, journalise avec le motif, efface les fichiers
+ * Storage puis le compte Auth (profil, stickers, journal partent en cascade).
+ */
+export async function deleteUserAction(form: FormData): Promise<ActionResult> {
+  const parsed = parseDeleteUserForm(form);
+  if (!parsed.ok) return fail(parsed.error);
+  const supabase = await sessionClient();
+  if (!supabase) return fail(ta.errors.signedOut);
+  const { data, error } = await supabase.functions.invoke("delete-account", {
+    body: { userId: parsed.data.userId, reason: parsed.data.reason },
+  });
+  if (error) {
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    const message = (body as { error?: string } | null)?.error;
+    return fail(message ?? ta.roles.deleteFailed);
+  }
+  invalidatePublicData();
+  return { ok: true, message: ta.roles.deletedUser((data as { username?: string } | null)?.username ?? "") };
 }

@@ -279,7 +279,13 @@ export function ReviewStep(props: Props) {
                       selected ? "border-text bg-text text-bg" : "border-line bg-card text-text",
                     )}
                   >
-                    <span aria-hidden="true" className="size-3.5 shrink-0 rounded-full border border-black/20 bg-(--swatch)" />
+                    {option.visualUrl ? (
+                      // Visuel officiel du sticker de l'édition (public/editions).
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={option.visualUrl} alt="" width={28} height={28} className="size-7 shrink-0 rounded-[6px]" />
+                    ) : (
+                      <span aria-hidden="true" className="size-3.5 shrink-0 rounded-full border border-black/20 bg-(--swatch)" />
+                    )}
                     {tp.review.editionOption(option.name, option.year)}
                     {option.isCurrent && <span className="text-[11px] font-bold opacity-70">{tp.review.editionCurrent}</span>}
                   </button>

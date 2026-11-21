@@ -36,7 +36,7 @@ export const statsFr = {
     title: "Conquête mondiale",
     progress: (done: number, total: number) => `${integer.format(done)} pays conquis sur ${integer.format(total)}`,
     virgin: (n: number) => `${integer.format(n)} pays encore vierges`,
-    mapLink: "Voir la carte de conquête",
+    mapLink: "Voir la carte de conquête (carte dézoomée : pays colorés selon le nombre de stickers)",
   },
   records: {
     title: "Records",

@@ -2,7 +2,7 @@
 # répartis dans le monde (supabase/demo/generator.sql).
 #
 # - remplir : complète jusqu'à la cible sans la dépasser (par lots de 500), rejouable.
-#   En dev, saisons d'exemple 2024-2026 (seed.sql) ; en production, seulement si
+#   En dev, éditions officielles 2025-2027 (seed.sql) ; en production, seulement si
 #   aucune saison n'existe (jamais de couleur écrasée).
 # - vider : supprime les comptes demo_* et tout ce qui leur appartient, puis recalcule
 #   les points des vrais stickers (calculés en tenant compte de la démo). En production,
@@ -29,7 +29,7 @@ on:
       target:
         description: "Nombre total de stickers de démo (pour « remplir »)"
         required: true
-        default: "5000"
+        default: "300"
         type: string
 
 permissions:
@@ -58,13 +58,13 @@ jobs:
       - name: Cible valide
         if: inputs.action == 'remplir'
         run: |
-          [[ "$TARGET" =~ ^[0-9]+$ ]] && [ "$TARGET" -le 20000 ] || { echo "::error::Cible invalide : $TARGET"; exit 1; }
+          [[ "$TARGET" =~ ^[0-9]+$ ]] && [ "$TARGET" -le 2000 ] || { echo "::error::Cible invalide : $TARGET"; exit 1; }
       - run: supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
 
-      - name: Saisons d'exemple (dev)
+      - name: Éditions officielles (dev)
         if: inputs.action == 'remplir' && inputs.environment == 'dev'
         run: supabase db query --remote --yes --file supabase/seed.sql
-      - name: Saisons d'exemple, seulement si absentes (production)
+      - name: Éditions officielles, seulement si absentes (production)
         if: inputs.action == 'remplir' && inputs.environment == 'production'
         run: supabase db query --remote --yes --file supabase/demo/seasons-if-missing.sql
       - name: Générateur de démo

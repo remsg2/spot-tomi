@@ -54,7 +54,7 @@ async function StatsContent() {
     <>
       <StatSection title={ts.world.title} id="monde">
         <WorldTiles stats={stats} />
-        <Link href="/?conquete=1" className="inline-flex min-h-11 items-center self-start text-sm font-semibold underline underline-offset-4">
+        <Link href="/" className="inline-flex min-h-11 items-center self-start text-sm font-semibold underline underline-offset-4">
           {ts.conquest.mapLink}
         </Link>
       </StatSection>
