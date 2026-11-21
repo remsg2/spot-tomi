@@ -28,6 +28,16 @@ test("champs reconnus par les gestionnaires de mots de passe, mode mot de passe 
   await expect(page.getByRole("button", { name: "Recevoir un lien de connexion" })).toBeVisible();
 });
 
+test("app installée sur iPhone : mot de passe d'emblée, lien magique déconseillé", async ({ page }) => {
+  // Écran d'accueil iOS : navigator.standalone, stockage séparé de Safari (où s'ouvrent les liens des emails).
+  await page.addInitScript(() => Object.defineProperty(navigator, "standalone", { value: true }));
+  await page.goto("/login");
+  await expect(page.getByLabel("Mot de passe")).toBeVisible();
+  await expect(page.getByText("Ouvre Spot Tomi dans Safari")).toBeVisible();
+  await page.getByRole("button", { name: "Utiliser un lien par email" }).click();
+  await expect(page.getByTestId("installed-app-notice")).toContainText("utilise ton mot de passe");
+});
+
 for (const path of ["/me", "/me/settings", "/welcome"]) {
   test(`${path} demande d'être connecté`, async ({ page }) => {
     await page.goto(path);
