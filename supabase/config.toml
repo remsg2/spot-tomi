@@ -400,6 +400,12 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Publication d'un sticker (étape 5). La fonction vérifie elle-même le jeton
+# de l'utilisateur (auth.getUser), ce qui lui permet aussi de répondre aux
+# requêtes CORS préalables, envoyées sans jeton.
+[functions.publish-spot]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
