@@ -18,7 +18,7 @@ const DEBOUNCE_MS = 250;
  * déroulante accessible au clavier (motif ARIA « combobox »).
  */
 export function SearchBox({ className, compact = false }: { className?: string; compact?: boolean }) {
-  const { getSupabase, setFilters, commands, openSummary } = useMapContext();
+  const { getSupabase, setFilters, commands, selectedId } = useMapContext();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -86,8 +86,10 @@ export function SearchBox({ className, compact = false }: { className?: string; 
     }
     if (target) commands.current?.goTo(target);
     if (result.kind === "spot") {
-      if (window.matchMedia("(min-width: 768px)").matches) router.push(`/spots/${result.id}`);
-      else openSummary(result.id);
+      // Sur mobile, d'une fiche à l'autre sans empiler l'historique : « fermer » revient à la carte.
+      const wide = window.matchMedia("(min-width: 768px)").matches;
+      if (!wide && selectedId) router.replace(`/spots/${result.id}`);
+      else router.push(`/spots/${result.id}`);
     }
   }
 

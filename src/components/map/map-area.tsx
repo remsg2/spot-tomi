@@ -11,7 +11,6 @@ import { FiltersIcon } from "./icons";
 import { LocateButton, MapAttribution, MapLegend, MapNotices, ZoomControls } from "./map-controls";
 import { useMapContext } from "./map-provider";
 import { SearchBox } from "./search-box";
-import { SpotSummaryCard } from "./spot-summary-card";
 
 /** MapLibre (≈ 1 Mo) n'est chargé que sur les écrans qui affichent la carte. */
 const WorldMap = dynamic(() => import("./world-map"), {
@@ -81,12 +80,9 @@ export function MapArea({ account, isHome }: { account: ReactNode; isHome: boole
       </div>
       <MapLegend className="absolute bottom-5 left-5 z-10 hidden lg:flex" />
 
-      {/* Mobile : localisation et carte résumée au-dessus de la barre d'onglets. */}
+      {/* Mobile : localisation au-dessus de la barre d'onglets (la fiche s'ouvre dans un tiroir). */}
       <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10 flex flex-col items-end gap-3 md:hidden">
         <LocateButton className="pointer-events-auto" />
-        <div className="pointer-events-auto w-full empty:hidden">
-          <SpotSummaryCard />
-        </div>
       </div>
 
       <MapAttribution className="absolute right-2 bottom-0.5 z-20" />

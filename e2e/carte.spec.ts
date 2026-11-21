@@ -162,7 +162,7 @@ test.describe("données de la carte", () => {
     await expect(page.getByRole("button", { name: "Retirer le filtre @Hugo" }).first()).toBeVisible();
   });
 
-  test("recherche d'un lieu sans accent : fiche (web) ou carte résumée (mobile)", async ({ page, isMobile }) => {
+  test("recherche d'un lieu sans accent : la fiche s'ouvre (colonne en web, tiroir sur mobile)", async ({ page }) => {
     await page.goto("/");
     await waitForMap(page);
     await page.getByRole("combobox", { name: "Rechercher" }).fill("ushuaia");
@@ -170,13 +170,6 @@ test.describe("données de la carte", () => {
     await expect(option).toBeVisible();
     await option.click();
 
-    if (isMobile) {
-      const summary = page.getByTestId("spot-summary");
-      await expect(summary).toContainText("Ushuaïa");
-      await expect(summary).toContainText("par Remi");
-      await expect(summary).toContainText("+195");
-      await summary.getByRole("link").click();
-    }
     await expect(page).toHaveURL(new RegExp(`/spots/${USHUAIA_ID}$`));
     await expect(page.getByRole("heading", { level: 1, name: "Ushuaïa" })).toBeVisible();
   });

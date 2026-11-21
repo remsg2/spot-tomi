@@ -3,7 +3,7 @@
  *
  * Sous 768 px :
  * - « map »   : la carte en plein écran, la barre d'onglets en bas (page /) ;
- * - « sheet » : la page en plein écran, sans barre d'onglets (fiche lieu) ;
+ * - « sheet » : la carte et la fiche lieu dans un tiroir, sans barre d'onglets ;
  * - « page »  : la page en plein écran avec la barre d'onglets (classement, profil…).
  * À partir de 768 px, toutes les pages du gabarit s'affichent dans la colonne de
  * gauche, la carte à droite.

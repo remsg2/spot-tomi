@@ -9,13 +9,15 @@ import { PlusIcon } from "@/components/map/icons";
 import { tm } from "@/i18n/map.fr";
 import { cn } from "@/lib/cn";
 import { mobileModeFor } from "./routes";
+import { SpotDrawer } from "./spot-drawer";
 import { useMediaQuery, WIDE_QUERY } from "./use-media-query";
 
 /**
  * Gabarit d'application (spécifications 2.3 et 5 ; contrats §5).
  *
  * - < 768 px : plein écran. Page / : la carte et la barre d'onglets ; fiche lieu :
- *   la fiche seule ; autres pages : la page et la barre d'onglets.
+ *   la carte, et la fiche dans un tiroir qui monte du bas (SpotDrawer) ; autres
+ *   pages : la page et la barre d'onglets.
  * - 768-1023 px (tablette) : colonne de 380 px à gauche + carte à droite.
  * - ≥ 1024 px (web) : colonne de 440 px à gauche + carte à droite.
  * La navigation est alors en haut de la colonne.
@@ -38,18 +40,10 @@ export function AppShell({
   const mode = mobileModeFor(pathname);
   const wide = useMediaQuery(WIDE_QUERY);
   const isHome = pathname === "/";
-  const showMap = mode === "map" || wide;
+  const showMap = mode !== "page" || wide;
 
-  return (
-    <div data-shell-mode={mode} className="flex h-dvh w-full flex-col overflow-hidden bg-bg md:flex-row">
-      <main
-        id="contenu"
-        data-testid="shell-column"
-        className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-y-auto bg-card md:w-[380px] md:flex-none md:border-r md:border-line lg:w-[440px]",
-          mode === "map" && "hidden md:flex",
-        )}
-      >
+  const column = (
+    <>
         <header className="hidden flex-col gap-4 px-6 pt-[22px] pb-4 md:flex">
           <div className="flex items-center justify-between gap-3">
             {isHome ? (
@@ -77,12 +71,30 @@ export function AppShell({
           </Link>
         </header>
         <div className="flex flex-1 flex-col">{children}</div>
-      </main>
+    </>
+  );
+
+  return (
+    <div data-shell-mode={mode} className="flex h-dvh w-full flex-col overflow-hidden bg-bg md:flex-row">
+      {mode === "sheet" ? (
+        <SpotDrawer wide={wide}>{column}</SpotDrawer>
+      ) : (
+        <main
+          id="contenu"
+          data-testid="shell-column"
+          className={cn(
+            "flex min-h-0 flex-1 flex-col overflow-y-auto bg-card md:w-[380px] md:flex-none md:border-r md:border-line lg:w-[440px]",
+            mode === "map" && "hidden md:flex",
+          )}
+        >
+          {column}
+        </main>
+      )}
 
       <section
         aria-label={tm.map.title}
         data-testid="shell-map"
-        className={cn("relative min-h-0 flex-1", mode !== "map" && "hidden md:block")}
+        className={cn("relative min-h-0 flex-1", mode === "page" && "hidden md:block")}
       >
         {showMap && <MapArea account={account} isHome={isHome} />}
       </section>

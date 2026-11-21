@@ -90,8 +90,13 @@ export const mapFr = {
     loading: "Chargement des stickers…",
     more: (count: number) => `et ${plural(count, "autre", "autres")}`,
   },
+  drawer: {
+    expand: "Agrandir la fiche",
+    collapse: "Réduire la fiche",
+  },
   spot: {
     back: "Retour à la carte",
+    close: "Fermer la fiche",
     share: "Partager",
     shareText: (name: string) => `${name} · un sticker de Tomi sur Spot Tomi`,
     linkCopied: "Lien copié",

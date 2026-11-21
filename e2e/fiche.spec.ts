@@ -51,17 +51,62 @@ test("lieu exceptionnel : badge doré avec l'altitude", async ({ page }) => {
   await expect(sheet(page)).toContainText("Pays courant");
 });
 
-test("mobile : fiche plein écran, retour à la carte, sans barre d'onglets", async ({ page, isMobile }) => {
+/** Glisse la poignée du tiroir (photo) de `dy` pixels. */
+async function dragGrip(page: import("@playwright/test").Page, dy: number) {
+  // Fin de l'animation du tiroir (300 ms) avant de viser la poignée.
+  await page.waitForTimeout(400);
+  const grip = page.getByTestId("shell-column").locator("[data-sheet-grip]").first();
+  const box = (await grip.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + 12;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + dy / 2, { steps: 6 });
+  await page.mouse.move(x, y + dy, { steps: 6 });
+  await page.mouse.up();
+}
+
+test("mobile : fiche dans un tiroir sur la carte, à mi-hauteur puis plein écran, croix pour fermer", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "mise en page sous 768 px");
+  await page.goto("/");
+  await page.goto(`/spots/${USHUAIA_ID}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Ushuaïa" })).toBeVisible();
+  // La carte reste affichée derrière le tiroir, sans barre d'onglets.
+  await expect(page.getByTestId("world-map")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Navigation principale" })).toHaveCount(0);
+  const drawer = page.getByTestId("shell-column");
+  await expect(drawer).toHaveAttribute("data-sheet", "half");
+  const box = (await sheet(page).boundingBox())!;
+  expect(box.width).toBe(page.viewportSize()!.width);
+  expect(box.y).toBeGreaterThan(page.viewportSize()!.height * 0.35);
+
+  // Tirer vers le haut : plein écran ; vers le bas : retour à mi-hauteur.
+  await dragGrip(page, -320);
+  await expect(drawer).toHaveAttribute("data-sheet", "full");
+  await dragGrip(page, 220);
+  await expect(drawer).toHaveAttribute("data-sheet", "half");
+
+  await page.getByRole("link", { name: "Fermer la fiche" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByTestId("world-map")).toBeVisible();
+});
+
+test("mobile : tirer le tiroir vers le bas le ferme", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "mise en page sous 768 px");
+  await page.goto("/");
+  await page.goto(`/spots/${USHUAIA_ID}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Ushuaïa" })).toBeVisible();
+  await dragGrip(page, 400);
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Ushuaïa" })).toHaveCount(0);
+});
+
+test("mobile : lien partagé (ouverture directe), la croix mène à la carte", async ({ page, isMobile }) => {
   test.skip(!isMobile, "mise en page sous 768 px");
   await page.goto(`/spots/${USHUAIA_ID}`);
   await expect(page.getByRole("heading", { level: 1, name: "Ushuaïa" })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Navigation principale" })).toHaveCount(0);
-  await expect(page.getByTestId("shell-map").filter({ visible: true })).toHaveCount(0);
-  const box = (await sheet(page).boundingBox())!;
-  expect(box.width).toBe(page.viewportSize()!.width);
-  await page.getByRole("link", { name: "Retour à la carte" }).click();
+  await page.getByRole("link", { name: "Fermer la fiche" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByTestId("world-map")).toBeVisible();
 });
 
 test("web : la fiche s'affiche dans la colonne, la carte à droite", async ({ page, isMobile }) => {
