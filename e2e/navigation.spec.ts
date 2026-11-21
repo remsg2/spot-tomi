@@ -39,9 +39,11 @@ test("connexion ouverte depuis le classement : le retour revient au classement",
   await expect(page).toHaveURL(/\/leaderboard$/);
 });
 
-test("règles ouvertes depuis une fiche : le retour revient à la fiche", async ({ page }) => {
+test("règles ouvertes depuis une fiche : le retour revient à la fiche", async ({ page, isMobile }) => {
   test.skip(process.env.EXPECTED_APP_ENV === "production", "données du Supabase simulé");
   await page.goto(`/spots/${USHUAIA_ID}`);
+  // Mobile : la fiche s'ouvre à mi-hauteur dans un tiroir ; plein écran pour lire la suite.
+  if (isMobile) await page.getByRole("button", { name: "Agrandir la fiche" }).click();
   await page.getByRole("link", { name: "Comment sont calculés les points ?" }).click();
   await expect(page).toHaveURL(/\/points$/);
   await back(page).click();

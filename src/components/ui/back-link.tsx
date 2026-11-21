@@ -4,12 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
 import { cn } from "@/lib/cn";
-
-/** Navigation API (Chrome, Edge, Safari et Firefox récents) : vrai s'il existe une page précédente de l'app. */
-function canGoBackInApp(): boolean {
-  const navigation = (window as Window & { navigation?: { canGoBack?: boolean } }).navigation;
-  return navigation?.canGoBack === true;
-}
+import { canGoBackInApp } from "@/lib/navigation/back";
 
 export type BackLinkProps = {
   /** Page parente, suivie quand il n'y a pas de page précédente dans l'app (lien partagé, ouverture directe). */
@@ -23,6 +18,10 @@ export type BackLinkProps = {
   history?: boolean;
   /** « outline » : bordure, sur fond de page. « floating » : ombre, posé sur une photo ou la carte. */
   variant?: "outline" | "floating";
+  /** Flèche (retour) ou croix (fermer un tiroir, quitter un écran final). */
+  icon?: "back" | "close";
+  /** Sans historique : remplace la page courante (pas de retour vers elle). */
+  replace?: boolean;
   className?: string;
 };
 
@@ -30,7 +29,15 @@ export type BackLinkProps = {
  * Bouton retour rond (44 px) des pages sans barre d'onglets ni navigation :
  * aucune page ne laisse l'utilisateur sans moyen de repartir.
  */
-export function BackLink({ href, label, history = true, variant = "outline", className }: BackLinkProps) {
+export function BackLink({
+  href,
+  label,
+  history = true,
+  variant = "outline",
+  icon = "back",
+  replace = false,
+  className,
+}: BackLinkProps) {
   const router = useRouter();
 
   function onClick(event: MouseEvent<HTMLAnchorElement>) {
@@ -44,6 +51,7 @@ export function BackLink({ href, label, history = true, variant = "outline", cla
   return (
     <Link
       href={href}
+      replace={replace}
       aria-label={label}
       onClick={onClick}
       data-testid="back-link"
@@ -65,7 +73,7 @@ export function BackLink({ href, label, history = true, variant = "outline", cla
         aria-hidden="true"
         focusable="false"
       >
-        <path d="m15 5-7 7 7 7" />
+        {icon === "close" ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="m15 5-7 7 7 7" />}
       </svg>
     </Link>
   );

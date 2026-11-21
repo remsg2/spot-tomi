@@ -39,6 +39,7 @@ import {
 } from "@/lib/map/style";
 import { EMPTY_COLLECTION, type CountryRarity, type SpotCollection, type ThemeName } from "@/lib/map/types";
 import { summarizeVisible } from "@/lib/map/visible";
+import { canGoBackInApp } from "@/lib/navigation/back";
 import { drawCluster, drawMarker, loadMarkerAssets, type MarkerAssets } from "./marker-images";
 import { useMapContext } from "./map-provider";
 
@@ -80,8 +81,21 @@ function hasWebgl(): boolean {
   }
 }
 
-/** Amène un sticker dans la vue (fiche ouverte en web), sans bouger si on le voit déjà. */
-function showFocus(map: MapLibreMap, focus: { lng: number; lat: number }) {
+/**
+ * Amène le sticker de la fiche ouverte dans la vue. Sur mobile (`bottomInset` :
+ * hauteur cachée par le tiroir), il est centré dans la partie visible au-dessus
+ * du tiroir ; en web, la carte ne bouge pas si on le voit déjà.
+ */
+function showFocus(map: MapLibreMap, focus: { lng: number; lat: number }, bottomInset = 0) {
+  if (bottomInset > 0) {
+    map.easeTo({
+      center: [focus.lng, focus.lat],
+      zoom: map.getZoom() < 3 ? 9 : map.getZoom(),
+      padding: { top: 0, right: 0, left: 0, bottom: bottomInset },
+      duration: reducedMotion() ? 0 : 600,
+    });
+    return;
+  }
   const inside = containsPoint(toBboxArgs(boundsOf(map)), focus.lng, focus.lat);
   if (!inside || map.getZoom() < 3) {
     map.flyTo({ center: [focus.lng, focus.lat], zoom: Math.max(map.getZoom(), 9), duration: reducedMotion() ? 0 : 900 });
@@ -143,7 +157,7 @@ export default function WorldMap() {
   });
 
   const filterKey = filtersKey(context.filters);
-  const { selectedId, focus, seasons } = context;
+  const { selectedId, focus, seasons, bottomInset } = context;
 
   useEffect(() => {
     themeRef.current = theme;
@@ -411,8 +425,13 @@ export default function WorldMap() {
     const onClick = (event: { point: { x: number; y: number } }) => {
       if (!map) return;
       const feature = pickFeature(event.point);
+      const wide = window.matchMedia("(min-width: 768px)").matches;
       if (!feature) {
-        live.current.openSummary(null);
+        // Mobile : toucher la carte autour du tiroir ferme la fiche.
+        if (!wide && live.current.selectedId) {
+          if (canGoBackInApp()) routerRef.current.back();
+          else routerRef.current.replace("/");
+        }
         return;
       }
       const properties = feature.properties as Record<string, unknown>;
@@ -426,11 +445,10 @@ export default function WorldMap() {
       }
       const id = String(properties.id ?? "");
       if (!id) return;
-      if (window.matchMedia("(min-width: 768px)").matches) {
-        routerRef.current.push(`/spots/${id}`);
-      } else {
-        live.current.openSummary(id);
-      }
+      // Fiche du sticker : colonne en web, tiroir sur mobile. Sur mobile, d'un sticker à
+      // l'autre sans empiler l'historique : « fermer » revient toujours à la carte.
+      if (!wide && live.current.selectedId) routerRef.current.replace(`/spots/${id}`);
+      else routerRef.current.push(`/spots/${id}`);
     };
 
     const onMouseMove = (event: { point: { x: number; y: number } }) => {
@@ -514,7 +532,7 @@ export default function WorldMap() {
         void loadSpots(true);
         // Fiche ouverte avant que la carte soit prête.
         const pending = live.current.focus;
-        if (map && pending) showFocus(map, pending);
+        if (map && pending) showFocus(map, pending, live.current.bottomInset);
       });
       live.current.commands.current = {
         zoomIn: () => map?.zoomIn({ duration: reducedMotion() ? 0 : 300 }),
@@ -598,10 +616,17 @@ export default function WorldMap() {
     map.setFilter(LAYER_SELECTED, ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], selectedId ?? ""]]);
   }, [selectedId]);
 
-  // Fiche ouverte en web : la carte montre le sticker s'il est hors de la vue.
+  // Fiche ouverte : la carte montre le sticker (au-dessus du tiroir sur mobile).
+  // Tiroir fermé : la carte retrouve toute la hauteur.
   useEffect(() => {
-    if (mapRef.current && focus) showFocus(mapRef.current, focus);
-  }, [focus]);
+    const map = mapRef.current;
+    if (!map) return;
+    if (focus) {
+      showFocus(map, focus, bottomInset);
+    } else if ((map.getPadding().bottom ?? 0) > 0) {
+      map.easeTo({ padding: { top: 0, right: 0, left: 0, bottom: 0 }, duration: reducedMotion() ? 0 : 300 });
+    }
+  }, [focus, bottomInset]);
 
   // Le conteneur de MapLibre reçoit `position: relative` de maplibre-gl.css (hors
   // couches Tailwind, donc prioritaire) : il remplit un parent positionné.

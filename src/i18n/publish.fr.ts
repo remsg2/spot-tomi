@@ -151,6 +151,7 @@ export const publishFr = {
   },
 
   done: {
+    close: "Retour à la carte",
     title: "Sticker collé !",
     place: (city: string | null, country: string | null, name: string) =>
       [city, country].filter(Boolean).join(", ") || name,

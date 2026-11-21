@@ -44,11 +44,11 @@ type MapContextValue = {
   setFilters: (update: MapFilters | ((previous: MapFilters) => MapFilters)) => void;
   seasons: Season[];
   userId: string | null;
-  /** Sticker de la fiche ouverte (web) ou de la carte résumée (mobile). */
+  /** Sticker de la fiche ouverte (colonne en web, tiroir sur mobile). */
   selectedId: string | null;
-  /** Carte résumée en bas de l'écran (mobile). */
-  summaryId: string | null;
-  openSummary: (id: string | null) => void;
+  /** Hauteur (px) de la carte cachée en bas par le tiroir de la fiche (mobile), sinon 0. */
+  bottomInset: number;
+  setBottomInset: (pixels: number) => void;
   /** Position du sticker de la fiche ouverte, pour la carte de droite. */
   focus: { id: string; lng: number; lat: number } | null;
   setFocus: (focus: { id: string; lng: number; lat: number } | null) => void;
@@ -84,7 +84,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  const [summaryId, setSummaryId] = useState<string | null>(null);
+  const [bottomInset, setBottomInset] = useState(0);
   const [focus, setFocus] = useState<MapContextValue["focus"]>(null);
   const [visible, setVisible] = useState<VisibleSummary>(EMPTY_VISIBLE);
   const [status, setStatusState] = useState<MapStatus>({
@@ -161,7 +161,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
   );
 
   const pathSpotId = spotIdFromPath(pathname);
-  const selectedId = pathSpotId ?? summaryId;
+  const selectedId = pathSpotId;
 
   const value = useMemo<MapContextValue>(
     () => ({
@@ -170,8 +170,8 @@ export function MapProvider({ children }: { children: ReactNode }) {
       seasons,
       userId,
       selectedId,
-      summaryId: pathname === "/" ? summaryId : null,
-      openSummary: setSummaryId,
+      bottomInset,
+      setBottomInset,
       focus: focus && focus.id === pathSpotId ? focus : null,
       setFocus,
       visible,
@@ -189,8 +189,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
       seasons,
       userId,
       selectedId,
-      pathname,
-      summaryId,
+      bottomInset,
       focus,
       pathSpotId,
       visible,

@@ -142,3 +142,33 @@ body {
     animation: none;
   }
 }
+
+/*
+ * Tiroir de la fiche lieu sous 768 px (src/components/shell/spot-drawer.tsx) :
+ * il monte depuis le bas, s'arrête à mi-hauteur (--sheet-y) et suit le doigt.
+ * À partir de 768 px, la fiche reste dans la colonne de gauche.
+ */
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .spot-drawer {
+    transform: translateY(var(--sheet-y, 45%));
+    transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: sheet-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .spot-drawer[data-dragging="true"] {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot-drawer {
+    transition: none;
+    animation: none;
+  }
+}

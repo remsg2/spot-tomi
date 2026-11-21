@@ -64,6 +64,8 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     await expect(page.getByRole("img", { name: "Sticker de Tomi : +195" })).toBeVisible();
     await expect(page.getByTestId("rank")).toHaveText("Tu passes 2ᵉ du classement");
     await expect(page.getByRole("link", { name: "Voir sur la carte" })).toHaveAttribute("href", /^\/spots\/[0-9a-f-]{36}$/);
+    // Croix « Retour à la carte » : quitter l'écran final sans repasser par le parcours.
+    await expect(page.getByRole("link", { name: "Retour à la carte" })).toHaveAttribute("href", "/");
 
     // Le fichier envoyé dans spot-photos/{user_id}/{uuid}.webp.
     const upload = await uploadedWebp(page);

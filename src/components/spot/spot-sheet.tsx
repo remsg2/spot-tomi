@@ -39,7 +39,11 @@ export function SpotSheet({
     >
       <SpotFocus id={spot.id} lng={spot.lng} lat={spot.lat} />
 
-      <div className="relative h-[270px] shrink-0 overflow-hidden bg-soft md:mx-6 md:h-[168px] md:rounded-[18px]">
+      {/* Sur mobile, la photo sert aussi de poignée au tiroir (src/components/shell/spot-drawer.tsx). */}
+      <div
+        data-sheet-grip=""
+        className="relative h-[270px] shrink-0 touch-none overflow-hidden bg-soft select-none md:mx-6 md:h-[168px] md:touch-auto md:rounded-[18px] md:select-auto"
+      >
         {isDemoPhoto(spot.photoUrl) ? (
           // Stickers de démo (base dev) : pas de vraie photo, le sticker en illustration.
           <div className="flex h-full items-center justify-center">
@@ -60,7 +64,7 @@ export function SpotSheet({
           </>
         )}
         <div className="absolute inset-x-4 top-[calc(16px+env(safe-area-inset-top))] flex justify-between md:inset-x-3 md:top-3 md:justify-end">
-          <BackLink href="/" label={tm.spot.back} variant="floating" className="md:hidden" />
+          <BackLink href="/" label={tm.spot.close} icon="close" variant="floating" className="md:hidden" />
           <ShareButton name={spot.name} />
         </div>
       </div>

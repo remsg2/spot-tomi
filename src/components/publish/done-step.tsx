@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { AnimatedPointsBreakdown, Sticker } from "@/components/ui";
+import { AnimatedPointsBreakdown, BackLink, Sticker } from "@/components/ui";
 import { tp } from "@/i18n/publish.fr";
 import { formatPoints } from "@/lib/design/points";
 import type { PublishResult } from "@/lib/publish/contract";
@@ -73,7 +73,16 @@ export function DoneStep({ result, onAnother }: { result: PublishResult; onAnoth
         <span className={`${confetti} top-[260px] right-[30px] size-2 rotate-10 bg-white`} />
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-[440px] flex-1 flex-col items-center gap-[18px] px-5 pt-10 pb-[calc(28px+env(safe-area-inset-bottom))]">
+      <div className="relative mx-auto flex w-full max-w-[440px] flex-1 flex-col items-center gap-[18px] px-5 pt-[calc(64px+env(safe-area-inset-top))] pb-[calc(28px+env(safe-area-inset-bottom))]">
+        <BackLink
+          href="/"
+          label={tp.done.close}
+          icon="close"
+          variant="floating"
+          history={false}
+          replace
+          className="absolute top-[calc(12px+env(safe-area-inset-top))] left-4 z-10"
+        />
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 ref={headingRef} tabIndex={-1} className="font-display text-[34px] leading-[1.05] font-normal outline-none">
             {tp.done.title}
@@ -114,8 +123,10 @@ export function DoneStep({ result, onAnother }: { result: PublishResult; onAnoth
         )}
 
         <div className="mt-auto flex w-full gap-2.5 pt-2">
+          {/* Remplace l'étape « Sticker collé » : le retour depuis la fiche revient à la carte. */}
           <Link
             href={`/spots/${spot.id}`}
+            replace
             className="flex h-14 flex-[1.4] items-center justify-center rounded-[18px] bg-[#111111] px-3 text-center font-display text-base text-white focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#111111] dark:shadow-[0_0_0_1px_#3A3A40] dark:focus-visible:outline-text"
           >
             {tp.done.seeOnMap}
