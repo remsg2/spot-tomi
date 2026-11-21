@@ -6,7 +6,10 @@ import { isSpotId } from "@/components/shell/routes";
 import { SpotSheet, SpotSheetSkeleton } from "@/components/spot/spot-sheet";
 import { tm } from "@/i18n/map.fr";
 import { formatPoints } from "@/lib/design/points";
-import { getSpotPageData, getViewer } from "@/lib/spots/server";
+import { toEditionOptions } from "@/lib/editions";
+import { DEFAULT_COMMENT_MAX } from "@/lib/publish/contract";
+import { getLikeInfo, getNearbySpots, getSpotEditInfo, getSpotPageData, getViewer } from "@/lib/spots/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 async function loadSpot(id: string) {
   if (!isSpotId(id)) return null;
@@ -64,5 +67,37 @@ async function SpotContent({ params }: Pick<PageProps<"/spots/[id]">, "params">)
   const spot = await loadSpot(id);
   if (!spot) notFound();
   const { user } = await getViewer();
-  return <SpotSheet spot={spot} viewerId={user?.id ?? null} />;
+  const isAuthor = user?.id === spot.authorId;
+  const published = spot.status === "published";
+  const [like, nearby, editInfo, edit] = await Promise.all([
+    published ? getLikeInfo(spot.id) : Promise.resolve({ count: 0, liked: false }),
+    published ? getNearbySpots(spot.id) : Promise.resolve([]),
+    isAuthor ? getSpotEditInfo(spot.id) : Promise.resolve(null),
+    isAuthor ? loadEditOptions() : Promise.resolve({ editions: [], commentMax: DEFAULT_COMMENT_MAX }),
+  ]);
+  return (
+    <SpotSheet
+      spot={spot}
+      viewerId={user?.id ?? null}
+      extras={{ like, nearby, editInfo, editions: edit.editions, commentMax: edit.commentMax }}
+    />
+  );
+}
+
+/** Éditions choisissables et longueur du commentaire, pour le formulaire de l'auteur. */
+async function loadEditOptions() {
+  try {
+    const supabase = await getSupabaseServerClient();
+    const [editions, rule] = await Promise.all([
+      supabase.rpc("list_editions"),
+      supabase.from("scoring_rules").select("value").eq("key", "comment_max_length").maybeSingle<{ value: number }>(),
+    ]);
+    const commentMax = Number(rule.data?.value);
+    return {
+      editions: toEditionOptions(editions.data),
+      commentMax: Number.isFinite(commentMax) && commentMax > 0 ? commentMax : DEFAULT_COMMENT_MAX,
+    };
+  } catch {
+    return { editions: [], commentMax: DEFAULT_COMMENT_MAX };
+  }
 }

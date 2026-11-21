@@ -1,7 +1,7 @@
 import { profileFr as p } from "@/i18n/profile.fr";
 import { buildAlbumView } from "@/lib/profile/album";
-import type { ProfileData, ProfileIdentity } from "@/lib/profile/types";
-import { AlbumSection } from "./album-section";
+import type { LedgerLine, Notice, ProfileData, ProfileIdentity } from "@/lib/profile/types";
+import { BadgesSection, LedgerSection, MemberStatsSection, NoticesSection, PassportSection } from "./collection-sections";
 import { ProfileHeader, ProfileScore } from "./profile-header";
 import { ScrollToHash } from "./scroll-to-hash";
 import { SpotList } from "./spot-list";
@@ -11,18 +11,29 @@ export type ProfileViewProps = {
   data: ProfileData;
   /** Son propre profil (/me) : réglages, badge de rôle, stickers en attente. */
   isMe: boolean;
+  /** Son propre profil : avis reçus et journal de points. */
+  notices?: Notice[];
+  ledger?: LedgerLine[];
 };
 
-/** Profil et album (maquette Profil), pour /me et /u/[username]. */
-export function ProfileView({ identity, data, isMe }: ProfileViewProps) {
+/**
+ * Profil (maquette Profil, cahier des charges 3 et 8) pour /me et /u/[username] : score,
+ * avis (soi), passeport, badges, statistiques, stickers, journal de points (soi).
+ */
+export function ProfileView({ identity, data, isMe, notices, ledger }: ProfileViewProps) {
   const album = buildAlbumView(data.album);
   return (
     <>
       <ProfileHeader identity={identity} isMe={isMe} />
       <ProfileScore stats={data.stats} />
-      <AlbumSection album={album} isMe={isMe} />
+      {isMe && notices && notices.length > 0 && <NoticesSection notices={notices} />}
+      <PassportSection stamps={data.passport} album={album} countriesTotal={data.countriesTotal} isMe={isMe} />
+      <BadgesSection badges={data.badges} />
+      <MemberStatsSection member={data.member} progress={data.progress} />
       <SpotList spots={data.spots} isMe={isMe} />
+      {isMe && ledger && <LedgerSection lines={ledger} />}
       <ScrollToHash id="album" />
+      <ScrollToHash id="stats" />
     </>
   );
 }

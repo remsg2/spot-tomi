@@ -4,12 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, useTransition, type FormEvent, type ReactNode } from "react";
 import {
   AvatarField,
-  HomeField,
   UsernameField,
   inputClass,
   secondaryButtonClass,
   uploadAvatar,
-  type HomeState,
 } from "@/components/account/fields";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { HapticTouch, PrimaryButton } from "@/components/ui";
@@ -17,7 +15,7 @@ import { t } from "@/i18n/fr";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { haptic, hapticsEnabled, hapticsSupported, setHapticsEnabled } from "@/lib/haptics";
 import { isAppleMobile } from "@/lib/platform";
-import { clearHome, saveHome, updateTheme, updateUsername } from "@/lib/profile/actions";
+import { updateTheme, updateUsername } from "@/lib/profile/actions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { passwordSchema } from "@/lib/validation/profile";
 
@@ -118,53 +116,6 @@ export function AvatarSection({
         {avatarPath && (
           <button type="button" onClick={remove} disabled={pending} className={secondaryButtonClass}>
             {t.profile.avatarRemove}
-          </button>
-        )}
-      </div>
-      <Feedback message={message?.text ?? null} error={message?.error} />
-    </Section>
-  );
-}
-
-export function HomeSection({ hasHome }: { hasHome: boolean }) {
-  const router = useRouter();
-  const [state, setState] = useState<HomeState>({ kind: "none" });
-  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function save() {
-    if (state.kind !== "ready") return;
-    startTransition(async () => {
-      const result = await saveHome({ lat: state.lat, lng: state.lng });
-      setMessage(result.ok ? { text: t.profile.homeSet, error: false } : { text: result.message, error: true });
-      if (result.ok) {
-        setState({ kind: "none" });
-        router.refresh();
-      }
-    });
-  }
-
-  function remove() {
-    startTransition(async () => {
-      const result = await clearHome();
-      setMessage(result.ok ? { text: t.settings.saved, error: false } : { text: result.message, error: true });
-      router.refresh();
-    });
-  }
-
-  return (
-    <Section title={t.profile.home}>
-      <p className="text-sm font-semibold">{hasHome ? t.profile.homeSet : t.profile.homeNone}</p>
-      <HomeField state={state} onChange={setState} />
-      <div className="flex flex-wrap gap-2">
-        {state.kind === "ready" && (
-          <PrimaryButton type="button" onClick={save} disabled={pending}>
-            {t.settings.save}
-          </PrimaryButton>
-        )}
-        {hasHome && (
-          <button type="button" onClick={remove} disabled={pending} className={secondaryButtonClass}>
-            {t.profile.homeRemove}
           </button>
         )}
       </div>

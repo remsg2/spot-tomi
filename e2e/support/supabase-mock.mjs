@@ -13,9 +13,9 @@ import { createServer } from "node:http";
 export const MOCK_PORT = Number(process.argv[2] ?? process.env.SUPABASE_MOCK_PORT ?? 54329);
 
 const SEASONS = [
-  { year: 2026, color_hex: "#5B8DEF", is_current: true },
-  { year: 2025, color_hex: "#FF7A59", is_current: false },
-  { year: 2024, color_hex: "#F2C230", is_current: false },
+  { year: 2026, name: "Édition 2026", color_hex: "#5B8DEF", is_current: true, status: "active", visual_path: null },
+  { year: 2025, name: "Édition 2025", color_hex: "#FF7A59", is_current: false, status: "active", visual_path: null },
+  { year: 2024, name: "Édition 2024", color_hex: "#F2C230", is_current: false, status: "archived", visual_path: null },
 ];
 const color = (year) => SEASONS.find((s) => s.year === year)?.color_hex ?? "#9A9A94";
 
@@ -34,6 +34,11 @@ function spot(n, data) {
     is_first_in_country: false,
     created_at: data.taken_at,
     photo_path: `${data.author.id}/${n}.webp`,
+    thumb_path: null,
+    comment: null,
+    edition_name: `Édition ${data.year}`,
+    rarity_category: "courant",
+    rarity_reason: null,
     author_id: data.author.id,
     author_username: data.author.username,
     color_hex: color(data.year),
@@ -44,64 +49,65 @@ function spot(n, data) {
 export const SPOTS = [
   spot(1, {
     name: "Ushuaïa", city: "Ushuaïa", country_iso2: "AR", country_name_fr: "Argentine", country_tier: "lointain",
-    lat: -54.8019, lng: -68.303, taken_at: "2025-03-14T15:00:00Z", year: 2025, points_total: 195,
-    is_first_in_country: true, author: AUTHORS.remi,
+    lat: -54.8019, lng: -68.303, taken_at: "2025-03-14T15:00:00Z", year: 2025, points_total: 120,
+    is_first_in_country: true, rarity_category: "touristique", rarity_reason: "Site touristique à moins de 300 m",
+    comment: "Au bout du monde, face au canal Beagle.", author: AUTHORS.remi,
   }),
   spot(2, {
     name: "Mont Blanc", city: "Chamonix", country_iso2: "FR", country_name_fr: "France", country_tier: "courant",
-    lat: 45.8326, lng: 6.8652, taken_at: "2026-08-12T10:00:00Z", year: 2026, points_total: 53,
-    is_exceptional: true, altitude_m: 4808, author: AUTHORS.lea,
+    lat: 45.8326, lng: 6.8652, taken_at: "2026-08-12T10:00:00Z", year: 2026, points_total: 300,
+    is_exceptional: true, altitude_m: 4808, rarity_category: "tres_rare", rarity_reason: "Altitude 4 808 m",
+    author: AUTHORS.lea,
   }),
   spot(3, {
     name: "Dubrovnik", city: "Dubrovnik", country_iso2: "HR", country_name_fr: "Croatie", country_tier: "courant",
-    lat: 42.6507, lng: 18.0944, taken_at: "2026-06-03T09:00:00Z", year: 2026, points_total: 85,
-    is_first_in_country: true, author: AUTHORS.hugo,
+    lat: 42.6507, lng: 18.0944, taken_at: "2026-06-03T09:00:00Z", year: 2026, points_total: 120,
+    is_first_in_country: true, rarity_category: "touristique", rarity_reason: "Site touristique à moins de 300 m",
+    author: AUTHORS.hugo,
   }),
   spot(4, {
     name: "Pont des Arts", city: "Paris", country_iso2: "FR", country_name_fr: "France", country_tier: "courant",
-    lat: 48.8583, lng: 2.3375, taken_at: "2024-05-01T12:00:00Z", year: 2024, points_total: 12, author: AUTHORS.lea,
+    lat: 48.8583, lng: 2.3375, taken_at: "2024-05-01T12:00:00Z", year: 2024, points_total: 100, author: AUTHORS.lea,
   }),
   spot(5, {
     name: "Dzong de Paro", city: "Paro", country_iso2: "BT", country_name_fr: "Bhoutan", country_tier: "rare",
-    lat: 27.43, lng: 89.41, taken_at: "2026-02-10T08:00:00Z", year: 2026, points_total: 60, author: AUTHORS.remi,
+    lat: 27.43, lng: 89.41, taken_at: "2026-02-10T08:00:00Z", year: 2026, points_total: 200,
+    rarity_category: "isole", rarity_reason: "Pays rare : Bhoutan", author: AUTHORS.remi,
   }),
   spot(6, {
     name: "Taveuni est", city: null, country_iso2: "FJ", country_name_fr: "Fidji", country_tier: "lointain",
-    lat: -16.8, lng: 179.9, taken_at: "2026-07-01T08:00:00Z", year: 2026, points_total: 30, author: AUTHORS.hugo,
+    lat: -16.8, lng: 179.9, taken_at: "2026-07-01T08:00:00Z", year: 2026, points_total: 200,
+    rarity_category: "isole", rarity_reason: "Île à plus de 50 km d'une ville de 15 000 habitants", author: AUTHORS.hugo,
   }),
   spot(7, {
     name: "Taveuni ouest", city: null, country_iso2: "FJ", country_name_fr: "Fidji", country_tier: "lointain",
-    lat: -16.8, lng: -179.9, taken_at: "2026-07-02T08:00:00Z", year: 2026, points_total: 31, author: AUTHORS.hugo,
+    lat: -16.8, lng: -179.9, taken_at: "2026-07-02T08:00:00Z", year: 2026, points_total: 200,
+    rarity_category: "isole", rarity_reason: "Île à plus de 50 km d'une ville de 15 000 habitants", author: AUTHORS.hugo,
   }),
 ];
 
+/** Détail des points (compute_spot_points) : base, bonus de rareté. */
 const LINES = {
   [SPOTS[0].id]: [
-    { rule_key: "base_country", position: 1, label: "Pays lointain", detail: "Argentine, points de base", points: 25 },
-    { rule_key: "bonus_first_country", position: 2, label: "Premier sticker du pays", detail: "Personne avant toi en Argentine", points: 50 },
-    { rule_key: "bonus_first_city", position: 3, label: "Première ville", detail: "Ushuaïa", points: 15 },
-    { rule_key: "isolation", position: 4, label: "Isolement", detail: "1 240 km du sticker le plus proche, plafond", points: 40 },
-    { rule_key: "home_distance", position: 5, label: "Loin de chez toi", detail: "13 000 km, +5 par 1 000 km", points: 65 },
+    { rule_key: "base", position: 1, label: "Sticker publié", detail: "Points de base", points: 100 },
+    { rule_key: "rarity", position: 2, label: "Lieu touristique", detail: "Site touristique à moins de 300 m", points: 20 },
   ],
   [SPOTS[1].id]: [
-    { rule_key: "base_country", position: 1, label: "Pays courant", detail: "France, points de base", points: 10 },
-    { rule_key: "bonus_exceptional", position: 2, label: "Lieu exceptionnel", detail: "Sommet", points: 20 },
-    { rule_key: "bonus_altitude", position: 3, label: "Altitude", detail: "4 808 m", points: 15 },
-    { rule_key: "isolation", position: 4, label: "Isolement", detail: "80 km", points: 8 },
+    { rule_key: "base", position: 1, label: "Sticker publié", detail: "Points de base", points: 100 },
+    { rule_key: "rarity", position: 2, label: "Lieu très rare", detail: "Altitude 4 808 m", points: 200 },
   ],
 };
 
+/** Vue country_rarity : points possibles par pays (base 100 + bonus du niveau). */
 const COUNTRY_RARITY = [
-  { iso2: "AR", tier: "lointain", base_points: 25, spot_count: 1 },
-  { iso2: "FR", tier: "courant", base_points: 10, spot_count: 2 },
-  { iso2: "HR", tier: "courant", base_points: 10, spot_count: 1 },
-  { iso2: "BT", tier: "rare", base_points: 60, spot_count: 1 },
-  { iso2: "FJ", tier: "lointain", base_points: 25, spot_count: 2 },
-  { iso2: "KP", tier: "extreme", base_points: 150, spot_count: 0 },
-  { iso2: "TM", tier: "rare", base_points: 60, spot_count: 0 },
+  { iso2: "AR", tier: "lointain", base_points: 100, spot_count: 1 },
+  { iso2: "FR", tier: "courant", base_points: 100, spot_count: 2 },
+  { iso2: "HR", tier: "courant", base_points: 100, spot_count: 1 },
+  { iso2: "BT", tier: "rare", base_points: 200, spot_count: 1 },
+  { iso2: "FJ", tier: "lointain", base_points: 100, spot_count: 2 },
+  { iso2: "KP", tier: "extreme", base_points: 300, spot_count: 0 },
+  { iso2: "TM", tier: "rare", base_points: 200, spot_count: 0 },
 ];
-
-const BASE = { courant: 10, lointain: 25, rare: 60, extreme: 150 };
 
 function inBox(s, a) {
   if (s.lat < a.min_lat || s.lat > a.max_lat) return false;
@@ -114,7 +120,10 @@ export function spotsInBbox(args) {
   const features = SPOTS.filter((s) => inBox(s, args))
     .filter((s) => !filters.years?.length || filters.years.includes(s.year))
     .filter((s) => !filters.authorId || s.author_id === filters.authorId)
-    .filter((s) => !filters.rare || s.is_first_in_country || s.is_exceptional || BASE[s.country_tier] >= 60)
+    .filter((s) => !filters.rare || s.is_first_in_country || s.is_exceptional || ["remarquable", "isole", "tres_rare"].includes(s.rarity_category))
+    .filter((s) => !filters.countries?.length || filters.countries.includes(s.country_iso2))
+    .filter((s) => !filters.from || s.taken_at.slice(0, 10) >= filters.from)
+    .filter((s) => !filters.to || s.taken_at.slice(0, 10) <= filters.to)
     .sort((a, b) => b.points_total - a.points_total)
     .map((s) => ({
       type: "Feature",
@@ -122,6 +131,40 @@ export function spotsInBbox(args) {
       properties: { id: s.id, color: s.color_hex, points: s.points_total, gold: s.is_first_in_country || s.is_exceptional, pending: false },
     }));
   return { type: "FeatureCollection", features, truncated: false };
+}
+
+/** Distance en mètres (haversine). */
+function distanceM(a, b) {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371008.8 * Math.asin(Math.sqrt(h));
+}
+
+/** Même logique que nearby_spots : stickers publiés à 50 km au plus, du plus proche au plus loin. */
+function nearby(id, limit) {
+  const origin = SPOTS.find((s) => s.id === id);
+  if (!origin) return [];
+  return SPOTS.filter((s) => s.id !== id)
+    .map((s) => ({ s, d: distanceM(origin, s) }))
+    .filter(({ d }) => d <= 50_000)
+    .sort((a, b) => a.d - b.d)
+    .slice(0, limit)
+    .map(({ s, d }) => ({
+      id: s.id, name: s.name, city: s.city, country_name_fr: s.country_name_fr, year: s.year,
+      color_hex: s.color_hex, points_total: s.points_total, thumb_path: s.thumb_path, distance_m: Math.round(d),
+    }));
+}
+
+/** Éditions (list_editions) : choisissables jusqu'à l'édition en cours. */
+function editions() {
+  return SEASONS.map((season) => ({
+    ...season,
+    selectable: season.status === "active" && season.year <= 2026,
+    color_locked: !season.is_current && SPOTS.some((s) => s.year === season.year),
+    spot_count: SPOTS.filter((s) => s.year === season.year).length,
+  }));
 }
 
 const normalize = (value) => (value ?? "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
@@ -203,12 +246,33 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith("/rest/v1/rpc/")) {
     const fn = url.pathname.slice("/rest/v1/rpc/".length);
     const body = req.method === "POST" ? await readBody(req) : Object.fromEntries(url.searchParams);
-    if (fn === "schema_version") return send(res, 200, "20261128000000_carte");
+    if (fn === "schema_version") return send(res, 200, "20261202000000_cahier_recalcul");
     if (fn === "spots_in_bbox") return send(res, 200, spotsInBbox(body));
     if (fn === "search_spots") return send(res, 200, search(String(body.q ?? "")));
     if (fn === "year_color") return send(res, 200, color(Number(body.p_year)));
     // Couleur de l'année en cours, lue par le layout racine (étape 8).
     if (fn === "current_season") return send(res, 200, [{ year: 2026, color_hex: color(2026) }]);
+    if (fn === "list_editions") return send(res, 200, editions());
+    // Onglet Stats (world_stats renvoie un objet JSON déjà en camelCase).
+    if (fn === "world_stats") {
+      const countries = new Set(SPOTS.map((s) => s.country_iso2));
+      return send(res, 200, {
+        stickers: SPOTS.length, countries: countries.size, countriesTotal: 249, continents: 4, continentsTotal: 7,
+        members: 3, contributors: 3, editions: 3, distanceKm: 61234,
+        topCountries: [{ iso2: "FR", nameFr: "France", count: 2 }, { iso2: "FJ", nameFr: "Fidji", count: 2 }],
+        recentConquests: [{ iso2: "FJ", nameFr: "Fidji", at: "2026-07-01T08:00:00Z" }],
+      });
+    }
+    if (fn === "rarest_places") {
+      return send(res, 200, SPOTS.filter((s) => ["isole", "tres_rare"].includes(s.rarity_category))
+        .sort((a, b) => b.points_total - a.points_total).slice(0, Number(body.p_limit ?? 10))
+        .map((s) => ({ id: s.id, name: s.name, city: s.city, country_name_fr: s.country_name_fr, year: s.year, rarity_category: s.rarity_category,
+          rarity_label: s.rarity_category === "tres_rare" ? "Lieu très rare" : "Lieu isolé", rarity_reason: s.rarity_reason,
+          points_total: s.points_total, color_hex: s.color_hex, author_username: s.author_username, thumb_path: s.thumb_path })));
+    }
+    if (["world_records", "continent_firsts", "photo_feed", "world_conquest"].includes(fn)) return send(res, 200, []);
+    if (fn === "nearby_spots") return send(res, 200, nearby(String(body.p_spot_id), Number(body.p_limit ?? 6)));
+    if (fn === "spot_like_info") return send(res, 200, { count: body.p_spot_id === SPOTS[0].id ? 3 : 0, liked: false });
     return send(res, 404, { code: "PGRST202", message: `Fonction inconnue : ${fn}` });
   }
 
@@ -222,8 +286,9 @@ const server = createServer(async (req, res) => {
       spot_point_lines: Object.entries(LINES).flatMap(([spot_id, lines]) => lines.map((l) => ({ spot_id, ...l }))),
       // Barème (page /points) : valeurs par défaut, numeric renvoyé en texte comme PostgREST.
       scoring_rules: [
-        { key: "tier_courant", value: "10" }, { key: "tier_lointain", value: "25" },
-        { key: "tier_rare", value: "60" }, { key: "tier_extreme", value: "150" },
+        { key: "base_points", value: "100" }, { key: "bonus_touristique", value: "20" },
+        { key: "bonus_remarquable", value: "50" }, { key: "bonus_isole", value: "100" },
+        { key: "bonus_tres_rare", value: "200" },
       ],
       countries: [
         { name_fr: "Argentine", tier: "lointain" }, { name_fr: "Bhoutan", tier: "rare" },

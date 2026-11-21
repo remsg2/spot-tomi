@@ -1,13 +1,15 @@
--- Étape 7 : classement, statistiques de profil et album.
--- Stickers en attente et masqués exclus, périodes, critères, ex aequo, droits
--- (visiteur, utilisateur, service_role).
+-- Classement (somme du journal de points), statistiques de profil et album.
+-- Stickers en attente et masqués exclus, périodes, critères, départage des ex aequo
+-- (date d'atteinte du score, puis nombre de stickers), droits (visiteur, utilisateur,
+-- service_role).
 begin;
-select plan(54);
+select plan(55);
 
 -- Données ------------------------------------------------------------------------
 -- A (alice) : 230 pts depuis toujours (100 en 2025, 130 en 2026), 2 pays, 3 stickers,
 --   plus un sticker en attente et un masqué, qui ne comptent pas ;
--- B (Bea)   : 130 pts en 2026, 2 pays, 2 stickers : ex aequo avec A en 2026 ;
+-- B (Bea)   : 130 pts en 2026, 2 pays, 2 stickers : à égalité avec A en 2026, mais
+--             A a atteint ce score avant elle ;
 -- C (chloe) : 3 stickers de 10 pts en France en 2026 et 1 en Norvège en 2024 ;
 -- D (dan)   : seulement un sticker en attente : absent du classement.
 
@@ -34,11 +36,6 @@ insert into public.seasons (year, color_hex, is_current) values
   (2025, '#FF7A59', false),
   (2026, '#5B8DEF', true);
 
--- Points de base par niveau (valeurs par défaut du barème).
-insert into public.scoring_rules (key, value) values
-  ('tier_courant', 10), ('tier_lointain', 25), ('tier_rare', 60), ('tier_extreme', 150)
-on conflict (key) do update set value = excluded.value;
-
 -- Pays de test : un petit carré chacun.
 create function pg_temp.square(x float8) returns extensions.geography language sql as $$
   select extensions.st_geogfromtext(format('MULTIPOLYGON(((%1$s 0,%2$s 0,%2$s 1,%1$s 1,%1$s 0)))', x, x + 1))
@@ -58,10 +55,10 @@ create function pg_temp.spot(
   author uuid, country char(2), taken date, status public.spot_status, pts int, first boolean default false
 ) returns uuid language sql as $$
   insert into public.spots (author_id, name, location, public_location, taken_at, year, gps_source,
-    date_source, country_iso2, photo_path, status, points_total, is_first_in_country, created_at)
+    date_source, country_iso2, photo_path, status, base_points, points_total, is_first_in_country, created_at)
   values (author, 'Lieu ' || country, extensions.st_geogfromtext('POINT(0.5 0.5)'),
     extensions.st_geogfromtext('POINT(0.5 0.5)'), taken, extract(year from taken)::int, 'exif',
-    'exif', country, author::text || '/x.webp', status, pts, first, taken)
+    'exif', country, author::text || '/x.webp', status, pts, pts, first, taken)
   returning id
 $$;
 
@@ -94,7 +91,7 @@ select has_materialized_view('public', 'leaderboard', 'la vue matérialisée lea
 select columns_are(
   'public', 'leaderboard',
   array['user_id', 'username', 'avatar_path', 'period', 'points', 'countries', 'stickers',
-        'rank_points', 'rank_countries', 'rank_stickers'],
+        'rank_points', 'rank_countries', 'rank_stickers', 'points_at'],
   'leaderboard n''a que les colonnes du contrat'
 );
 select ok(
@@ -146,19 +143,24 @@ select is(
   'un utilisateur sans sticker publié n''est pas classé'
 );
 
--- Ex aequo : même rang, puis le rang suivant saute ------------------------------------------
+-- Égalités : départage stable (date d'atteinte, puis nombre de stickers), pas d'ex aequo ------
 
 select results_eq(
   $$ select username, rank_points, rank_countries, rank_stickers from public.leaderboard
      where period = '2026' order by lower(username) $$,
-  $$ values ('alice'::text, 1, 1, 2), ('Bea', 1, 1, 2), ('chloe', 3, 3, 1) $$,
-  '2026 : A et B ex aequo aux points et aux pays, C troisième ; C premier aux stickers'
+  $$ values ('alice'::text, 1, 2, 3), ('Bea', 2, 1, 2), ('chloe', 3, 3, 1) $$,
+  '2026 : A devant B à points égaux (score atteint avant) ; B devant A aux pays et aux stickers (atteints avant)'
 );
 select results_eq(
   $$ select username, rank_points, rank_countries, rank_stickers from public.leaderboard
      where period = 'all' order by lower(username) $$,
-  $$ values ('alice'::text, 1, 1, 2), ('Bea', 2, 1, 3), ('chloe', 3, 1, 1) $$,
-  'depuis toujours : rangs par critère, trois ex aequo à 2 pays'
+  $$ values ('alice'::text, 1, 2, 2), ('Bea', 2, 1, 3), ('chloe', 3, 3, 1) $$,
+  'depuis toujours : trois à 2 pays, départagés par la date du 2e pays'
+);
+select is(
+  (select points from public.leaderboard where user_id = '00000000-0000-0000-0000-0000000000a1' and period = 'all'),
+  (select sum(points)::int from public.points_ledger where user_id = '00000000-0000-0000-0000-0000000000a1'),
+  'les points du classement sont la somme du journal'
 );
 
 -- get_leaderboard : lecture pour tous -------------------------------------------------------
@@ -168,18 +170,18 @@ select throws_ok($$ select * from public.leaderboard $$, '42501', null,
   'un visiteur ne lit pas la vue matérialisée directement');
 select results_eq(
   $$ select username, rank_points from public.get_leaderboard('2026', 'points') $$,
-  $$ values ('alice'::text, 1), ('Bea', 1), ('chloe', 3) $$,
-  'un visiteur lit le classement 2026 aux points, ex aequo départagés par le pseudo pour l''affichage'
+  $$ values ('alice'::text, 1), ('Bea', 2), ('chloe', 3) $$,
+  'un visiteur lit le classement 2026 aux points, sans ex aequo'
 );
 select results_eq(
   $$ select username, rank_stickers from public.get_leaderboard('2026', 'stickers') $$,
-  $$ values ('chloe'::text, 1), ('alice', 2), ('Bea', 2) $$,
+  $$ values ('chloe'::text, 1), ('Bea', 2), ('alice', 3) $$,
   'classement 2026 aux stickers'
 );
 select results_eq(
   $$ select username, rank_countries from public.get_leaderboard('all', 'countries') $$,
-  $$ values ('alice'::text, 1), ('Bea', 1), ('chloe', 1) $$,
-  'classement depuis toujours aux pays : trois ex aequo'
+  $$ values ('Bea'::text, 1), ('alice', 2), ('chloe', 3) $$,
+  'classement depuis toujours aux pays : trois à égalité, départagés'
 );
 select results_eq(
   $$ select username from public.get_leaderboard() $$,
@@ -271,10 +273,10 @@ select ok(
   'un pays conquis n''est jamais proposé à conquérir'
 );
 select results_eq(
-  $$ select distinct tier::text, points from public.album('00000000-0000-0000-0000-0000000000a1')
-     where not conquered order by points $$,
-  $$ values ('courant'::text, 10), ('lointain', 25), ('rare', 60), ('extreme', 150) $$,
-  'pays à conquérir : points de base de chaque niveau'
+  $$ select distinct tier, points from public.album('00000000-0000-0000-0000-0000000000a1')
+     where not conquered order by points, tier $$,
+  $$ values ('courant'::public.country_tier, 100), ('lointain', 100), ('rare', 200), ('extreme', 300) $$,
+  'pays à conquérir : points possibles (base, plus le bonus d''un pays rare ou très rare)'
 );
 select ok(
   (select bool_and(n = 1) from (

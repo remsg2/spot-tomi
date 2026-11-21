@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { MONT_BLANC_ID, USHUAIA_ID, usesMockData } from "./support/demo";
+import { MONT_BLANC_ID, TAVEUNI_EST_ID, USHUAIA_ID, usesMockData } from "./support/demo";
 
 /** Fiche lieu (étape 6), rendue côté serveur à partir du faux Supabase. */
 test.use({ serviceWorkers: "block" });
@@ -12,23 +12,25 @@ test("fiche conforme à la maquette : badges, points et détail", async ({ page 
   await page.goto(`/spots/${USHUAIA_ID}`);
   await expect(page.getByRole("heading", { level: 1, name: "Ushuaïa" })).toBeVisible();
   await expect(sheet(page)).toContainText("Ushuaïa, Argentine");
-  await expect(sheet(page).getByText("2025", { exact: true })).toBeVisible();
+  await expect(sheet(page).getByTestId("spot-edition")).toHaveText("Édition 2025");
+  await expect(sheet(page).getByText("Lieu touristique", { exact: true }).first()).toBeVisible();
   await expect(sheet(page).getByText("Premier sticker du pays", { exact: true }).first()).toBeVisible();
   await expect(sheet(page).getByRole("link", { name: "Remi" })).toHaveAttribute("href", "/u/Remi");
   await expect(sheet(page).getByText("14 mars 2025")).toBeVisible();
-  await expect(sheet(page)).toContainText("Pays lointain, premier sticker");
-  await expect(sheet(page)).toContainText("+195");
+  await expect(sheet(page).getByTestId("spot-comment")).toContainText("Au bout du monde, face au canal Beagle.");
+  await expect(sheet(page)).toContainText("+120");
 
-  const lines = sheet(page).getByRole("listitem");
-  await expect(lines).toHaveCount(5);
+  // Barème V1.1 : 100 de base + bonus de rareté (ici, lieu touristique).
+  const lines = sheet(page).getByTestId("points-breakdown").getByRole("listitem");
+  await expect(lines).toHaveCount(2);
   await expect(sheet(page).getByRole("link", { name: "Comment sont calculés les points ?" })).toHaveAttribute(
     "href",
     "/points",
   );
-  await expect(lines.nth(0)).toContainText("Pays lointain");
-  await expect(lines.nth(0)).toContainText("25");
-  await expect(lines.nth(4)).toContainText("Loin de chez toi");
-  await expect(lines.nth(4)).toContainText("+65");
+  await expect(lines.nth(0)).toContainText("Sticker publié");
+  await expect(lines.nth(0)).toContainText("100");
+  await expect(lines.nth(1)).toContainText("Lieu touristique");
+  await expect(lines.nth(1)).toContainText("+20");
 
   // Toute la fiche prend la couleur de l'année du sticker (2025), pas celle de l'année en cours.
   const year = await sheet(page).evaluate((element) => getComputedStyle(element).getPropertyValue("--year").trim());
@@ -44,11 +46,25 @@ test("fiche conforme à la maquette : badges, points et détail", async ({ page 
   await expect(sheet(page).getByRole("button", { name: "Signaler" })).toHaveCount(0);
 });
 
+test("stickers les plus proches (50 km), avec la distance, de part et d'autre de l'antiméridien", async ({ page }) => {
+  await page.goto(`/spots/${TAVEUNI_EST_ID}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Taveuni est" })).toBeVisible();
+  const nearby = sheet(page).getByTestId("nearby-spots").getByRole("link");
+  await expect(nearby).toHaveCount(1);
+  await expect(nearby).toContainText("Taveuni ouest");
+  await expect(nearby).toContainText(/21([,.]\d)? km/);
+  // Ushuaïa : personne à moins de 50 km.
+  await page.goto(`/spots/${USHUAIA_ID}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Ushuaïa" })).toBeVisible();
+  await expect(sheet(page).getByTestId("nearby-spots")).toHaveCount(0);
+});
+
 test("lieu exceptionnel : badge doré avec l'altitude", async ({ page }) => {
   await page.goto(`/spots/${MONT_BLANC_ID}`);
   await expect(page.getByRole("heading", { level: 1, name: "Mont Blanc" })).toBeVisible();
   await expect(sheet(page)).toContainText("Lieu exceptionnel · 4 808 m");
-  await expect(sheet(page)).toContainText("Pays courant");
+  await expect(sheet(page).getByText("Lieu très rare", { exact: true }).first()).toBeVisible();
+  await expect(sheet(page)).toContainText("+300");
 });
 
 /** Glisse la poignée du tiroir (photo) de `dy` pixels. */
@@ -145,7 +161,7 @@ test("métadonnées Open Graph pour le partage", async ({ page }) => {
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Ushuaïa");
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
     "content",
-    "Ushuaïa, Argentine · par Remi · +195 pts",
+    "Ushuaïa, Argentine · par Remi · +120 pts",
   );
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /spot-photos/);
 });

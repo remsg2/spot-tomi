@@ -6,7 +6,7 @@ import { ta } from "@/i18n/admin.fr";
 import { requireStaff } from "@/lib/admin/auth";
 import { listUsers } from "@/lib/admin/data";
 import { cn } from "@/lib/cn";
-import { changeRoleAction, setSuspendedAction } from "../actions";
+import { adjustPointsAction, changeRoleAction, deleteUserAction, setSuspendedAction } from "../actions";
 import { AdminSkeleton } from "../skeleton";
 
 export const metadata: Metadata = { title: ta.tabs.roles };
@@ -59,7 +59,12 @@ async function RolesContent({ searchParams }: Pick<PageProps<"/admin/roles">, "s
         <UserList
           users={users}
           meId={user.id}
-          actions={{ changeRole: changeRoleAction, setSuspended: setSuspendedAction }}
+          actions={{
+            changeRole: changeRoleAction,
+            setSuspended: setSuspendedAction,
+            adjustPoints: adjustPointsAction,
+            deleteUser: deleteUserAction,
+          }}
         />
       )}
     </>

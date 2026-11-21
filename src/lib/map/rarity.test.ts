@@ -5,11 +5,11 @@ import { mixHex, NO_STICKER_COLOR, rarityFillExpression, rarityLevel, rarityPain
 import type { CountryRarity } from "./types";
 
 const rows: CountryRarity[] = [
-  { iso2: "FR", tier: "courant", base_points: 10, spot_count: 12 },
-  { iso2: "AR", tier: "lointain", base_points: 25, spot_count: 1 },
-  { iso2: "BT", tier: "rare", base_points: 60, spot_count: 2 },
-  { iso2: "KP", tier: "extreme", base_points: 150, spot_count: 1 },
-  { iso2: "TM", tier: "rare", base_points: 60, spot_count: 0 },
+  { iso2: "AR", tier: "lointain", base_points: 100, spot_count: 1 },
+  { iso2: "BT", tier: "rare", base_points: 200, spot_count: 2 },
+  { iso2: "FR", tier: "courant", base_points: 100, spot_count: 12 },
+  { iso2: "KP", tier: "extreme", base_points: 300, spot_count: 64 },
+  { iso2: "TM", tier: "rare", base_points: 200, spot_count: 0 },
 ];
 
 function colorOf(fill: unknown, iso2: string) {
@@ -18,14 +18,14 @@ function colorOf(fill: unknown, iso2: string) {
   return compiled.value.evaluate({ zoom: 2 }, { type: "Polygon", properties: { iso2 } } as never);
 }
 
-describe("niveau de rareté des pays", () => {
-  it("gris sans sticker, puis selon les points de base", () => {
+describe("carte de conquête", () => {
+  it("gris pour un pays vierge, puis selon le nombre de stickers (1, 2-9, 10-49, 50+)", () => {
     expect(rows.map(rarityLevel)).toEqual([1, 2, 3, 4, 0]);
   });
 });
 
 describe("palette", () => {
-  it("de plus en plus foncée quand le pays rapporte plus", () => {
+  it("de plus en plus foncée quand le pays compte plus de stickers", () => {
     const [, l1, l2, l3, l4] = rarityPalette("#5B8DEF", "light");
     const luminances = [l1, l2, l3, l4].map(relativeLuminance);
     for (let i = 1; i < luminances.length; i += 1) {
@@ -49,7 +49,8 @@ describe("expression de remplissage", () => {
   it("colore chaque pays selon son niveau, gris par défaut", () => {
     const palette = rarityPalette("#FF7A59", "dark");
     const fill = rarityFillExpression(rows, palette);
-    expect(colorOf(fill, "FR")).toBe(palette[1]);
+    expect(colorOf(fill, "AR")).toBe(palette[1]);
+    expect(colorOf(fill, "FR")).toBe(palette[3]);
     expect(colorOf(fill, "KP")).toBe(palette[4]);
     expect(colorOf(fill, "TM")).toBe(palette[0]);
     expect(colorOf(fill, "ZZ")).toBe(palette[0]);

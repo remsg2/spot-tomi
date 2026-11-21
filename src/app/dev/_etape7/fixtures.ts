@@ -7,6 +7,7 @@ import { withRanks, type LeaderboardEntry, type Period } from "@/lib/leaderboard
 import type { AlbumRow, CountryTier } from "@/lib/profile/album";
 import type { ProfileSpot } from "@/lib/profile/spots";
 import type { ProfileData, ProfileIdentity } from "@/lib/profile/types";
+import type { Badge, MemberStats, PassportStamp } from "@/lib/stats/queries";
 
 export const DEV_YEAR = 2026;
 /** Couleurs d'exemple : l'année en cours prend l'accent des maquettes. */
@@ -80,7 +81,8 @@ export function leaderboardFixture(period: Period, scenario: LeaderboardScenario
 
 // Profil -------------------------------------------------------------------------
 
-const BASE: Record<CountryTier, number> = { courant: 10, lointain: 25, rare: 60, extreme: 150 };
+// Points possibles par niveau de pays (country_potential_points) : base 100 + bonus du niveau.
+const BASE: Record<CountryTier, number> = { courant: 100, lointain: 100, rare: 200, extreme: 300 };
 
 function tile(iso3: string, nameFr: string, year: number, points: number, gold = false): AlbumRow {
   return {
@@ -178,6 +180,67 @@ const SPOTS: ProfileSpot[] = [
   spot("Mont Blanc", "Chamonix", "France", "2023-08-03T07:00:00Z", 53),
 ];
 
+/** Passeport simulé : un tampon par pays conquis de l'album. */
+function passportFrom(rows: AlbumRow[]): PassportStamp[] {
+  return rows
+    .filter((row) => row.conquered && row.firstYear !== null)
+    .map((row, index) => ({
+      iso2: row.iso2,
+      nameFr: row.nameFr,
+      continent: null,
+      continentLabel: null,
+      firstSpotId: `00000000-0000-4000-8000-0000000002${String(index).padStart(2, "0")}`,
+      firstPastedAt: `${row.firstYear}-06-${String(1 + (index % 27)).padStart(2, "0")}T12:00:00Z`,
+      firstYear: row.firstYear as number,
+      editionName: `Édition ${row.firstYear}`,
+      color: row.colorHex ?? "#9A9A94",
+      stickers: row.stickers,
+      points: row.points,
+      pioneer: row.gold,
+    }));
+}
+
+const BADGES: Badge[] = [
+  { code: "premier_tomi", name: "Premier Tomi", description: "Coller son premier sticker.", icon: "🐾", unlocked: true, unlockedAt: "2023-08-03T07:00:00Z", spotId: null, spotName: null },
+  { code: "dix_tomis", name: "10 Tomis", description: "Coller 10 stickers.", icon: "🔟", unlocked: true, unlockedAt: "2024-09-21T12:00:00Z", spotId: null, spotName: null },
+  { code: "dix_pays", name: "10 pays", description: "Faire voyager Tomi dans 10 pays.", icon: "🧭", unlocked: true, unlockedAt: "2025-07-09T18:00:00Z", spotId: null, spotName: null },
+  { code: "cinq_continents", name: "5 continents", description: "Coller un sticker sur 5 continents.", icon: "🌍", unlocked: false, unlockedAt: null, spotId: null, spotName: null },
+  { code: "altitude_3000", name: "Tomi des sommets", description: "Coller un sticker à plus de 3 000 m d'altitude.", icon: "🏔️", unlocked: true, unlockedAt: "2023-08-03T07:00:00Z", spotId: null, spotName: null },
+  { code: "ile", name: "Tomi insulaire", description: "Coller un sticker sur une île.", icon: "🏝️", unlocked: true, unlockedAt: "2025-07-09T18:00:00Z", spotId: null, spotName: null },
+];
+
+const MEMBER: MemberStats = {
+  stickers: 27,
+  points: 1435,
+  rank: 2,
+  countries: 11,
+  continents: [
+    { code: "afrique", label: "Afrique" },
+    { code: "europe", label: "Europe" },
+  ],
+  editions: [
+    { year: 2026, name: "Édition 2026", colorHex: DEV_YEARS[2026], count: 9 },
+    { year: 2025, name: "Édition 2025", colorHex: DEV_YEARS[2025], count: 10 },
+    { year: 2024, name: "Édition 2024", colorHex: DEV_YEARS[2024], count: 6 },
+  ],
+  byCountry: [
+    { iso2: "FR", nameFr: "France", count: 12 },
+    { iso2: "IT", nameFr: "Italie", count: 4 },
+  ],
+  highest: { id: "00000000-0000-4000-8000-000000000301", name: "Mont Blanc", altitudeM: 4362 },
+  mostIsolated: { id: "00000000-0000-4000-8000-000000000302", name: "Geysir", km: 412.5 },
+  badges: 5,
+  likesReceived: 14,
+};
+
+const PROGRESS = [
+  { day: "2023-08-03", points: 300 },
+  { day: "2024-06-30", points: 520 },
+  { day: "2025-03-12", points: 890 },
+  { day: "2025-07-09", points: 1160 },
+  { day: "2026-04-20", points: 1435 },
+];
+
 export type ProfileScenario = "moi" | "autre" | "nouveau";
 
 export function profileFixture(scenario: ProfileScenario): { identity: ProfileIdentity; data: ProfileData; isMe: boolean } {
@@ -189,6 +252,11 @@ export function profileFixture(scenario: ProfileScenario): { identity: ProfileId
         stats: { points: 0, rank: null, stickers: 0, countries: 0, firsts: 0 },
         album: SUGGESTIONS,
         spots: [],
+        passport: [],
+        badges: BADGES.map((badge) => ({ ...badge, unlocked: false, unlockedAt: null })),
+        member: { ...MEMBER, stickers: 0, points: 0, rank: null, countries: 0, continents: [], editions: [], byCountry: [], highest: null, mostIsolated: null, badges: 0, likesReceived: 0 },
+        progress: [],
+        countriesTotal: 237,
       },
     };
   }
@@ -200,6 +268,11 @@ export function profileFixture(scenario: ProfileScenario): { identity: ProfileId
       stats: { points: 1435, rank: 2, stickers: 27, countries: 11, firsts: 3 },
       album: ALBUM,
       spots: isMe ? SPOTS : SPOTS.filter((s) => s.status === "published"),
+      passport: passportFrom(ALBUM),
+      badges: BADGES,
+      member: MEMBER,
+      progress: PROGRESS,
+      countriesTotal: 237,
     },
   };
 }

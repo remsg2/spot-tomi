@@ -73,7 +73,9 @@ test("profil public : pseudo sans tenir compte de la casse, stickers publiés", 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Lea");
   await expect(page.getByText("Depuis 2024")).toBeVisible();
   await expect(page.getByText("2ᵉ au classement")).toBeVisible();
+  // Passeport : un tampon par pays, avec l'édition du premier collage.
   await expect(page.locator('[data-album-tile="conquered"]')).toHaveCount(2);
+  await expect(page.getByTestId("passport")).toContainText("Édition 2026");
   await expect(page.locator('[data-album-tile="locked"]')).toHaveCount(4);
   await expect(page.locator("li[data-spot-year]")).toHaveCount(2);
   await expect(page.getByRole("link", { name: "Réglages" })).toHaveCount(0);

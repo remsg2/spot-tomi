@@ -5,7 +5,7 @@ import { formatCoordinates, formatTakenAt, ordinal } from "@/i18n/publish.fr";
 import { MAX_PHOTO_BYTES } from "./contract";
 import { checkPhoto, detectPhotoKind, targetSize } from "./photo";
 import { toPointLines } from "./points";
-import { isPending, statusFor } from "./status";
+import { isPending, needsReview, statusFor } from "./status";
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 const ascii = (text: string) => [...text].map((c) => c.charCodeAt(0));
@@ -48,12 +48,12 @@ describe("targetSize", () => {
   });
 });
 
-describe("statusFor : même règle que create_spot", () => {
-  it("en attente sans GPS ou sans date dans la photo", () => {
-    expect(statusFor("exif", "exif")).toBe("published");
-    expect(statusFor("manual", "exif")).toBe("pending_review");
-    expect(statusFor("exif", "upload")).toBe("pending_review");
-    expect(statusFor("manual", "upload")).toBe("pending_review");
+describe("statusFor : publication directe, comme create_spot", () => {
+  it("publié dans tous les cas ; une position placée à la main est « à vérifier »", () => {
+    expect(statusFor()).toBe("published");
+    expect(needsReview("manual")).toBe(true);
+    expect(needsReview("exif")).toBe(false);
+    expect(needsReview("device")).toBe(false);
     expect(isPending("published")).toBe(false);
     expect(isPending("hidden")).toBe(true);
   });
@@ -68,18 +68,19 @@ describe("affichage", () => {
     expect(ordinal(2)).toBe("2ᵉ");
   });
 
-  it("lignes de points : base sans « + », puce dorée pour le premier du pays (adaptateur de l'étape 4)", () => {
+  it("lignes de points : base sans « + », bonus de rareté couleur de l'édition, doublon en gris", () => {
     const lines = toPointLines([
-      { ruleKey: "base_country", label: "Pays lointain", detail: null, points: 25 },
+      { ruleKey: "base", label: "Sticker publié", detail: "Points de base", points: 100 },
+      { ruleKey: "rarity", label: "Lieu isolé", detail: "80 km de Reykjavík", points: 100 },
+      { ruleKey: "duplicate", label: "Sticker voisin", detail: null, points: -100 },
+      // Clé de l'ancien barème, gardée pour les détails figés avant la V1.1.
       { ruleKey: "first_country", label: "Premier sticker du pays", detail: "Argentine", points: 50 },
-      { ruleKey: "home_distance", label: "Loin de chez toi", detail: "13 000 km", points: 65 },
-      { ruleKey: "neighbor_malus", label: "Voisin à moins de 200 m", detail: null, points: -56 },
     ]);
     expect(lines.map((line) => [line.key, line.isBase, line.tone, line.detail])).toEqual([
-      ["base_country", true, "base", undefined],
+      ["base", true, "base", "Points de base"],
+      ["rarity", false, "year", "80 km de Reykjavík"],
+      ["duplicate", false, "base", undefined],
       ["first_country", false, "gold", "Argentine"],
-      ["home_distance", false, "year", "13 000 km"],
-      ["neighbor_malus", false, "base", undefined],
     ]);
   });
 });

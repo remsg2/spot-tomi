@@ -184,32 +184,32 @@ test.describe("profil · aperçu", () => {
     await expectNoHorizontalScroll(page);
   });
 
-  test("album : tuiles par année, pays à conquérir en pointillés, légende", async ({ page }) => {
+  test("passeport : un tampon par pays, progression, pays à conquérir en pointillés, légende", async ({ page }) => {
     await page.goto("/dev/profil");
-    const album = page.locator("section#album");
-    await expect(album.getByRole("heading", { name: "Album" })).toBeVisible();
-    const conquered = album.locator('[data-album-tile="conquered"]');
-    const locked = album.locator('[data-album-tile="locked"]');
-    await expect(conquered).toHaveCount(8);
+    const passport = page.locator("section#album");
+    await expect(passport.getByRole("heading", { name: "Passeport", exact: true })).toBeVisible();
+    const stamps = passport.locator('[data-album-tile="conquered"]');
+    const locked = passport.locator('[data-album-tile="locked"]');
+    await expect(stamps).toHaveCount(8);
     await expect(locked).toHaveCount(4);
+    // Tampon : drapeau, pays, date du premier collage, édition ; lien vers ce premier sticker.
+    await expect(stamps.first()).toContainText("Argentine");
+    await expect(stamps.first()).toContainText("Édition 2026");
+    await expect(stamps.first().getByRole("link")).toHaveAttribute("href", /^\/spots\//);
+    await expect(passport.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "8");
     const names = ["Norvège", "Japon", "Bhoutan", "Corée du Nord"];
-    const bases = [10, 25, 60, 150];
+    const potentials = [100, 100, 200, 300];
     for (const [index, name] of names.entries()) {
       await expect(locked.nth(index).getByRole("img")).toHaveAccessibleName(
-        `${name}, à conquérir : ${bases[index]} points de base et plus`,
+        `${name}, à conquérir : au moins ${potentials[index]} points`,
       );
     }
     expect(await locked.first().locator("[role=img]").evaluate((el) => getComputedStyle(el).borderStyle)).toBe("dashed");
-    // Première tuile : la France, conquise en 2023 (jaune).
-    expect(await background(conquered.first().getByRole("img"))).toBe("rgb(242, 194, 48)");
-    // Grille de 4 colonnes.
-    const tops = await album.locator("[data-album-tile]").evaluateAll((els) =>
-      els.map((el) => Math.round(el.getBoundingClientRect().top)),
-    );
-    expect(new Set(tops.slice(0, 4)).size).toBe(1);
-    expect(tops[4]).toBeGreaterThan(tops[0]);
-    await expect(album.locator("[data-legend-year]")).toHaveCount(4);
-    await expect(album.getByRole("list", { name: "Années" })).toContainText("23");
+    // Grille de 4 colonnes pour les pays à conquérir.
+    const tops = await locked.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+    expect(new Set(tops).size).toBe(1);
+    await expect(passport.locator("[data-legend-year]")).toHaveCount(4);
+    await expect(passport.getByRole("list", { name: "Années" })).toContainText("23");
   });
 
   test("l'onglet Album descend jusqu'à l'album", async ({ page }) => {
@@ -255,7 +255,7 @@ test.describe("profil · aperçu", () => {
   test("nouveau compte : album vide et pays à conquérir", async ({ page }) => {
     await page.goto("/dev/profil?qui=nouveau");
     await expect(page.getByText("Pas encore classé")).toBeVisible();
-    await expect(page.getByText(/Ton album est vide/)).toBeVisible();
+    await expect(page.getByText(/Ton passeport est vide/)).toBeVisible();
     await expect(page.locator('[data-album-tile="locked"]')).toHaveCount(4);
     await expect(page.getByText("Tu n'as encore collé aucun sticker.")).toBeVisible();
   });

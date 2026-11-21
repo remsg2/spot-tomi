@@ -72,8 +72,8 @@ select is(
 );
 select is(
   public.estimate_spot_points(-46, -95, null, null, 'device', 'upload') ->> 'status',
-  'pending_review',
-  'estimation : sans date vérifiée, toujours en attente'
+  'published',
+  'estimation : sans date dans la photo, publié aussi (publication directe)'
 );
 select throws_ok(
   $$ select public.estimate_spot_points(-46, -95, null, null, 'telephone', 'device') $$,

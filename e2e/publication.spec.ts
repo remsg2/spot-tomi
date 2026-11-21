@@ -46,11 +46,17 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     // Lecture EXIF dans le navigateur, avant tout envoi.
     await expect(page.getByText("Position GPS de la photo")).toBeVisible();
     await expect(page.getByText("Argentine · 54,80° S, 68,30° O")).toBeVisible();
-    await expect(page.getByText("14 mars 2026 à 16:42")).toBeVisible();
-    await expect(page.getByText("2026, d'après la date")).toBeVisible();
-    await expect(page.getByText("Les données de la photo sont retirées avant publication.")).toBeVisible();
-    await expect(page.getByTestId("estimate")).toContainText("195");
+    // Date du collage préremplie avec le jour de la photo, édition proposée d'après l'année.
+    await expect(page.getByLabel("Date du collage")).toHaveValue("2026-03-14");
+    await expect(page.getByText("Préremplie avec la date de la photo, modifiable.")).toBeVisible();
+    await expect(page.getByRole("radio", { name: /Édition 2026/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByText("Les données de la photo (EXIF, GPS…) sont retirées avant publication.")).toBeVisible();
+    await expect(page.getByTestId("public-notice")).toContainText("visibles par tous sur la carte publique");
+    // Sticker à moins de 200 m : pas de bonus de rareté, dit avant de publier.
+    await expect(page.getByTestId("nearby-warning")).toContainText("Un sticker est déjà collé à 120 m");
+    await expect(page.getByTestId("estimate")).toContainText("120");
     await expect(page.getByTestId("estimate")).toContainText("Premier du pays");
+    await expect(page.getByTestId("estimate-category")).toHaveText("Lieu touristique");
     expect(await page.evaluate(() => (window as DemoWindow).__spotTomiUpload)).toBeUndefined();
 
     // Nom obligatoire.
@@ -61,7 +67,7 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
 
     await expect(page.getByRole("heading", { name: "Sticker collé !" })).toBeVisible();
     await expect(page.getByText("Ushuaïa, Argentine")).toBeVisible();
-    await expect(page.getByRole("img", { name: "Sticker de Tomi : +195" })).toBeVisible();
+    await expect(page.getByRole("img", { name: "Sticker de Tomi : +120" })).toBeVisible();
     await expect(page.getByTestId("rank")).toHaveText("Tu passes 2ᵉ du classement");
     await expect(page.getByRole("link", { name: "Voir sur la carte" })).toHaveAttribute("href", /^\/spots\/[0-9a-f-]{36}$/);
     // Croix « Retour à la carte » : quitter l'écran final sans repasser par le parcours.
@@ -75,7 +81,8 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     // Orientation EXIF appliquée (4032 × 3024 tournée de 90°), 2048 px au plus.
     expect(webpSize(upload.bytes)).toEqual({ width: 1536, height: 2048 });
 
-    // Ce que reçoit l'Edge Function publish-spot (contrat §4).
+    // Ce que reçoit l'Edge Function publish-spot (contrat §4) : date de la photo inchangée,
+    // édition choisie, miniature et empreinte de la photo.
     expect(await page.evaluate(() => (window as DemoWindow).__spotTomiPublishInput)).toEqual({
       photoPath: upload.path,
       lat: -54.8019,
@@ -85,6 +92,46 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
       gpsSource: "exif",
       dateSource: "exif",
       name: "Panneau du bout du monde",
+      year: 2026,
+      comment: null,
+      thumbPath: upload.path.replace(/\.webp$/, ".thumb.webp"),
+      photoHash: expect.stringMatching(/^-?\d{1,20}$/),
+    });
+  });
+
+  test("date du collage et édition modifiables, commentaire facultatif", async ({ page }) => {
+    await chooseAndReview(page, GPS_PHOTO);
+    const date = page.getByLabel("Date du collage");
+    await expect(date).toHaveValue("2026-03-14");
+
+    // Date changée : l'édition proposée suit, tant que le membre ne l'a pas choisie.
+    await date.fill("2025-12-31");
+    await expect(page.getByRole("radio", { name: /Édition 2025/ })).toHaveAttribute("aria-checked", "true");
+    // Édition 2026 collée en 2025 : impossible, dit à l'envoi.
+    await page.getByRole("radio", { name: /Édition 2026/ }).click();
+    await page.getByLabel("Nom du lieu").fill("Panneau");
+    await page.getByRole("button", { name: "Coller le sticker" }).click();
+    await expect(page.getByText("Un sticker de l'édition 2026 ne peut pas avoir été collé avant 2026.")).toBeVisible();
+    expect(await page.evaluate(() => (window as DemoWindow).__spotTomiPublishInput)).toBeUndefined();
+    await page.getByRole("radio", { name: /Édition 2025/ }).click();
+    await expect(page.getByRole("radio", { name: /Édition 2025/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByText(/ne peut pas avoir été collé avant/)).toHaveCount(0);
+
+    // Date dans le futur : refusée.
+    await date.fill("2099-01-01");
+    await expect(page.getByText("La date du collage ne peut pas être dans le futur.")).toBeVisible();
+    await date.fill("2025-12-31");
+
+    await page.getByLabel("Commentaire (facultatif)").fill("  Collé   un soir de neige ");
+    await page.getByRole("button", { name: "Coller le sticker" }).click();
+    await expect(page.getByRole("heading", { name: "Sticker collé !" })).toBeVisible();
+    // Jour changé : date saisie (midi UTC), source « manual ».
+    expect(await page.evaluate(() => (window as DemoWindow).__spotTomiPublishInput)).toMatchObject({
+      takenAt: "2025-12-31T12:00:00.000Z",
+      dateSource: "manual",
+      year: 2025,
+      // Bords retirés ici ; les espaces multiples sont réduits par publish-spot (contrat).
+      comment: "Collé   un soir de neige",
     });
   });
 
@@ -111,8 +158,7 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await chooseAndReview(page, PLAIN_PHOTO);
     await expect(page.getByText("Pas de GPS dans la photo : place-le sur la carte")).toBeVisible();
-    await expect(page.getByText("Absente de la photo : date d'envoi")).toBeVisible();
-    await expect(page.getByText(/un modérateur vérifie le sticker/)).toBeVisible();
+    await expect(page.getByText("Préremplie avec la date du jour, modifiable.")).toBeVisible();
     await page.getByLabel("Nom du lieu").fill("Boîte aux lettres");
 
     // Sans position, « Coller le sticker » ouvre le sélecteur.
@@ -130,14 +176,15 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     await expect(place).toBeEnabled({ timeout: 20_000 });
     await place.click();
 
-    await expect(page.getByText(/placée à la main/)).toBeVisible();
-    await expect(page.getByTestId("estimate")).toContainText("Points en attente de validation");
+    await expect(page.getByText(/placée à la main/).first()).toBeVisible();
+    // Publication directe : publié tout de suite, puis vérifié par un modérateur.
+    await expect(page.getByText(/publié tout de suite, puis vérifié par un modérateur/)).toBeVisible();
+    await expect(page.getByTestId("estimate")).toContainText("120");
     await page.getByRole("button", { name: "Coller le sticker" }).click();
 
     await expect(page.getByRole("heading", { name: "Sticker collé !" })).toBeVisible();
-    await expect(page.getByRole("img", { name: "Sticker de Tomi : En attente" })).toBeVisible();
-    await expect(page.getByText("Tes points compteront dès qu'un modérateur aura validé le sticker.")).toBeVisible();
-    await expect(page.getByTestId("rank")).toHaveCount(0);
+    await expect(page.getByRole("img", { name: "Sticker de Tomi : +120" })).toBeVisible();
+    await expect(page.getByText("Tes points compteront dès qu'un modérateur aura validé le sticker.")).toHaveCount(0);
 
     const input = await page.evaluate(() => (window as DemoWindow).__spotTomiPublishInput);
     expect(input).toMatchObject({ gpsSource: "manual", dateSource: "upload", takenAt: null, altitude: null });
@@ -155,9 +202,9 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
 
     await expect(page.getByText("Position du téléphone (photo prise à l'instant)")).toBeVisible();
     await expect(page.getByText("Argentine · 54,80° S, 68,30° O")).toBeVisible();
-    await expect(page.getByText("Photo prise à l'instant", { exact: true })).toBeVisible();
-    await expect(page.getByText(/un modérateur vérifie le sticker/)).toHaveCount(0);
-    await expect(page.getByTestId("estimate")).toContainText("195");
+    await expect(page.getByText("Préremplie avec la date du jour, modifiable.")).toBeVisible();
+    await expect(page.getByText(/vérifié par un modérateur/)).toHaveCount(0);
+    await expect(page.getByTestId("estimate")).toContainText("120");
 
     await page.getByLabel("Nom du lieu").fill("Panneau du port");
     await page.getByRole("button", { name: "Coller le sticker" }).click();
@@ -173,9 +220,9 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     await expect(camera).toBeEnabled();
     await camera.setInputFiles(PLAIN_PHOTO);
     await expect(page.getByText("Pas de GPS dans la photo : place-le sur la carte")).toBeVisible();
-    // La date reste celle de la prise (à l'instant) ; la position manuelle impose la modération.
-    await expect(page.getByText("Photo prise à l'instant", { exact: true })).toBeVisible();
-    await expect(page.getByText(/un modérateur vérifie le sticker/)).toBeVisible();
+    // La date du collage est celle du jour ; à placer sur la carte avant de publier.
+    await expect(page.getByText("Préremplie avec la date du jour, modifiable.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Placer" })).toBeVisible();
   });
 
   test("photo de la galerie sans GPS : la position du téléphone n'est pas utilisée", async ({ page, context }) => {
@@ -183,7 +230,7 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     await context.setGeolocation({ latitude: -54.8019, longitude: -68.303, accuracy: 15 });
     await chooseAndReview(page, PLAIN_PHOTO);
     await expect(page.getByText("Pas de GPS dans la photo : place-le sur la carte")).toBeVisible();
-    await expect(page.getByText("Absente de la photo : date d'envoi")).toBeVisible();
+    await expect(page.getByText("Position du téléphone (photo prise à l'instant)")).toHaveCount(0);
   });
 
   test("format non pris en charge : message clair", async ({ page }) => {
@@ -201,8 +248,8 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
       await expect(page.getByRole("heading", { name: "Sticker collé !" })).toBeVisible();
 
       const rows = page.getByTestId("done").locator(".animate-line-in");
-      // 5 lignes, le total, le gain de rang.
-      await expect(rows).toHaveCount(7);
+      // 2 lignes (base, rareté), le total, le gain de rang.
+      await expect(rows).toHaveCount(4);
       const styles = await rows.evaluateAll((nodes) =>
         nodes.map((node) => ({ name: getComputedStyle(node).animationName, opacity: getComputedStyle(node).opacity })),
       );
@@ -211,10 +258,10 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
       } else {
         expect(styles.every((style) => style.name === "line-in")).toBe(true);
         // Le total arrive après les lignes : encore invisible au premier instant.
-        expect(Number(styles[5].opacity)).toBeLessThan(1);
-        await expect(rows.nth(5)).toHaveCSS("opacity", "1", { timeout: 10_000 });
+        expect(Number(styles[2].opacity)).toBeLessThan(1);
+        await expect(rows.nth(2)).toHaveCSS("opacity", "1", { timeout: 10_000 });
       }
-      await expect(page.getByText("195 pts")).toBeVisible();
+      await expect(page.getByText("120 pts")).toBeVisible();
     });
   }
 

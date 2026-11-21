@@ -4,18 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import type { PublishErrorKey } from "@/i18n/publish.fr";
 import { PhotoError, preparePhoto, reencodeToWebp, type PreparedPhoto } from "@/lib/publish/browser-image";
 import {
+  DEFAULT_COMMENT_MAX,
   DEFAULT_EDIT_RADIUS_M,
   photoPathFor,
   placeNameSchema,
+  THUMB_SIDE,
+  thumbPathFor,
   type DateSource,
   type GpsSource,
   type PublishResult,
 } from "@/lib/publish/contract";
 import { haptic } from "@/lib/haptics";
+import { reportClientError } from "@/lib/errors/report";
 import { isFreshPhoto, readDevicePosition, type PhotoOrigin } from "@/lib/publish/device-position";
 import type { LatLng } from "@/lib/publish/geo";
+import {
+  checkPasted,
+  defaultEdition,
+  defaultPastedOn,
+  pastedTakenAt,
+  type EditionOption,
+} from "@/lib/publish/pasted";
+import { photoHash } from "@/lib/publish/photo-hash";
 import { PublishError, type PublishServices } from "@/lib/publish/services";
-import { statusFor } from "@/lib/publish/status";
+import { needsReview } from "@/lib/publish/status";
 import { DoneStep } from "./done-step";
 import type { EstimateState } from "./estimate-panel";
 import { PhotoStep, type PhotoStepError, type PhotoStepStatus } from "./photo-step";
@@ -33,8 +45,14 @@ export type PublishFlowProps = {
   services: PublishServices;
   /** Déplacement maximal d'une position GPS (scoring_rules.edit_radius_m). */
   editRadius?: number;
-  /** Centre de la carte sans GPS : domicile arrondi de l'utilisateur, s'il l'a donné. */
+  /** Centre de la carte sans GPS (sinon le monde entier). */
   fallbackCenter?: LatLng | null;
+  /** Éditions que le membre peut choisir (actives, jusqu'à l'édition en cours). */
+  editions: EditionOption[];
+  /** Longueur maximale du commentaire (scoring_rules.comment_max_length). */
+  commentMax?: number;
+  /** Aujourd'hui (injecté par les tests). */
+  now?: () => Date;
 };
 
 const BLOCKING_ESTIMATE_ERRORS: PublishErrorKey[] = ["suspended", "missing_profile", "unauthorized"];
@@ -52,20 +70,38 @@ function errorCode(error: unknown): PublishErrorKey {
  * 1. photo, 2. vérification, 3. publication, puis « Sticker collé ».
  * Les accès serveur passent par `services` (Supabase, ou doublures en test).
  */
-export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS_M, fallbackCenter = null }: PublishFlowProps) {
+export function PublishFlow({
+  userId,
+  services,
+  editRadius = DEFAULT_EDIT_RADIUS_M,
+  fallbackCenter = null,
+  editions,
+  commentMax = DEFAULT_COMMENT_MAX,
+  now = () => new Date(),
+}: PublishFlowProps) {
   const [step, setStep] = useState<Step>({ kind: "photo", status: "idle", error: null });
   const [photo, setPhoto] = useState<PreparedPhoto | null>(null);
   const [position, setPosition] = useState<PositionState>(NO_POSITION);
-  const [uploadYear, setUploadYear] = useState(0);
   /** Photo prise à l'instant : la date et la position du téléphone valent celles de la photo. */
   const [fresh, setFresh] = useState(false);
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<NameError | null>(null);
+  const [comment, setComment] = useState("");
+  /** Date du collage (jour local), préremplie par la photo ou le jour même. */
+  const [pastedOn, setPastedOn] = useState("");
+  const [edition, setEdition] = useState<number | null>(null);
+  const [editionChosen, setEditionChosen] = useState(false);
+  const [showDateError, setShowDateError] = useState(false);
   const [estimate, setEstimate] = useState<EstimateState>({ kind: "waiting" });
   const estimateSeq = useRef(0);
   const estimateTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // Photo déjà réencodée puis envoyée : une nouvelle tentative ne refait que l'étape qui a échoué.
-  const prepared = useRef<{ blob: Blob | null; path: string | null }>({ blob: null, path: null });
+  const prepared = useRef<{ blob: Blob | null; path: string | null; thumbPath: string | null; hash: string | null | undefined }>({
+    blob: null,
+    path: null,
+    thumbPath: null,
+    hash: undefined,
+  });
   const previewUrl = useRef<string | null>(null);
 
   useEffect(
@@ -76,15 +112,19 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
     [],
   );
 
-  const dateSource: DateSource = photo?.meta.takenAt ? "exif" : fresh ? "device" : "upload";
+  const photoDay = photo ? defaultPastedOn(photo.meta.takenAtLocal, now()) : null;
+  const dateEdited = photo !== null && pastedOn !== photoDay;
+  const dateSource: DateSource = dateEdited
+    ? "manual"
+    : photo?.meta.takenAt
+      ? "exif"
+      : fresh
+        ? "device"
+        : "upload";
   const gpsSource: GpsSource = position.source;
-  const pending = statusFor(gpsSource, dateSource) === "pending_review";
-  const year =
-    estimate.kind === "ready"
-      ? estimate.data.year
-      : photo?.meta.takenAt
-        ? new Date(photo.meta.takenAt).getUTCFullYear()
-        : uploadYear;
+  const review = needsReview(gpsSource);
+  const dateError = photo ? checkPasted(pastedOn, edition, now()) : null;
+  const commentTooLong = comment.trim().length > commentMax;
   const blocked: PublishErrorKey | null =
     estimate.kind === "ready" && estimate.data.blocked
       ? estimate.data.blocked
@@ -92,7 +132,14 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
         ? estimate.code
         : null;
 
-  function requestEstimate(point: LatLng, gps: GpsSource, altitude: number | null, takenAt: string | null, date: DateSource) {
+  function requestEstimate(
+    point: LatLng,
+    gps: GpsSource,
+    altitude: number | null,
+    takenAt: string | null,
+    date: DateSource,
+    year: number | null,
+  ) {
     const seq = ++estimateSeq.current;
     clearTimeout(estimateTimer.current);
     setEstimate((previous) => ({
@@ -108,6 +155,7 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
           takenAt,
           gpsSource: gps,
           dateSource: date,
+          year,
         });
         if (seq === estimateSeq.current) setEstimate({ kind: "ready", data });
       } catch (error) {
@@ -131,19 +179,30 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
         if (device) nextPosition = { source: "device", origin: device.point, point: device.point, altitude: device.altitude };
       }
       const nextDateSource: DateSource = next.meta.takenAt ? "exif" : isFresh ? "device" : "upload";
+      const nextPastedOn = defaultPastedOn(next.meta.takenAtLocal, now());
+      const nextEdition = editionChosen && edition !== null ? edition : defaultEdition(editions, nextPastedOn);
 
       if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
       previewUrl.current = next.previewUrl;
-      prepared.current = { blob: null, path: null };
+      prepared.current = { blob: null, path: null, thumbPath: null, hash: undefined };
       setPhoto(next);
       setFresh(isFresh);
-      setUploadYear(new Date().getUTCFullYear());
+      setPastedOn(nextPastedOn);
+      setEdition(nextEdition);
+      setShowDateError(false);
       setPosition(nextPosition);
       estimateSeq.current += 1;
       clearTimeout(estimateTimer.current);
       setEstimate({ kind: "waiting" });
       if (nextPosition.point) {
-        requestEstimate(nextPosition.point, nextPosition.source, nextPosition.altitude, next.meta.takenAt, nextDateSource);
+        requestEstimate(
+          nextPosition.point,
+          nextPosition.source,
+          nextPosition.altitude,
+          next.meta.takenAt,
+          nextDateSource,
+          nextEdition,
+        );
       }
       setStep({ kind: "review" });
     } catch (error) {
@@ -159,7 +218,29 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
   function handlePositionChange(point: LatLng) {
     if (!photo) return;
     setPosition((current) => ({ ...current, point }));
-    requestEstimate(point, position.source, position.altitude, photo.meta.takenAt, dateSource);
+    requestEstimate(point, position.source, position.altitude, photo.meta.takenAt, dateSource, edition);
+  }
+
+  function handlePastedChange(value: string) {
+    setPastedOn(value);
+    // Tant que le membre n'a pas choisi d'édition, elle suit la date.
+    if (!editionChosen && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const next = defaultEdition(editions, value);
+      if (next !== edition) {
+        setEdition(next);
+        if (photo && position.point) {
+          requestEstimate(position.point, position.source, position.altitude, photo.meta.takenAt, "manual", next);
+        }
+      }
+    }
+  }
+
+  function handleEditionChange(year: number) {
+    setEdition(year);
+    setEditionChosen(true);
+    if (photo && position.point) {
+      requestEstimate(position.point, position.source, position.altitude, photo.meta.takenAt, dateSource, year);
+    }
   }
 
   async function publish(cleanName: string) {
@@ -171,12 +252,24 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
         setStep({ kind: "publishing", phase: "encode", error: null });
         const blob = prepared.current.blob ?? (await reencodeToWebp(photo.decodable));
         prepared.current.blob = blob;
+        // Empreinte (photos très proches) : facultative, jamais bloquante.
+        if (prepared.current.hash === undefined) prepared.current.hash = await photoHash(photo.decodable);
 
         phase = "upload";
         setStep({ kind: "publishing", phase, error: null });
         const path = photoPathFor(userId, crypto.randomUUID());
         await services.upload(path, blob);
+        // Miniature (listes, fil photo) : facultative, une erreur n'empêche pas la publication.
+        let thumbPath: string | null = null;
+        try {
+          const thumb = await reencodeToWebp(photo.decodable, { maxSide: THUMB_SIDE, quality: 0.8 });
+          await services.upload(thumbPathFor(path), thumb);
+          thumbPath = thumbPathFor(path);
+        } catch (error) {
+          reportClientError("upload", error, "/spots/new (miniature)");
+        }
         prepared.current.path = path;
+        prepared.current.thumbPath = thumbPath;
       }
 
       phase = "score";
@@ -186,17 +279,27 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
         lat: point.lat,
         lng: point.lng,
         altitude: gpsSource === "manual" ? null : position.altitude,
-        takenAt: photo.meta.takenAt,
+        takenAt: dateSource === "manual" ? pastedTakenAt(pastedOn, photo.meta.takenAt, photoDay) : photo.meta.takenAt,
         gpsSource,
         dateSource,
         name: cleanName,
+        year: edition,
+        comment: comment.trim() || null,
+        thumbPath: prepared.current.thumbPath,
+        photoHash: prepared.current.hash ?? null,
       });
       haptic("success");
       setStep({ kind: "done", result });
     } catch (error) {
       haptic("error");
+      if (phase === "upload" || (error instanceof PublishError && error.code === "server_error")) {
+        reportClientError(phase === "upload" ? "upload" : "client", error, `/spots/new (${phase})`);
+      }
       // Refus du serveur : la photo envoyée a été supprimée, une nouvelle tentative la renvoie.
-      if (phase === "score") prepared.current.path = null;
+      if (phase === "score") {
+        prepared.current.path = null;
+        prepared.current.thumbPath = null;
+      }
       setStep({
         kind: "publishing",
         phase,
@@ -214,7 +317,11 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
       return;
     }
     setNameError(null);
-    if (!position.point || blocked) return;
+    if (dateError) {
+      setShowDateError(true);
+      return;
+    }
+    if (commentTooLong || !position.point || blocked) return;
     haptic("tap");
     void publish(parsed.data);
   }
@@ -222,13 +329,16 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
   function restart() {
     if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
     previewUrl.current = null;
-    prepared.current = { blob: null, path: null };
+    prepared.current = { blob: null, path: null, thumbPath: null, hash: undefined };
     estimateSeq.current += 1;
     setPhoto(null);
     setFresh(false);
     setPosition(NO_POSITION);
     setName("");
     setNameError(null);
+    setComment("");
+    setEditionChosen(false);
+    setShowDateError(false);
     setEstimate({ kind: "waiting" });
     setStep({ kind: "photo", status: "idle", error: null });
   }
@@ -245,9 +355,18 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
           onPositionChange={handlePositionChange}
           editRadius={editRadius}
           fallbackCenter={fallbackCenter}
-          dateSource={dateSource}
-          year={year}
-          pending={pending}
+          dateFromPhoto={Boolean(photo.meta.takenAtLocal)}
+          pastedOn={pastedOn}
+          onPastedChange={handlePastedChange}
+          dateError={showDateError || dateError === "future" ? dateError : null}
+          today={defaultPastedOn(null, now())}
+          editions={editions}
+          edition={edition}
+          onEditionChange={handleEditionChange}
+          needsReview={review}
+          comment={comment}
+          commentMax={commentMax}
+          onCommentChange={setComment}
           name={name}
           onNameChange={(value) => {
             setName(value);

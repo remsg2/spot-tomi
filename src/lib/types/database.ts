@@ -16,42 +16,35 @@ export type SpotStatus = (typeof SPOT_STATUSES)[number];
 
 /**
  * Critères du détail des points (`spot_point_lines.rule_key`), dans l'ordre où
- * `compute_spot_points` les écrit. Seuls ceux qui rapportent des points sont présents,
- * plus la base (toujours) et le malus voisin (valeur négative) s'il s'applique.
+ * `compute_spot_points` les écrit (cahier des charges V1.1) : la base (toujours), le
+ * bonus de rareté (toujours, éventuellement nul) et, pour un doublon, la ligne négative
+ * qui annule le bonus. Les anciennes clés restent lisibles pour un détail figé avant.
  */
-export const POINT_RULE_KEYS = [
-  "base_country",
-  "first_country",
-  "first_city",
-  "isolation",
-  "exceptional",
-  "altitude",
-  "home_distance",
-  "neighbor_malus",
-] as const;
-export type PointRuleKey = (typeof POINT_RULE_KEYS)[number];
+export const POINT_RULE_KEYS = ["base", "rarity", "duplicate"] as const;
+export type PointRuleKey = (typeof POINT_RULE_KEYS)[number] | (string & {});
 
-/** Clés de `scoring_rules` (valeurs par défaut dans la migration). */
+/** Catégorie de rareté d'un lieu (`public.rarity_category`), de la plus commune à la plus rare. */
+export const RARITY_CATEGORIES = ["courant", "touristique", "remarquable", "isole", "tres_rare"] as const;
+export type RarityCategory = (typeof RARITY_CATEGORIES)[number];
+
+/** Clés de `scoring_rules` (valeurs par défaut dans les migrations). */
 export const SCORING_RULE_KEYS = [
-  "tier_courant",
-  "tier_lointain",
-  "tier_rare",
-  "tier_extreme",
-  "bonus_first_country",
-  "bonus_first_city",
-  "isolation_points_per_10km",
-  "isolation_cap",
-  "bonus_exceptional",
-  "altitude_threshold_m",
-  "bonus_altitude",
-  "home_points_per_1000km",
+  "base_points",
+  "bonus_touristique",
+  "bonus_remarquable",
+  "bonus_isole",
+  "bonus_tres_rare",
+  "isole_city_km",
+  "tres_rare_city_km",
+  "isole_altitude_m",
+  "tres_rare_altitude_m",
   "neighbor_radius_m",
-  "neighbor_divisor",
-  "home_blur_radius_m",
   "daily_publish_limit",
   "daily_report_limit",
   "reports_before_review",
   "edit_radius_m",
+  "edit_window_days",
+  "comment_max_length",
 ] as const;
 export type ScoringRuleKey = (typeof SCORING_RULE_KEYS)[number];
 
@@ -62,7 +55,7 @@ export type PublicSpotRow = {
   author_username: string;
   author_avatar_path: string | null;
   name: string;
-  /** Position publique (décalée et arrondie près du domicile de l'auteur). */
+  /** Position publique (la position exacte : plus de floutage depuis le retrait du domicile). */
   lat: number;
   lng: number;
   altitude_m: number | null;
@@ -80,6 +73,14 @@ export type PublicSpotRow = {
   is_first_in_country: boolean;
   points_total: number;
   created_at: string;
+  comment: string | null;
+  base_points: number;
+  rarity_bonus: number;
+  rarity_category: RarityCategory;
+  rarity_reason: string | null;
+  edition_name: string;
+  /** Miniature (480 px) dans `spot-photos`, si elle existe. */
+  thumb_path: string | null;
 };
 
 /** Une ligne de `public.spot_point_lines`, figée au calcul des points. */
@@ -95,11 +96,29 @@ export type SpotPointLineRow = {
   points: number;
 };
 
-/** Une ligne de `public.seasons`. */
+/** Une ligne de `public.seasons` (édition annuelle). */
 export type SeasonRow = {
   year: number;
+  name: string;
   color_hex: string;
   is_current: boolean;
+  visual_path: string | null;
+  status: "active" | "archived";
+};
+
+/** Une ligne de `rpc("list_editions")`. */
+export type EditionRow = {
+  year: number;
+  name: string;
+  color_hex: string;
+  visual_path: string | null;
+  status: "active" | "archived";
+  is_current: boolean;
+  /** Choisissable à la publication (active, jusqu'à l'édition en cours). */
+  selectable: boolean;
+  /** Couleur figée : édition passée qui a des stickers. */
+  color_locked: boolean;
+  spot_count: number;
 };
 
 /** Résultat de `rpc("current_season")` (une seule ligne). */

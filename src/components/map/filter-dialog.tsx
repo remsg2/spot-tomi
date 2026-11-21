@@ -6,7 +6,7 @@ import { PrimaryButton } from "@/components/ui";
 import { tm } from "@/i18n/map.fr";
 import { cn } from "@/lib/cn";
 import { searchSpots } from "@/lib/map/data";
-import { DEFAULT_FILTERS, setMine, setPerson, toggleYear } from "@/lib/map/filters";
+import { DEFAULT_FILTERS, setMine, setPeriod, setPerson, toggleCountry, toggleYear } from "@/lib/map/filters";
 import type { SearchResult } from "@/lib/map/types";
 import { Chip } from "./filter-chips";
 import { CloseIcon } from "./icons";
@@ -49,7 +49,10 @@ export function FilterDialog({ open, onClose }: { open: boolean; onClose: () => 
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [personQuery, setPersonQuery] = useState("");
   const [people, setPeople] = useState<SearchResult[]>([]);
+  const [countryQuery, setCountryQuery] = useState("");
+  const [countryResults, setCountryResults] = useState<SearchResult[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const countryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -58,7 +61,33 @@ export function FilterDialog({ open, onClose }: { open: boolean; onClose: () => 
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      clearTimeout(countryTimer.current);
+    },
+    [],
+  );
+
+  function searchCountries(value: string) {
+    setCountryQuery(value);
+    clearTimeout(countryTimer.current);
+    const q = value.trim();
+    if (q.length < 2) {
+      setCountryResults([]);
+      return;
+    }
+    countryTimer.current = setTimeout(async () => {
+      const supabase = getSupabase();
+      if (!supabase) return;
+      try {
+        const rows = await searchSpots(supabase, q, new AbortController().signal);
+        setCountryResults(rows.filter((row) => row.kind === "country"));
+      } catch {
+        setCountryResults([]);
+      }
+    }, 250);
+  }
 
   function searchPeople(value: string) {
     setPersonQuery(value);
@@ -129,6 +158,87 @@ export function FilterDialog({ open, onClose }: { open: boolean; onClose: () => 
             </div>
           </section>
         )}
+
+        <section className="flex flex-col gap-2" data-testid="filter-countries">
+          <h3 className="text-[11px] font-extrabold tracking-[0.1em] text-muted uppercase">{tm.filters.countries}</h3>
+          {filters.countries.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {filters.countries.map((country) => (
+                <Chip
+                  key={country.iso2}
+                  pressed
+                  activeStyle="var(--soft)"
+                  label={tm.filters.clearCountry(country.name)}
+                  onClick={() => setFilters((previous) => toggleCountry(previous, country))}
+                >
+                  <span className="text-text">{country.name}</span>
+                  <CloseIcon size={14} className="text-text" />
+                </Chip>
+              ))}
+            </div>
+          )}
+          <label className="flex h-12 items-center rounded-[14px] bg-soft px-3.5">
+            <span className="sr-only">{tm.filters.countries}</span>
+            <input
+              type="search"
+              value={countryQuery}
+              onChange={(event) => searchCountries(event.target.value)}
+              placeholder={tm.filters.countryPlaceholder}
+              autoComplete="off"
+              className="min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:text-muted"
+            />
+          </label>
+          {countryResults.length > 0 && (
+            <ul className="flex flex-col">
+              {countryResults.map((country) => (
+                <li key={country.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilters((previous) => toggleCountry(previous, { iso2: country.id, name: country.label }));
+                      setCountryQuery("");
+                      setCountryResults([]);
+                    }}
+                    className="flex min-h-11 w-full items-center justify-between rounded-[12px] px-3 text-left hover:bg-soft"
+                  >
+                    <span className="text-sm font-semibold">{country.label}</span>
+                    <span className="text-xs text-muted">{tm.search.countryDetail(country.spot_count ?? 0)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-2" data-testid="filter-period">
+          <h3 className="text-[11px] font-extrabold tracking-[0.1em] text-muted uppercase">{tm.filters.period}</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-semibold text-muted">{tm.filters.from}</span>
+              <input
+                type="date"
+                value={filters.from ?? ""}
+                onChange={(event) => {
+                  const value = event.currentTarget.value || null;
+                  setFilters((previous) => setPeriod(previous, value, previous.to));
+                }}
+                className="h-12 rounded-[14px] bg-soft px-3 text-[15px] font-medium"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-semibold text-muted">{tm.filters.to}</span>
+              <input
+                type="date"
+                value={filters.to ?? ""}
+                onChange={(event) => {
+                  const value = event.currentTarget.value || null;
+                  setFilters((previous) => setPeriod(previous, previous.from, value));
+                }}
+                className="h-12 rounded-[14px] bg-soft px-3 text-[15px] font-medium"
+              />
+            </label>
+          </div>
+        </section>
 
         <section className="flex flex-col gap-2">
           <h3 className="text-[11px] font-extrabold tracking-[0.1em] text-muted uppercase">{tm.filters.person}</h3>

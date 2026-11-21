@@ -54,6 +54,9 @@ vérifier les migrations avant la prod.
       site en ligne.
 3. **Retour arrière** (`rollback.yml`, manuel) : `vercel rollback <déploiement>`,
    sans reconstruction.
+4. **Sauvegarde** (`backup.yml`, chaque nuit) : export chiffré de la base de production
+   (photos le dimanche), gardé 30 jours. Mise en place et restauration :
+   [`docs/sauvegardes.md`](docs/sauvegardes.md).
 
 Les tests Playwright tournent sur le vrai site : ils doivent rester **en lecture
 seule**. Les tests qui écrivent des données tournent sur la base locale de la CI.
@@ -94,23 +97,24 @@ Les migrations doivent rester compatibles avec la version précédente de l'app
 | Environnement | Protection | Secret | Variable |
 | --- | --- | --- | --- |
 | `dev` | aucune | `SUPABASE_DB_PASSWORD` (dev) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-dev`) |
-| `production` | *Required reviewers* (facultatif) | `SUPABASE_DB_PASSWORD` (prod) | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-prod`) |
+| `production` | *Required reviewers* (facultatif) | `SUPABASE_DB_PASSWORD` (prod), `BACKUP_PASSPHRASE` | `SUPABASE_PROJECT_REF` (ref de `spot-tomi-prod`) |
 
 ### Données de démo
 
 Le workflow manuel **« Données de démo »** (*Actions → Run workflow*) agit sur le projet
 choisi (`dev` ou `production`) :
 
-- **remplir** : 8 comptes `demo_*` et 5 000 stickers par défaut
-  (`supabase/demo/generator.sql`), en complétant jusqu'à la cible sans la dépasser.
-  Saisons d'exemple 2024-2026 : imposées en dev, ajoutées en production seulement si
+- **remplir** : 8 comptes `demo_*` et 300 stickers par défaut (2 000 au plus,
+  `supabase/demo/generator.sql`), en complétant jusqu'à la cible sans la dépasser.
+  Éditions officielles 2025-2027 : imposées en dev, ajoutées en production seulement si
   aucune n'existe (une couleur choisie dans l'admin n'est jamais écrasée) ;
 - **vider** : supprime les comptes `demo_*` et tout ce qui leur appartient
   (`supabase/demo/clear.sql`), puis recalcule les points des vrais stickers, calculés
   pendant la démo en tenant compte des stickers de démo. En production, le générateur
   est aussi retiré.
 
-Les stickers de démo n'ont pas de vraie photo : la fiche affiche le sticker de Tomi.
+Les stickers de démo n'ont pas de vraie photo : la fiche affiche le visuel officiel de
+leur édition (`public/editions/{année}.webp`).
 En production, la démo est **publique** (carte et classement).
 
 ## Comptes (Supabase Auth)
@@ -122,10 +126,12 @@ En production, la démo est **publique** (carte et classement).
   n'est pas choisi.
 - `src/proxy.ts` rafraîchit la session et réserve `/me`, `/welcome`, `/spots/new` et
   `/admin` aux connectés ; `/dev/*` répond 404 en production.
-- Domicile : `set_my_home` l'arrondit à 0,01° (~1 km) ; seul son propriétaire peut le relire
-  (`get_my_home`), et l'interface n'affiche jamais de coordonnées.
+- Aucun domicile n'est demandé ni stocké : la position d'un sticker est publique telle
+  quelle, ce que l'app rappelle avant chaque publication.
 - Suppression du compte : Edge Function `delete-account` (fichiers Storage puis compte Auth ;
-  profil, domicile et stickers suivent en cascade).
+  profil, stickers, journal de points, badges et likes suivent en cascade). Un admin peut
+  aussi supprimer le compte d'un autre membre (motif obligatoire, journalisé par
+  `record_admin_account_deletion` avant toute suppression ; jamais un autre admin).
 
 **Réglages à faire dans chaque projet Supabase** (*Authentication → Sign In / Providers*) :
 
@@ -144,7 +150,43 @@ En production, la démo est **publique** (carte et classement).
 - Edge Function `publish-spot` : vérifie le jeton, refuse tout WebP qui contient encore
   EXIF, XMP, ICC ou un chunk inconnu, cherche la ville (Photon par défaut ; secret
   facultatif `GEOCODER_URL` : autre URL Photon, URL Nominatim ou `none`), puis appelle
-  `create_spot` (limites, statut, points ; codes d'erreur `ST001` à `ST006`).
+  `create_spot` (limites, édition, date, points ; codes d'erreur `ST001` à `ST006`).
+  L'altitude absente de la photo est demandée à Open-Meteo (secret facultatif
+  `ELEVATION_URL`, ou `none`).
+- Le membre choisit l'**édition** de son sticker et la **date du collage** (préremplie avec
+  celle de la photo, sinon du jour), et peut ajouter un commentaire. Le sticker est
+  **publié tout de suite** ; une position placée à la main le signale aux modérateurs.
+- Une miniature WebP de 480 px (`….thumb.webp`) sert aux listes et au fil photo ; une
+  empreinte de la photo (dHash) repère les photos quasi identiques pour la modération.
+
+## Points (cahier des charges V1.1)
+
+- **100 points de base** par sticker publié, plus un **bonus de rareté** selon la
+  catégorie du lieu : touristique +20 (site OpenStreetMap à moins de 300 m), remarquable
+  +50 (choisi par un modérateur), isolé +100 (pays rare, ≥ 3 000 m, à plus de 50 km
+  d'une ville de 15 000 habitants, ou en mer), très rare +200 (pays extrême, ≥ 4 000 m,
+  à plus de 300 km). Pas de bonus à moins de 200 m d'un sticker existant.
+- Valeurs réglables dans *Admin → Barème* (`scoring_rules`), lisibles par tous sur
+  `/points`. Un modérateur peut imposer la catégorie d'un sticker (motif obligatoire).
+- Chaque variation est écrite dans le **journal de points** (`points_ledger`) ; le
+  classement (vue matérialisée `leaderboard`) est calculé à partir de ce journal.
+  *Admin → Barème → Recalculer* refait tous les calculs (motif journalisé).
+- Villes de référence : `supabase/migrations/20261130000001_villes.sql`, généré par
+  `node scripts/generate-cities-sql.mjs` (données GeoNames, CC BY 4.0).
+
+## Éditions
+
+Une édition par année (*Admin → Éditions*) : nom, couleur, visuel, statut. La couleur
+d'une édition passée qui a des stickers est **figée** ; celle de l'édition en cours reste
+modifiable. Visuels officiels livrés dans `public/editions/` (2025 orange, 2026 rose,
+2027 vert) ; un visuel envoyé depuis l'admin (bucket `editions`) les remplace.
+
+## Suivi des erreurs et pages légales
+
+- Les erreurs serveur (`src/instrumentation.ts`) et client (error boundaries, envois de
+  photo) sont enregistrées par `log_app_error` (limité, 30 jours) : *Admin → Erreurs*.
+- Brouillons à faire relire avant l'ouverture : `/confidentialite`, `/cgu`, `/moderation`
+  (textes dans `src/i18n/legal.fr.ts`, passages entre crochets à compléter).
 - `/dev/publish` : le même parcours avec des services simulés (tests Playwright).
   Photos de test : `python3 e2e/fixtures/make-fixtures.py` (Pillow).
 

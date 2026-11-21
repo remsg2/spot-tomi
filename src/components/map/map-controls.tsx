@@ -90,6 +90,14 @@ export function MapLegend({ className }: { className?: string }) {
         </span>
         {tm.map.legend.group}
       </div>
+      <div className="flex items-center gap-2 text-xs">
+        <span aria-hidden="true" className="flex shrink-0 overflow-hidden rounded-[3px]">
+          <span className="h-3 w-2 bg-soft" />
+          <span className="h-3 w-2 bg-year opacity-40" />
+          <span className="h-3 w-2 bg-year" />
+        </span>
+        {tm.map.legend.conquest}
+      </div>
     </div>
   );
 }

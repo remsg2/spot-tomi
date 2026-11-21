@@ -137,7 +137,7 @@ test.describe("données de la carte", () => {
   test("les filtres deviennent les paramètres de spots_in_bbox", async ({ page }) => {
     await page.goto("/");
     await waitForMap(page);
-    const chip = page.getByRole("button", { name: "Année 2025" });
+    const chip = page.getByRole("button", { name: "Édition 2025" });
     await expect(chip).toBeVisible();
 
     let request = page.waitForRequest((r) => isBboxCall(r) && r.postDataJSON().filters?.years?.[0] === 2025);

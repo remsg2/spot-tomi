@@ -7,7 +7,7 @@ import { SeasonEditor } from "@/components/admin/season-editor";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import type { ModerationEntry } from "@/lib/admin/types";
 import { getPublicEnvResult } from "@/lib/env/server";
-import { previewExceptionalAction, previewModerationAction, previewSeasonAction } from "./actions";
+import { previewExceptionalAction, previewModerationAction, previewRarityAction, previewSeasonAction } from "./actions";
 
 /*
  * Partie client de l'admin isolée, réservée au développement (absente en
@@ -101,7 +101,7 @@ export default function DevAdminPage() {
             <ModerationList
               entries={QUEUE}
               empty="Rien à modérer."
-              actions={{ moderate: previewModerationAction, setExceptional: previewExceptionalAction }}
+              actions={{ moderate: previewModerationAction, setExceptional: previewExceptionalAction, setRarity: previewRarityAction }}
             />
           </section>
         </main>

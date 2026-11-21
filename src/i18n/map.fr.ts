@@ -10,6 +10,14 @@ function plural(count: number, one: string, many: string) {
   return `${integer.format(count)} ${count > 1 ? many : one}`;
 }
 
+/** « 2026-03-14 » → « 14 mars 2026 ». */
+function shortDay(day: string): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  return Number.isNaN(date.getTime())
+    ? day
+    : new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date);
+}
+
 export const mapFr = {
   shell: {
     column: "Panneau",
@@ -42,18 +50,28 @@ export const mapFr = {
       small: "-20",
       medium: "20-79",
       large: "80+ pts",
-      gold: "Premier du pays ou lieu exceptionnel",
+      gold: "Premier du pays ou site remarquable",
       group: "Groupe : années présentes et nombre de stickers",
+      conquest: "Pays (carte dézoomée) : plus foncé avec plus de stickers, gris s'il est encore vierge",
     },
   },
   filters: {
     label: "Filtres",
     open: "Filtres",
     title: "Filtrer les stickers",
-    years: "Année",
-    year: (year: number) => `Année ${year}`,
+    years: "Édition",
+    year: (year: number) => `Édition ${year}`,
     rare: "Rares",
-    rareHint: "Anneau doré ou pays à 60 points et plus",
+    rareHint: "Premier du pays, site remarquable, lieu isolé ou très rare",
+    countries: "Pays",
+    countryPlaceholder: "Un pays",
+    clearCountry: (name: string) => `Retirer le filtre ${name}`,
+    period: "Période du collage",
+    from: "Du",
+    to: "Au",
+    clearPeriod: "Retirer la période",
+    periodChip: (from: string | null, to: string | null) =>
+      from && to ? `${shortDay(from)} → ${shortDay(to)}` : from ? `Depuis le ${shortDay(from)}` : `Jusqu'au ${shortDay(to ?? "")}`,
     mine: "Mes stickers",
     mineLogin: "Connecte-toi pour voir tes stickers",
     person: "Personne",
@@ -109,6 +127,30 @@ export const mapFr = {
     place: (city: string | null, country: string | null) =>
       [city, country].filter(Boolean).join(", "),
     rarity: "Rareté",
+    edition: (name: string, year: number) => (name.includes(String(year)) ? name : `${name} (${year})`),
+    commentTitle: "Le mot de l'auteur",
+    pastedOn: (iso: string) => `Collé le ${dateFormat.format(new Date(iso))}`,
+    category: {
+      courant: "Lieu courant",
+      touristique: "Lieu touristique",
+      remarquable: "Site remarquable",
+      isole: "Lieu isolé",
+      tres_rare: "Lieu très rare",
+    } as Record<string, string>,
+    hiddenNote: "Ce sticker est masqué par la modération : il n'apparaît plus sur la carte et ses points ne comptent plus. Tu as reçu un avis sur ton profil.",
+    nearby: {
+      title: "Stickers proches",
+      distance: (meters: number) =>
+        meters < 1000 ? `${integer.format(meters)} m` : `${integer.format(Math.round(meters / 100) / 10)} km`,
+      empty: "Aucun autre sticker à moins de 50 km.",
+    },
+    like: {
+      like: "J'aime",
+      liked: "Aimé",
+      count: (n: number) => (n <= 1 ? `${n} like` : `${n} likes`),
+      login: "Connecte-toi pour aimer ce sticker.",
+      label: (n: number, liked: boolean) => `${liked ? "Retirer mon like" : "Aimer ce sticker"} · ${n <= 1 ? `${n} like` : `${n} likes`}`,
+    },
     tier: {
       courant: "Pays courant",
       lointain: "Pays lointain",
@@ -131,11 +173,27 @@ export const mapFr = {
       `${place ? `${place} · ` : ""}par ${username} · ${points} pts`,
     author: {
       title: "C'est ton sticker",
-      rename: "Renommer",
+      rename: "Modifier",
       renameLabel: "Nom du lieu",
       renameSave: "Enregistrer",
       renameCancel: "Annuler",
       renamed: "Nom enregistré.",
+      saved: "Modifications enregistrées.",
+      unchanged: "Rien n'a changé.",
+      commentLabel: "Commentaire (facultatif)",
+      pastedLabel: "Date du collage",
+      editionLabel: "Édition du sticker",
+      positionLabel: "Position",
+      positionValue: (moved: number) => (moved >= 1 ? `Déplacée de ${integer.format(moved)} m` : "Position de la publication"),
+      positionAdjust: "Ajuster la position",
+      positionHint: (radius: number) => `${integer.format(radius)} m au plus autour de la position de la photo.`,
+      photoLabel: "Photo",
+      photoChange: "Changer la photo",
+      photoSending: "Envoi de la nouvelle photo…",
+      photoDone: "Nouvelle photo enregistrée.",
+      photoFailed: "La nouvelle photo n'a pas pu être enregistrée.",
+      windowOpen: (until: string) => `Date, édition, position et photo modifiables jusqu'au ${dateFormat.format(new Date(until))}.`,
+      windowClosed: "Le délai de modification est passé : seuls le nom et le commentaire restent modifiables.",
       delete: "Supprimer",
       deleteConfirm: "Supprimer ce sticker, sa photo et ses points ? C'est définitif.",
       deleteYes: "Supprimer définitivement",
@@ -160,6 +218,11 @@ export const mapFr = {
       suspended: "Ton compte est suspendu.",
       limit: "Trop de signalements aujourd'hui. Réessaie demain.",
       generic: "Une erreur est survenue. Réessaie.",
+      editWindow: "Le délai de modification est dépassé.",
+      edition: "Cette édition n'est pas disponible.",
+      date: "Date du collage invalide.",
+      tooFar: "Position trop éloignée de celle de la photo.",
+      commentTooLong: "Commentaire trop long.",
     },
   },
   pwa: {

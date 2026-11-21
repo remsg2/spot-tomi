@@ -3,7 +3,7 @@
 import { ta } from "@/i18n/admin.fr";
 import type { ActionResult, SeasonActionResult } from "@/lib/admin/types";
 import { getPublicEnvResult } from "@/lib/env/server";
-import { parseModerationForm, parseSeasonForm } from "@/lib/validation/admin";
+import { parseModerationForm, parseRarityForm, parseSeasonForm } from "@/lib/validation/admin";
 
 /*
  * Actions simulées de la page /dev/admin : même validation que les vraies
@@ -32,5 +32,12 @@ export async function previewModerationAction(form: FormData): Promise<ActionRes
 
 export async function previewExceptionalAction(): Promise<ActionResult> {
   if (!(await devOnly())) return { ok: false, message: ta.errors.forbidden };
-  return { ok: true, message: "Simulation : lieu exceptionnel" };
+  return { ok: true, message: "Simulation : site remarquable" };
+}
+
+export async function previewRarityAction(form: FormData): Promise<ActionResult> {
+  if (!(await devOnly())) return { ok: false, message: ta.errors.forbidden };
+  const parsed = parseRarityForm(form);
+  if (!parsed.ok) return { ok: false, message: parsed.error };
+  return { ok: true, message: `Simulation : catégorie ${parsed.data.category ?? "automatique"}` };
 }

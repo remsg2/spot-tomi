@@ -1,18 +1,22 @@
 /**
- * Coloration des pays au dézoom (zoom ≤ 3) selon leur rareté : plus foncé quand le
- * pays rapporte plus, gris quand personne n'y a encore collé de sticker.
+ * Carte de conquête (cahier des charges 5 et 9.6) : au dézoom (zoom ≤ 3), chaque pays
+ * prend une teinte de la couleur de l'édition en cours d'autant plus foncée qu'il compte
+ * de stickers publiés ; les pays encore vierges restent gris.
  */
 import type { ExpressionSpecification } from "maplibre-gl";
 import type { CountryRarity, ThemeName } from "./types";
 
-/** 0 : aucun sticker ; 1 courant ; 2 lointain ; 3 rare ; 4 extrême (d'après les points de base). */
+/** 0 : pays vierge ; 1 : un sticker ; 2 : 2 à 9 ; 3 : 10 à 49 ; 4 : 50 et plus. */
 export type RarityLevel = 0 | 1 | 2 | 3 | 4;
 
-export function rarityLevel(row: Pick<CountryRarity, "base_points" | "spot_count">): RarityLevel {
+/** Seuils de nombre de stickers de chaque niveau (légende). */
+export const CONQUEST_THRESHOLDS = [1, 2, 10, 50] as const;
+
+export function rarityLevel(row: Pick<CountryRarity, "spot_count">): RarityLevel {
   if (row.spot_count <= 0) return 0;
-  if (row.base_points <= 10) return 1;
-  if (row.base_points <= 25) return 2;
-  if (row.base_points <= 60) return 3;
+  if (row.spot_count < 2) return 1;
+  if (row.spot_count < 10) return 2;
+  if (row.spot_count < 50) return 3;
   return 4;
 }
 
@@ -41,8 +45,8 @@ const LIGHT_BASE = "#FFFFFF";
 const DARK_BASE = "#222226";
 
 /**
- * Teintes de la couleur de l'année, de la plus claire (pays courant) à la plus
- * foncée (pays extrême). Index 0 : pays sans sticker.
+ * Teintes de la couleur de l'année, de la plus claire (un sticker) à la plus foncée
+ * (50 stickers et plus). Index 0 : pays vierge.
  */
 export function rarityPalette(yearColor: string, theme: ThemeName): [string, string, string, string, string] {
   const color = HEX.test(yearColor) ? yearColor : "#9A9A94";

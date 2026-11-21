@@ -7,7 +7,7 @@ import { tm } from "@/i18n/map.fr";
 import { cn } from "@/lib/cn";
 import { haptic } from "@/lib/haptics";
 import { formatPoints } from "@/lib/design/points";
-import { setMine, setPerson, toggleYear } from "@/lib/map/filters";
+import { setMine, setPeriod, setPerson, toggleCountry, toggleYear } from "@/lib/map/filters";
 import { HapticTouch } from "@/components/ui";
 import { CloseIcon } from "./icons";
 import { useMapContext } from "./map-provider";
@@ -111,6 +111,29 @@ export function FilterChips({
         )}
         {tm.filters.rare}
       </Chip>
+      {filters.countries.map((country) => (
+        <Chip
+          key={country.iso2}
+          pressed
+          activeStyle="var(--soft)"
+          label={tm.filters.clearCountry(country.name)}
+          onClick={() => setFilters((previous) => toggleCountry(previous, country))}
+        >
+          <span className="text-text">{country.name}</span>
+          <CloseIcon size={14} className="text-text" />
+        </Chip>
+      ))}
+      {(filters.from || filters.to) && (
+        <Chip
+          pressed
+          activeStyle="var(--soft)"
+          label={tm.filters.clearPeriod}
+          onClick={() => setFilters((previous) => setPeriod(previous, null, null))}
+        >
+          <span className="text-text">{tm.filters.periodChip(filters.from, filters.to)}</span>
+          <CloseIcon size={14} className="text-text" />
+        </Chip>
+      )}
       {filters.person ? (
         <Chip
           pressed

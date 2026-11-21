@@ -8,6 +8,10 @@
  *   (JSON { "default": "sb_secret_…" }). Jamais renvoyée ni journalisée.
  * - Géocodage : GEOCODER_URL (Photon par défaut, Nominatim possible,
  *   « none » pour désactiver), cache en mémoire puis en base.
+ * - Altitude du terrain quand la photo n'en a pas : ELEVATION_URL (Open-Meteo par
+ *   défaut, « none » pour désactiver).
+ * - Mode « nouvelle photo » (corps avec replaceSpotId) : l'auteur remplace la photo de
+ *   son sticker pendant le délai de modification.
  */
 import { createClient } from "npm:@supabase/supabase-js@2.119.2";
 import {
@@ -16,6 +20,7 @@ import {
   PHOTON_REVERSE_URL,
   reverseGeocodeCity,
 } from "../_shared/geocode.ts";
+import { fetchElevation, OPEN_METEO_ELEVATION_URL } from "../_shared/elevation.ts";
 import { PHOTO_BUCKET, type PublishResult, type SpotStatus } from "../_shared/publish-contract.ts";
 import { handlePublishRequest, type PublishDeps } from "./handler.ts";
 
@@ -42,6 +47,7 @@ const admin = createClient(supabaseUrl, serviceKey(), {
 });
 
 const geocoderUrl = Deno.env.get("GEOCODER_URL") ?? PHOTON_REVERSE_URL;
+const elevationUrl = Deno.env.get("ELEVATION_URL") ?? OPEN_METEO_ELEVATION_URL;
 const memory = memoryCityCache();
 
 /** Cache en mémoire de l'instance, puis cache partagé en base (private.geocode_cache). */
@@ -51,18 +57,21 @@ const cityCache: CityCache = {
     if (local.hit) return local;
     const { data, error } = await admin.rpc("geocode_cache_get", { p_lat: lat, p_lng: lng });
     if (error) throw error;
-    const row = Array.isArray(data) ? (data[0] as { city: string | null } | undefined) : undefined;
+    const row = Array.isArray(data)
+      ? (data[0] as { city: string | null; tourist: boolean | null } | undefined)
+      : undefined;
     if (!row) return { hit: false, city: null };
-    await memory.put(lat, lng, row.city, "photon");
-    return { hit: true, city: row.city };
+    await memory.put(lat, lng, row.city, "photon", row.tourist);
+    return { hit: true, city: row.city, tourist: row.tourist };
   },
-  async put(lat, lng, city, provider) {
-    await memory.put(lat, lng, city, provider);
+  async put(lat, lng, city, provider, tourist = null) {
+    await memory.put(lat, lng, city, provider, tourist);
     const { error } = await admin.rpc("geocode_cache_put", {
       p_lat: lat,
       p_lng: lng,
       p_city: city,
       p_provider: provider,
+      p_tourist: tourist,
     });
     if (error) throw error;
   },
@@ -91,16 +100,27 @@ const deps: PublishDeps = {
     await admin.storage.from(PHOTO_BUCKET).remove([path]);
   },
 
-  async geocodeCity(lat, lng) {
-    if (geocoderUrl === "none") return null;
-    const { city } = await reverseGeocodeCity(lat, lng, { baseUrl: geocoderUrl, cache: cityCache });
-    return city;
+  async geocode(lat, lng) {
+    if (geocoderUrl === "none") return { city: null, tourist: false };
+    const { city, tourist } = await reverseGeocodeCity(lat, lng, { baseUrl: geocoderUrl, cache: cityCache });
+    return { city, tourist };
+  },
+
+  elevation(lat, lng) {
+    return fetchElevation(lat, lng, { baseUrl: elevationUrl });
   },
 
   async createSpot(args) {
     const { data, error } = await admin.rpc("create_spot", args);
     if (error) return { sqlCode: error.code ?? "", message: error.message ?? "" };
     return { id: data as string };
+  },
+
+  async replacePhoto(args) {
+    const { data, error } = await admin.rpc("replace_spot_photo", args);
+    if (error) return { sqlCode: error.code ?? "", message: error.message ?? "" };
+    const row = data as { old_photo_path?: string | null; old_thumb_path?: string | null } | null;
+    return { oldPhotoPath: row?.old_photo_path ?? null, oldThumbPath: row?.old_thumb_path ?? null };
   },
 
   async loadSpot(id) {

@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProfileThemeSync } from "@/components/account/profile-theme-sync";
+import { LegalLinks } from "@/components/legal/legal-page";
 import { BackLink } from "@/components/ui";
 import { t } from "@/i18n/fr";
 import { requireProfile } from "@/lib/auth/server";
 import { getPublicEnv } from "@/lib/env/server";
 import { publicStorageUrl } from "@/lib/storage";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   AvatarSection,
   DeleteAccountSection,
-  HomeSection,
   PasswordSection,
   ThemeSection,
   VibrationsSection,
@@ -36,10 +35,6 @@ export default function SettingsPage() {
 async function SettingsContent() {
   const { user, profile } = await requireProfile("/me/settings");
   const { supabaseUrl } = await getPublicEnv();
-  const supabase = await getSupabaseServerClient();
-  // Seul le propriétaire peut lire son domicile ; on ne l'affiche pas, on dit seulement s'il existe.
-  const { data: home } = await supabase.rpc("get_my_home");
-  const hasHome = Array.isArray(home) && home.length > 0;
   const avatarUrl = profile.avatar_path ? publicStorageUrl(supabaseUrl, "avatars", profile.avatar_path) : null;
 
   return (
@@ -52,11 +47,11 @@ async function SettingsContent() {
         avatarPath={profile.avatar_path}
         avatarUrl={avatarUrl}
       />
-      <HomeSection hasHome={hasHome} />
       <ThemeSection />
       <VibrationsSection />
       <PasswordSection email={user.email ?? ""} />
       <DeleteAccountSection username={profile.username} />
+      <LegalLinks />
     </>
   );
 }

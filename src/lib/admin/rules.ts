@@ -3,25 +3,16 @@ import type { ScoringRule } from "./types";
 
 /** Regroupement des règles de scoring_rules pour l'onglet Barème (docs/contrats.md §3). */
 const GROUPS = {
-  tiers: ["tier_courant", "tier_lointain", "tier_rare", "tier_extreme"],
-  bonus: [
-    "bonus_first_country",
-    "bonus_first_city",
-    "isolation_points_per_10km",
-    "isolation_cap",
-    "bonus_exceptional",
-    "altitude_threshold_m",
-    "bonus_altitude",
-    "home_points_per_1000km",
-  ],
-  malus: [
+  base: ["base_points", "bonus_touristique", "bonus_remarquable", "bonus_isole", "bonus_tres_rare"],
+  index: ["isole_city_km", "tres_rare_city_km", "isole_altitude_m", "tres_rare_altitude_m"],
+  limits: [
     "neighbor_radius_m",
-    "neighbor_divisor",
-    "home_blur_radius_m",
     "daily_publish_limit",
     "daily_report_limit",
     "reports_before_review",
     "edit_radius_m",
+    "edit_window_days",
+    "comment_max_length",
   ],
 } as const;
 

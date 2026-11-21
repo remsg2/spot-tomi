@@ -7,15 +7,17 @@ import { cn } from "@/lib/cn";
 import { USER_ROLES } from "@/lib/validation/admin";
 import { ActionMessage } from "./action-message";
 import { ConfirmAction } from "./confirm-action";
-import { buttonDanger, buttonGhost, cardSm, dangerBadge, neutralBadge } from "./styles";
+import { buttonDanger, buttonGhost, cardSm, dangerBadge, input, neutralBadge } from "./styles";
 import { SubmitButton } from "./submit-button";
 
 type Actions = {
   changeRole: (form: FormData) => Promise<ActionResult>;
   setSuspended: (form: FormData) => Promise<ActionResult>;
+  adjustPoints?: (form: FormData) => Promise<ActionResult>;
+  deleteUser?: (form: FormData) => Promise<ActionResult>;
 };
 
-/** Onglet Rôles : pseudo, rôle, suspension, nombre de stickers. Ni email, ni domicile. */
+/** Onglet Membres : pseudo, rôle, suspension, correction de points, suppression. Jamais d'email. */
 export function UserList({ users, meId, actions }: { users: AdminUser[]; meId: string; actions: Actions }) {
   const [last, setLast] = useState<{ id: string; result: ActionResult } | null>(null);
 
@@ -77,6 +79,47 @@ export function UserList({ users, meId, actions }: { users: AdminUser[]; meId: s
                 </form>
               )}
             </div>
+            {(actions.adjustPoints || (actions.deleteUser && !isMe && user.role !== "admin")) && (
+              <details className="rounded-[12px] border border-line">
+                <summary className="flex min-h-11 cursor-pointer items-center px-3 text-[13px] font-semibold">
+                  {ta.roles.adjust} · {ta.roles.deleteAccount}
+                </summary>
+                <div className="flex flex-col gap-3 border-t border-line p-3">
+                  {actions.adjustPoints && (
+                    <form action={async (form) => report(await actions.adjustPoints!(form))} className="flex flex-col gap-2">
+                      <input type="hidden" name="userId" value={user.id} />
+                      <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+                        {ta.roles.adjustPoints}
+                        <input name="points" type="number" step={1} required className={input} />
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+                        {ta.roles.adjustReason}
+                        <input name="reason" required minLength={3} maxLength={200} className={input} />
+                      </label>
+                      <SubmitButton className={cn(buttonGhost, "self-start")}>{ta.roles.adjustSubmit}</SubmitButton>
+                    </form>
+                  )}
+                  {actions.deleteUser && !isMe && user.role !== "admin" && (
+                    <form action={async (form) => report(await actions.deleteUser!(form))} className="flex flex-col gap-2">
+                      <input type="hidden" name="userId" value={user.id} />
+                      <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+                        {ta.roles.deleteReason}
+                        <input name="reason" required minLength={3} maxLength={200} className={input} />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <ConfirmAction
+                          trigger={ta.roles.deleteAccount}
+                          question={ta.roles.confirmDelete(user.username)}
+                          confirmLabel={ta.roles.confirmDeleteYes}
+                          triggerClassName={buttonDanger}
+                          confirmClassName={buttonDanger}
+                        />
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </details>
+            )}
             {last?.id === user.id && <ActionMessage result={last.result} />}
           </li>
         );

@@ -10,7 +10,7 @@ import { NAV_ITEMS } from "./routes";
 const labels = {
   map: t.nav.map,
   leaderboard: t.nav.leaderboard,
-  album: t.nav.album,
+  stats: t.nav.stats,
   profile: t.nav.profile,
   admin: tm.shell.admin,
 } as const;

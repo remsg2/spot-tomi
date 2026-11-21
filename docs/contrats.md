@@ -1,5 +1,10 @@
 # Contrats entre les étapes 4 à 8
 
+> **Cahier des charges V1.1 (décembre 2026)** : le barème, le domicile, la publication
+> avec modération préalable et les saisons décrits aux §3 à §7 ont été remplacés. Le §8
+> décrit le modèle en vigueur ; il l'emporte sur les sections précédentes, gardées pour
+> l'historique des migrations.
+
 Ce document fige ce que chaque étape fournit aux autres, pour qu'elles puissent être
 développées en parallèle puis assemblées sans conflit. Les spécifications font foi pour
 tout ce qui n'est pas précisé ici ; en cas de contradiction, **ce document l'emporte**
@@ -261,3 +266,61 @@ génération de stickers de démo (utilisée plus tard pour 5 000 stickers).
 - Couleur de l'année : contraste ≥ 4,5:1 avec `#111111` (`isReadableYearColor`), puis
   `revalidateTag('season')`. `getCurrentYearColor()` (`src/lib/season.ts`) lit alors
   `current_season()` **au runtime uniquement**.
+
+## 8. Cahier des charges V1.1 (modèle en vigueur)
+
+### Migrations
+
+| Fichier | Contenu |
+| --- | --- |
+| `20261130000000_cahier_modele.sql` | retrait du domicile (table, fonctions, floutage), éditions (`seasons` : nom, visuel, statut, couleur figée), `cities`, catégories de rareté, `compute_spot_points`, `points_ledger`, classement dérivé du journal |
+| `20261130000001_villes.sql` | villes de 15 000 habitants et plus (généré : `scripts/generate-cities-sql.mjs`) |
+| `20261130000002_cahier_lot1.sql` | publication directe, commentaire, modification par l'auteur, signalements avec statut, avis, pseudos réservés, filtres de carte, stickers proches, journal des erreurs |
+| `20261201000000_cahier_jeu.sql` | continents, îles, déserts, badges, passeport, conquête mondiale, records, likes, fil photo, classements par zone, lieux les plus rares |
+| `20261201000001_geo_extras.sql` | données géographiques (généré : `scripts/generate-geo-extras-sql.mjs`) |
+| `20261202000000_cahier_recalcul.sql` | remise à zéro des données de test, éditions officielles 2025-2027 |
+
+### Points
+
+- `compute_spot_points(spot, motif)` : `base_points` (100) + bonus de la catégorie
+  (`bonus_touristique` 20, `bonus_remarquable` 50, `bonus_isole` 100,
+  `bonus_tres_rare` 200). Catégorie automatique (`auto_rarity`) : très rare (pays
+  `extreme`, altitude ≥ `tres_rare_altitude_m`, ville à plus de `tres_rare_city_km`),
+  isolé (pays `rare`, ≥ `isole_altitude_m`, plus de `isole_city_km`, en mer), touristique
+  (géocodeur : site OSM à moins de 300 m), sinon courant. `rarity_override` (modérateur,
+  `admin_set_rarity`, motif obligatoire) l'emporte. Aucun bonus à moins de
+  `neighbor_radius_m` d'un sticker publié plus ancien (ligne `duplicate`).
+- Lignes de `spot_point_lines` : `base`, `rarity`, `duplicate`.
+- Toute variation de `spots.points_total` (ou suppression) écrit une ligne dans
+  `points_ledger` par déclencheur, avec le motif de `spot_tomi.ledger_reason`
+  (`private.set_ledger_reason`, remis à null après chaque écriture). Corrections manuelles :
+  `admin_adjust_points`. `recompute_all_points(motif)` / `admin_recompute`.
+- Le classement (`leaderboard`, vue matérialisée) somme le journal ; égalité départagée
+  par la date à laquelle le total a été atteint, puis le nombre de stickers.
+
+### Éditions
+
+- `list_editions()` : `year, name, color_hex, visual_path, status, is_current,
+  selectable, color_locked, spot_count`. Choisissable : `active` et pas postérieure à
+  l'édition en cours.
+- `admin_save_edition` ; la couleur d'une édition passée qui a des stickers ne change
+  plus (`ST805`), sauf déverrouillage explicite (`spot_tomi.edition_color_unlock`, seed).
+- Visuels : `public/editions/{année}.webp` (officiels), sinon bucket `editions`.
+
+### Publication et modification
+
+- `publish-spot` reçoit en plus `year`, `comment`, `thumbPath`, `photoHash` ; la date
+  envoyée est celle du collage (`dateSource = 'manual'` si le membre l'a changée).
+- Statut `published` dès la création ; `needs_review` si la position est placée à la main.
+- `update_my_spot` (nom, commentaire, date, édition, position dans `edit_radius_m`,
+  pendant `edit_window_days`) ; `my_spot_edit_info` ; `replace_spot_photo`.
+
+### Comptes et modération
+
+- Plus de domicile. `record_admin_account_deletion(acteur, membre, motif)` puis
+  `delete-account` en mode admin.
+- Signalements : `spot_reports.status` (`open`, `accepted`, `rejected`) ; avis aux membres
+  dans `user_notices`. Pseudos réservés : `ST011`.
+- Journal des erreurs : `log_app_error` (anonyme accepté, 200 par minute au plus, 30 jours),
+  `admin_recent_errors`.
+

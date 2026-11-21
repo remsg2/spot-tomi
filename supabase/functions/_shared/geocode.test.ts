@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   cityFromReverseGeocode,
+  touristFromReverseGeocode,
   GEOCODER_USER_AGENT,
   memoryCityCache,
   providerFor,
@@ -60,7 +61,7 @@ describe("reverseGeocodeCity", () => {
   it("envoie un User-Agent générique et un délai court", async () => {
     const fetcher = vi.fn<typeof fetch>(async () => response(photon({ type: "city", name: "Ushuaïa" })));
     const result = await reverseGeocodeCity(-54.8, -68.3, { fetch: fetcher });
-    expect(result).toEqual({ city: "Ushuaïa", source: "provider" });
+    expect(result).toEqual({ city: "Ushuaïa", tourist: false, source: "provider" });
     const [url, init] = fetcher.mock.calls[0];
     expect(String(url)).toMatch(/^https:\/\/photon\.komoot\.io\/reverse\?/);
     expect((init?.headers as Record<string, string>)["User-Agent"]).toBe(GEOCODER_USER_AGENT);
@@ -72,9 +73,9 @@ describe("reverseGeocodeCity", () => {
     const offline = vi.fn<typeof fetch>(async () => {
       throw new TypeError("fetch failed");
     });
-    expect(await reverseGeocodeCity(1, 2, { fetch: offline })).toEqual({ city: null, source: "error" });
+    expect(await reverseGeocodeCity(1, 2, { fetch: offline })).toEqual({ city: null, tourist: false, source: "error" });
     const down = vi.fn<typeof fetch>(async () => response({}, 503));
-    expect(await reverseGeocodeCity(1, 2, { fetch: down })).toEqual({ city: null, source: "error" });
+    expect(await reverseGeocodeCity(1, 2, { fetch: down })).toEqual({ city: null, tourist: false, source: "error" });
 
     const slow = vi.fn<typeof fetch>(
       (_url, init) =>
@@ -82,15 +83,15 @@ describe("reverseGeocodeCity", () => {
           init?.signal?.addEventListener("abort", () => reject(new DOMException("délai", "TimeoutError")));
         }),
     );
-    expect(await reverseGeocodeCity(1, 2, { fetch: slow, timeoutMs: 20 })).toEqual({ city: null, source: "error" });
+    expect(await reverseGeocodeCity(1, 2, { fetch: slow, timeoutMs: 20 })).toEqual({ city: null, tourist: false, source: "error" });
   });
 
   it("utilise le cache, puis y range la réponse du fournisseur", async () => {
     const cache = memoryCityCache();
     const fetcher = vi.fn<typeof fetch>(async () => response(photon({ type: "city", name: "Paris" })));
-    expect(await reverseGeocodeCity(48.8566, 2.3522, { fetch: fetcher, cache })).toEqual({ city: "Paris", source: "provider" });
+    expect(await reverseGeocodeCity(48.8566, 2.3522, { fetch: fetcher, cache })).toEqual({ city: "Paris", tourist: false, source: "provider" });
     // Même case de ~110 m : pas de deuxième appel.
-    expect(await reverseGeocodeCity(48.8569, 2.3518, { fetch: fetcher, cache })).toEqual({ city: "Paris", source: "cache" });
+    expect(await reverseGeocodeCity(48.8569, 2.3518, { fetch: fetcher, cache })).toEqual({ city: "Paris", tourist: false, source: "cache" });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
@@ -104,7 +105,7 @@ describe("reverseGeocodeCity", () => {
       },
     };
     const fetcher = vi.fn<typeof fetch>(async () => response(photon({ type: "city", name: "Lyon" })));
-    expect(await reverseGeocodeCity(45.76, 4.83, { fetch: fetcher, cache: broken })).toEqual({ city: "Lyon", source: "provider" });
+    expect(await reverseGeocodeCity(45.76, 4.83, { fetch: fetcher, cache: broken })).toEqual({ city: "Lyon", tourist: false, source: "provider" });
   });
 
   it("le cache en mémoire garde une taille bornée", async () => {
@@ -114,6 +115,36 @@ describe("reverseGeocodeCity", () => {
     await cache.put(3, 3, "C", "photon");
     expect(cache.size()).toBe(2);
     expect((await cache.get(1, 1)).hit).toBe(false);
-    expect(await cache.get(3, 3)).toEqual({ hit: true, city: "C" });
+    expect(await cache.get(3, 3)).toEqual({ hit: true, city: "C", tourist: null });
+  });
+});
+
+describe("touristFromReverseGeocode", () => {
+  const features = (...properties: Record<string, unknown>[]) => ({
+    type: "FeatureCollection",
+    features: properties.map((props) => ({ type: "Feature", geometry: { type: "Point", coordinates: [0, 0] }, properties: props })),
+  });
+
+  it("repère un site touristique ou historique parmi les objets proches", () => {
+    expect(touristFromReverseGeocode(features({ osm_key: "highway", osm_value: "residential" }, { osm_key: "tourism", osm_value: "viewpoint" }))).toBe(true);
+    expect(touristFromReverseGeocode(features({ osm_key: "historic", osm_value: "castle" }))).toBe(true);
+  });
+
+  it("ignore les hôtels, les rues et les réponses Nominatim", () => {
+    expect(touristFromReverseGeocode(features({ osm_key: "tourism", osm_value: "hotel" }, { osm_key: "highway", osm_value: "primary" }))).toBe(false);
+    expect(touristFromReverseGeocode({ address: { city: "Lyon" } })).toBe(false);
+    expect(touristFromReverseGeocode(null)).toBe(false);
+  });
+
+  it("demande dix objets dans un rayon de 300 m à Photon", () => {
+    const url = new URL(reverseGeocodeUrl("https://photon.komoot.io/reverse", 45.76, 4.83));
+    expect(url.searchParams.get("limit")).toBe("10");
+    expect(url.searchParams.get("radius")).toBe("0.3");
+  });
+
+  it("une case du cache sans l'information est complétée par le fournisseur", async () => {
+    const cache: CityCache = { get: async () => ({ hit: true, city: "Lyon", tourist: null }), put: async () => undefined };
+    const fetcher = vi.fn<typeof fetch>(async () => response(features({ osm_key: "historic", osm_value: "monument", city: "Lyon" })));
+    expect(await reverseGeocodeCity(45.76, 4.83, { fetch: fetcher, cache })).toEqual({ city: "Lyon", tourist: true, source: "provider" });
   });
 });

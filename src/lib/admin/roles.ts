@@ -17,7 +17,7 @@ export function canAccess(level: StaffLevel | null, required: StaffLevel): boole
   return required === "moderator" || level === "admin";
 }
 
-export type AdminTab = "season" | "moderation" | "scoring" | "roles" | "journal";
+export type AdminTab = "season" | "moderation" | "scoring" | "roles" | "badges" | "errors" | "journal";
 
 /** Onglets de l'admin et rôle requis (spécifications, 4). */
 export const ADMIN_TABS: ReadonlyArray<{ tab: AdminTab; href: `/admin/${AdminTab}`; required: StaffLevel }> = [
@@ -25,6 +25,8 @@ export const ADMIN_TABS: ReadonlyArray<{ tab: AdminTab; href: `/admin/${AdminTab
   { tab: "moderation", href: "/admin/moderation", required: "moderator" },
   { tab: "scoring", href: "/admin/scoring", required: "admin" },
   { tab: "roles", href: "/admin/roles", required: "admin" },
+  { tab: "badges", href: "/admin/badges", required: "admin" },
+  { tab: "errors", href: "/admin/errors", required: "admin" },
   { tab: "journal", href: "/admin/journal", required: "admin" },
 ];
 

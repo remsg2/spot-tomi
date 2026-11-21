@@ -9,6 +9,30 @@ export function ordinalFr(rank: number): string {
 }
 
 export const leaderboardFr = {
+  zones: {
+    title: "Par pays ou par continent",
+    label: "Zone",
+    choose: "Choisir un pays ou un continent",
+    continents: "Continents",
+    countries: "Pays conquis",
+    submit: "Voir",
+    empty: "Aucun sticker dans cette zone pour l'instant.",
+    row: (rank: number, username: string, points: string, stickers: number) =>
+      `${ordinalFr(rank)} ${username}, ${points} points, ${stickers <= 1 ? `${stickers} sticker` : `${stickers} stickers`}`,
+    continent: {
+      afrique: "Afrique",
+      amerique_nord: "Amérique du Nord",
+      amerique_sud: "Amérique du Sud",
+      antarctique: "Antarctique",
+      asie: "Asie",
+      europe: "Europe",
+      oceanie: "Océanie",
+    } as Record<string, string>,
+  },
+  rarest: {
+    title: "Lieux les plus rares",
+  },
+  tieRule: "À égalité, celui qui a atteint son score le premier passe devant, puis celui qui a le plus de stickers.",
   title: "Classement",
   metaDescription: "Le classement des colleurs de stickers de Tomi : points, pays et stickers.",
   periodLabel: "Période",

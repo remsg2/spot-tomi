@@ -88,7 +88,9 @@ export function parseRuleValue(key: string, raw: string): Parsed<number> {
   if (!Number.isFinite(value) || value < 0 || value > RULE_VALUE_MAX) {
     return { ok: false, error: ta.scoring.ruleInvalid };
   }
-  if (key === "neighbor_divisor" && value < 1) return { ok: false, error: ta.scoring.divisorInvalid };
+  if (key === "comment_max_length" && (value < 10 || value > 500)) {
+    return { ok: false, error: ta.scoring.commentInvalid };
+  }
   return { ok: true, data: value };
 }
 
@@ -122,10 +124,134 @@ export function parseSpotIdForm(form: FormData): Parsed<string> {
   return id ? { ok: true, data: id } : { ok: false, error: ta.scoring.recomputeInvalid };
 }
 
-const moderationSchema = z.object({ spotId: uuidSchema, intent: z.enum(MODERATION_INTENTS) });
+const moderationSchema = z.object({
+  spotId: uuidSchema,
+  intent: z.enum(MODERATION_INTENTS),
+  reason: z.string().trim().max(200).optional(),
+});
 
-export function parseModerationForm(form: FormData): Parsed<{ spotId: string; intent: ModerationIntent }> {
-  const parsed = moderationSchema.safeParse({ spotId: form.get("spotId"), intent: form.get("intent") });
+export function parseModerationForm(
+  form: FormData,
+): Parsed<{ spotId: string; intent: ModerationIntent; reason: string | null }> {
+  const parsed = moderationSchema.safeParse({
+    spotId: form.get("spotId"),
+    intent: form.get("intent"),
+    reason: form.get("reason") ?? undefined,
+  });
+  return parsed.success
+    ? { ok: true, data: { spotId: parsed.data.spotId, intent: parsed.data.intent, reason: parsed.data.reason || null } }
+    : { ok: false, error: ta.errors.invalid };
+}
+
+/** Motif obligatoire (recalcul, correction, catégorie, suppression d'un compte). */
+export const reasonSchema = z.string().trim().min(3).max(200);
+
+export const RARITY_CATEGORIES = ["courant", "touristique", "remarquable", "isole", "tres_rare"] as const;
+
+const raritySchema = z.object({
+  spotId: uuidSchema,
+  category: z.union([z.enum(RARITY_CATEGORIES), z.literal("auto")]),
+  reason: reasonSchema,
+});
+
+export function parseRarityForm(
+  form: FormData,
+): Parsed<{ spotId: string; category: (typeof RARITY_CATEGORIES)[number] | null; reason: string }> {
+  const parsed = raritySchema.safeParse({
+    spotId: form.get("spotId"),
+    category: form.get("category"),
+    reason: form.get("reason") ?? "",
+  });
+  if (!parsed.success) return { ok: false, error: ta.scoring.reasonRequired };
+  return {
+    ok: true,
+    data: {
+      spotId: parsed.data.spotId,
+      category: parsed.data.category === "auto" ? null : parsed.data.category,
+      reason: parsed.data.reason,
+    },
+  };
+}
+
+export function parseReasonForm(form: FormData): Parsed<string> {
+  const parsed = reasonSchema.safeParse(form.get("reason") ?? "");
+  return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: ta.scoring.reasonRequired };
+}
+
+const adjustSchema = z.object({
+  userId: uuidSchema,
+  points: z.coerce.number().int().refine((value) => value !== 0 && Math.abs(value) <= 100000),
+  reason: reasonSchema,
+});
+
+export function parseAdjustForm(form: FormData): Parsed<{ userId: string; points: number; reason: string }> {
+  const parsed = adjustSchema.safeParse({
+    userId: form.get("userId"),
+    points: form.get("points"),
+    reason: form.get("reason") ?? "",
+  });
+  return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: ta.roles.adjustInvalid };
+}
+
+const deleteUserSchema = z.object({ userId: uuidSchema, reason: reasonSchema });
+
+export function parseDeleteUserForm(form: FormData): Parsed<{ userId: string; reason: string }> {
+  const parsed = deleteUserSchema.safeParse({ userId: form.get("userId"), reason: form.get("reason") ?? "" });
+  return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: ta.scoring.reasonRequired };
+}
+
+const editionSchema = z.object({
+  year: z.coerce.number().int().min(SEASON_YEAR_MIN).max(SEASON_YEAR_MAX),
+  name: z.string().trim().min(1).max(60),
+  colorHex: z.string(),
+  status: z.enum(["active", "archived"]),
+  makeCurrent: checkbox,
+  visualPath: z.string().nullable(),
+});
+
+export type EditionInput = {
+  year: number;
+  name: string;
+  colorHex: string;
+  status: "active" | "archived";
+  makeCurrent: boolean;
+  /** null : inchangé ; « » : retiré ; sinon le chemin du nouveau visuel. */
+  visualPath: string | null;
+};
+
+export function parseEditionForm(form: FormData): Parsed<EditionInput> {
+  const parsed = editionSchema.safeParse({
+    year: form.get("year"),
+    name: form.get("name") ?? "",
+    colorHex: form.get("colorHex") ?? "",
+    status: form.get("status") ?? "active",
+    makeCurrent: form.get("makeCurrent"),
+    visualPath: form.has("visualPath") ? String(form.get("visualPath")) : null,
+  });
+  if (!parsed.success) return { ok: false, error: ta.errors.invalid };
+  const check = checkYearColor(parsed.data.colorHex);
+  const error = yearColorError(check);
+  if (error || !check.color) return { ok: false, error: error ?? ta.season.invalidHex };
+  if (parsed.data.visualPath && !new RegExp(`^${parsed.data.year}/[0-9a-f-]{36}\\.(webp|png|jpg)$`).test(parsed.data.visualPath)) {
+    return { ok: false, error: ta.errors.invalid };
+  }
+  return { ok: true, data: { ...parsed.data, colorHex: check.color } };
+}
+
+const badgeSchema = z.object({
+  code: z.string().regex(/^[a-z0-9_]{1,40}$/),
+  active: checkbox,
+  name: z.string().trim().min(1).max(60),
+  description: z.string().trim().min(1).max(200),
+});
+
+export function parseBadgeForm(form: FormData): Parsed<{ code: string; active: boolean; name: string; description: string }> {
+  const parsed = badgeSchema.safeParse({
+    code: form.get("code"),
+    active: form.get("active"),
+    name: form.get("name") ?? "",
+    description: form.get("description") ?? "",
+  });
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: ta.errors.invalid };
 }
 

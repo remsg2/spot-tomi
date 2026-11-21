@@ -34,12 +34,10 @@ export const metadata: Metadata = {
 
 const EXAMPLE_YEARS = { 2024: "#F2C230", 2025: "#FF7A59", 2026: "#5B8DEF" } as const;
 
+// Barème V1.1 : 100 de base + bonus de rareté (ici, lieu touristique).
 const USHUAIA: PointLine[] = [
-  { key: "base", label: "Pays lointain", detail: "Argentine, points de base", points: 25, isBase: true, tone: "base" },
-  { key: "first_country", label: "Premier sticker du pays", detail: "Personne avant toi en Argentine", points: 50, tone: "gold" },
-  { key: "first_city", label: "Première ville", detail: "Ushuaïa", points: 15 },
-  { key: "isolation", label: "Isolement", detail: "1 240 km du sticker le plus proche, plafond", points: 40 },
-  { key: "home", label: "Loin de chez toi", detail: "13 000 km, +5 par 1 000 km", points: 65 },
+  { key: "base", label: "Sticker publié", detail: "Points de base", points: 100, isBase: true, tone: "base" },
+  { key: "rarity", label: "Lieu touristique", detail: "Site touristique à moins de 300 m", points: 20 },
 ];
 
 const TOKENS = ["bg", "card", "soft", "text", "muted", "line", "map-water", "map-land", "band", "gold", "year"];

@@ -16,7 +16,7 @@ export type PositionPickerProps = {
   origin: LatLng | null;
   /** Position actuelle du sticker, s'il y en a une. */
   value: LatLng | null;
-  /** Centre de départ sans position (domicile arrondi), sinon le monde entier. */
+  /** Centre de départ quand il n'y a aucune position, sinon le monde entier. */
   fallbackCenter: LatLng | null;
   radius: number;
   /** Centre et zoom de la carte après chaque déplacement (centre déjà limité au rayon). */
@@ -108,13 +108,13 @@ export default function PositionPicker({ origin, value, fallbackCenter, radius, 
       if (cancelled || !containerRef.current) return;
       if (!style) setUnavailable(true);
 
-      const { value: initial, origin: from, fallbackCenter: home } = start.current;
-      const center = initial ?? from ?? home;
+      const { value: initial, origin: from, fallbackCenter: fallback } = start.current;
+      const center = initial ?? from ?? fallback;
       map = new maplibre.Map({
         container: containerRef.current,
         style: style ?? fallbackStyle(themeRef.current),
         center: center ? [center.lng, center.lat] : [8, 28],
-        zoom: initial || from ? 16 : home ? 11 : 1.2,
+        zoom: initial || from ? 16 : fallback ? 11 : 1.2,
         attributionControl: { compact: true },
         dragRotate: false,
         pitchWithRotate: false,

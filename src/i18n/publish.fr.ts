@@ -33,6 +33,8 @@ export function formatTakenAt(local: string): string {
   return Number.isNaN(date.getTime()) ? local : dateTime.format(date);
 }
 
+const meterDistance = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
+
 export const publishFr = {
   metaTitle: "Ajouter un sticker",
   title: "Nouveau sticker",
@@ -83,13 +85,36 @@ export const publishFr = {
     dateDevice: "Photo prise à l'instant",
     iosTip:
       "Sur iPhone, la position de la photo n'est transmise que si « Lieu » est activé dans « Options » de la galerie. Tu peux aussi prendre la photo depuis l'app, sur place.",
-    yearLabel: "Sticker de l'année",
-    yearFromDate: (year: number) => `${year}, d'après la date`,
-    yearFromUpload: (year: number) => `${year}, année de l'envoi`,
+    pastedLabel: "Date du collage",
+    pastedFromPhoto: "Préremplie avec la date de la photo, modifiable.",
+    pastedFromToday: "Préremplie avec la date du jour, modifiable.",
+    pastedFuture: "La date du collage ne peut pas être dans le futur.",
+    pastedBeforeEdition: (year: number) => `Un sticker de l'édition ${year} ne peut pas avoir été collé avant ${year}.`,
+    editionLabel: "Édition du sticker",
+    editionHint: "Choisis l'édition imprimée sur ton sticker : elle donne sa couleur au marqueur.",
+    editionOption: (name: string, year: number) => (name.includes(String(year)) ? name : `${name} · ${year}`),
+    editionCurrent: "En cours",
+    commentLabel: "Commentaire (facultatif)",
+    commentPlaceholder: "Une anecdote, le contexte du collage…",
+    commentCount: (count: number, max: number) => `${count} / ${max}`,
+    commentTooLong: (max: number) => `${max} caractères maximum.`,
     missing: "À vérifier",
-    privacy: "Les données de la photo sont retirées avant publication.",
-    pendingNotice:
-      "Sans position GPS ou sans date dans la photo, un modérateur vérifie le sticker avant de compter ses points.",
+    privacy: "Les données de la photo (EXIF, GPS…) sont retirées avant publication.",
+    publicNotice:
+      "Ta photo, la date et la position exacte du sticker seront visibles par tous sur la carte publique.",
+    manualReviewNotice: "Position placée à la main : le sticker est publié tout de suite, puis vérifié par un modérateur.",
+    nearbyDuplicate: (distance: number, name: string) =>
+      `Un sticker est déjà collé à ${meterDistance.format(distance)} m (« ${name} ») : pas de bonus de rareté à moins de 200 m.`,
+    nearbyOwn: (distance: number, name: string) =>
+      `Tu as déjà collé « ${name} » à ${meterDistance.format(distance)} m d'ici.`,
+    nearbyInfo: (distance: number) => `Le sticker le plus proche est à ${meterDistance.format(distance)} m.`,
+    rulesTitle: "Règles de conduite",
+    rulesLink: "Toutes les règles et la modération",
+    rules: [
+      "Respecte les lois et les lieux : jamais sur un monument, une œuvre, un site naturel protégé ou un transport.",
+      "Pas de propriété privée sans autorisation.",
+      "Aucun bonus ne justifie une intrusion, une dégradation ou une mise en danger.",
+    ],
     nameLabel: "Nom du lieu",
     namePlaceholder: "Ex. Panneau du bout du monde",
     nameCount: (count: number, max: number) => `${count} / ${max}`,
@@ -98,6 +123,7 @@ export const publishFr = {
     estimateUnavailable: "Estimation indisponible pour l'instant",
     estimateWaiting: "Place le sticker pour voir l'estimation",
     estimatePending: "Points en attente de validation",
+    estimateCategory: (label: string) => label,
     estimateLabel: (points: string) => `Estimation : environ ${points} points`,
     firstInCountry: "Premier du pays",
     approx: "≈",
@@ -106,6 +132,8 @@ export const publishFr = {
       name_required: "Donne un nom au lieu.",
       name_too_long: "80 caractères maximum.",
       position_required: "Place le sticker sur la carte.",
+      date_invalid: "Vérifie la date du collage.",
+      comment_too_long: "Commentaire trop long.",
     },
   },
 
@@ -182,6 +210,10 @@ export const publishFr = {
     suspended: "Ton compte est suspendu : tu ne peux plus publier de sticker.",
     daily_limit: "Tu as atteint la limite de 20 stickers en 24 heures. Réessaie plus tard.",
     nearby_today: "Tu as déjà collé un sticker à moins de 200 m d'ici ces dernières 24 heures.",
+    edition_unavailable: "Cette édition n'est pas disponible : choisis-en une autre.",
+    invalid_date: "Date du collage invalide : vérifie-la.",
+    edit_window: "Le délai de modification de ce sticker est dépassé.",
+    not_found: "Sticker introuvable.",
     server_error: "Erreur du serveur. Réessaie dans un instant.",
     network: "Connexion impossible. Vérifie ton réseau puis réessaie.",
     upload_failed: "L'envoi de la photo a échoué. Réessaie.",

@@ -12,11 +12,6 @@ export const usernameSchema = z
 export const themeSchema = z.enum(["system", "light", "dark"]);
 export type Theme = z.infer<typeof themeSchema>;
 
-export const homeSchema = z.object({
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
-});
-
 export const passwordSchema = z.string().min(8, t.auth.errors.weak_password);
 
 export const emailSchema = z.email(t.auth.errors.email_address_invalid);

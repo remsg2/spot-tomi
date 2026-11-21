@@ -133,50 +133,6 @@ export function AvatarField({
   );
 }
 
-export type HomeState =
-  | { kind: "none" }
-  | { kind: "locating" }
-  | { kind: "ready"; lat: number; lng: number }
-  | { kind: "denied" };
-
-/** Domicile facultatif, par la position actuelle (arrondie par la base). */
-export function HomeField({
-  state,
-  onChange,
-}: {
-  state: HomeState;
-  onChange: (state: HomeState) => void;
-}) {
-  function locate() {
-    if (!("geolocation" in navigator)) return onChange({ kind: "denied" });
-    onChange({ kind: "locating" });
-    navigator.geolocation.getCurrentPosition(
-      (position) =>
-        onChange({ kind: "ready", lat: position.coords.latitude, lng: position.coords.longitude }),
-      () => onChange({ kind: "denied" }),
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 },
-    );
-  }
-
-  return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1.5 text-sm font-semibold">{t.profile.homeOptional}</legend>
-      <p className="text-xs text-muted">{t.profile.homeExplain}</p>
-      <button
-        type="button"
-        onClick={locate}
-        disabled={state.kind === "locating"}
-        className={`${secondaryButtonClass} self-start`}
-      >
-        {state.kind === "locating" ? t.profile.homeLocating : t.profile.homeUseLocation}
-      </button>
-      <p role="status" className="text-xs font-semibold">
-        {state.kind === "ready" ? t.profile.homeReady : state.kind === "denied" ? t.profile.homeDenied : ""}
-      </p>
-    </fieldset>
-  );
-}
-
 /** Envoie l'avatar réduit (256 px, WebP sans métadonnées) et l'associe au profil. */
 export async function uploadAvatar(userId: string, file: File, previousPath: string | null): Promise<string> {
   const { squareWebp } = await import("@/lib/images/resize");
