@@ -135,7 +135,7 @@ export const adminFr = {
     takenAt: (iso: string) => `Photo du ${date.format(new Date(iso))}`,
     altitude: (m: number) => `Altitude : ${number.format(Math.round(m))} m`,
     sources: (gps: string, dateSource: string) =>
-      `Position : ${gps === "exif" ? "GPS de la photo" : "placée à la main"} · Date : ${dateSource === "exif" ? "de la photo" : "d'envoi"}`,
+      `Position : ${gps === "exif" ? "GPS de la photo" : gps === "device" ? "téléphone (photo prise dans l'app)" : "placée à la main"} · Date : ${dateSource === "exif" ? "de la photo" : dateSource === "device" ? "prise dans l'app" : "d'envoi"}`,
     reportsTitle: "Signalements",
     reportNoReason: "Sans raison précisée",
     reportBy: (username: string | null, iso: string) =>

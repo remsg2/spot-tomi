@@ -18,8 +18,8 @@ export type ModerationItem = {
   color_hex: string;
   taken_at: string;
   created_at: string;
-  gps_source: "exif" | "manual";
-  date_source: "exif" | "upload";
+  gps_source: "exif" | "device" | "manual";
+  date_source: "exif" | "device" | "upload";
   lat: number;
   lng: number;
   public_lat: number;

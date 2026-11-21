@@ -169,6 +169,20 @@ describe("publish-spot", () => {
     expect((d.createSpot as ReturnType<typeof vi.fn>).mock.calls[0][0].p_city).toBeNull();
   });
 
+  it("photo prise dans l'app : sources « device », la date du client n'est jamais transmise", async () => {
+    const d = deps();
+    const response = await handlePublishRequest(
+      post({ ...body, gpsSource: "device", dateSource: "device", takenAt: "2020-01-01T00:00:00Z" }),
+      d,
+    );
+    expect(response.status).toBe(200);
+    expect((d.createSpot as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
+      p_gps_source: "device",
+      p_date_source: "device",
+      p_taken_at: null,
+    });
+  });
+
   it("sticker en attente : pas de rafraîchissement du classement, rang inchangé, date d'envoi", async () => {
     const pending = { ...loaded, spot: { ...loaded.spot, status: "pending_review" as const } };
     const d = deps({ loadSpot: vi.fn(async () => pending) });

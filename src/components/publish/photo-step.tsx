@@ -4,11 +4,12 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, ty
 import { Sticker } from "@/components/ui";
 import { tp } from "@/i18n/publish.fr";
 import { cn } from "@/lib/cn";
+import { isAppleMobile, type PhotoOrigin } from "@/lib/publish/device-position";
 import { ACCEPTED_PHOTO_TYPES } from "@/lib/publish/photo";
 import { FlowHeader } from "./flow-header";
 import { AlertIcon, CameraIcon, ImageIcon, Spinner } from "./icons";
 
-export type PhotoStepStatus = "idle" | "reading" | "converting";
+export type PhotoStepStatus = "idle" | "reading" | "converting" | "locating";
 export type PhotoStepError = keyof typeof tp.photo.errors;
 
 const subscribe = () => () => {};
@@ -24,12 +25,14 @@ export function PhotoStep({
 }: {
   status: PhotoStepStatus;
   error: PhotoStepError | null;
-  onFile: (file: File) => void;
+  /** `camera` : photo prise à l'instant avec le bouton « Prendre une photo ». */
+  onFile: (file: File, origin: PhotoOrigin) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   // Avant l'hydratation, un fichier choisi serait perdu : les choix restent désactivés.
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
+  const appleMobile = useSyncExternalStore(subscribe, isAppleMobile, () => false);
   const busy = status !== "idle";
   const disabled = busy || !hydrated;
 
@@ -37,18 +40,18 @@ export function PhotoStep({
     headingRef.current?.focus({ preventScroll: true });
   }, []);
 
-  function pick(event: ChangeEvent<HTMLInputElement>) {
+  function pick(event: ChangeEvent<HTMLInputElement>, origin: PhotoOrigin) {
     const file = event.currentTarget.files?.[0];
     // Même fichier choisi deux fois : l'événement doit se redéclencher.
     event.currentTarget.value = "";
-    if (file) onFile(file);
+    if (file) onFile(file, origin);
   }
 
   function drop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDragging(false);
     const file = event.dataTransfer.files?.[0];
-    if (file && !disabled) onFile(file);
+    if (file && !disabled) onFile(file, "library");
   }
 
   return (
@@ -85,7 +88,7 @@ export function PhotoStep({
               capture="environment"
               className="sr-only"
               disabled={disabled}
-              onChange={pick}
+              onChange={(event) => pick(event, "camera")}
               data-testid="photo-camera"
             />
           </label>
@@ -103,13 +106,18 @@ export function PhotoStep({
               accept={ACCEPTED_PHOTO_TYPES}
               className="sr-only"
               disabled={disabled}
-              onChange={pick}
+              onChange={(event) => pick(event, "library")}
               data-testid="photo-input"
             />
           </label>
           <span className="hidden text-[13px] font-semibold text-muted lg:block">
             {dragging ? tp.photo.dropActive : tp.photo.drop}
           </span>
+          {appleMobile && (
+            <span data-testid="ios-tip" className="text-xs font-semibold text-muted">
+              {tp.photo.iosTip}
+            </span>
+          )}
           <span className="text-xs text-muted">{tp.photo.formats}</span>
         </div>
       </div>
@@ -118,7 +126,7 @@ export function PhotoStep({
         {busy && (
           <p className="flex items-center justify-center gap-2 text-sm font-semibold">
             <Spinner />
-            {status === "converting" ? tp.photo.converting : tp.photo.reading}
+            {status === "converting" ? tp.photo.converting : status === "locating" ? tp.photo.locating : tp.photo.reading}
           </p>
         )}
       </div>

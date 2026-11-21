@@ -149,7 +149,8 @@ export async function handlePublishRequest(request: Request, deps: PublishDeps):
       p_lat: input.lat,
       p_lng: input.lng,
       p_altitude_m: input.altitude,
-      p_taken_at: input.dateSource === "upload" ? null : input.takenAt,
+      // Seule la date de la photo est transmise : « device » et « upload » prennent l'heure du serveur.
+      p_taken_at: input.dateSource === "exif" ? input.takenAt : null,
       p_gps_source: input.gpsSource,
       p_date_source: input.dateSource,
       p_photo_path: input.photoPath,
