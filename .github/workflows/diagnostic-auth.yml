@@ -2,7 +2,7 @@
 #
 # Les journaux d'Actions de ce dépôt sont publics : rien d'identifiant n'est
 # affiché (ni email, ni IP, ni identifiant de compte, ni jeton). Seulement des
-# dates, des booléens, des compteurs et les messages d'erreur d'Auth, expurgés.
+# dates, des booléens et des compteurs.
 #
 # Lancement : Actions → « Diagnostic connexion » → Run workflow (pseudo du compte).
 name: Diagnostic connexion
@@ -85,26 +85,3 @@ jobs:
           sql "select a.created_at as quand, a.payload->>'action' as action, a.payload->'traits'->>'provider' as fournisseur
                from auth.audit_log_entries a join public.profiles p on a.payload->>'actor_id' = p.id::text
                where $WHERE and a.created_at > now() - interval '7 days' order by a.created_at desc limit 40" | jq .
-          sql "select p.id from public.profiles p where $WHERE" | jq -r '.[0].id // empty' > "$RUNNER_TEMP/user-id"
-
-      - name: Journaux d'Auth (3 jours, erreurs et événements du compte, expurgés)
-        run: |
-          USER_ID=$(cat "$RUNNER_TEMP/user-id")
-          for day in 2 1 0; do
-            start=$(date -u -d "-$((day + 1)) days" +%Y-%m-%dT%H:%M:%SZ)
-            end=$(date -u -d "-$day days" +%Y-%m-%dT%H:%M:%SZ)
-            curl -fsS -G -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "$API/analytics/endpoints/logs.all" \
-              --data-urlencode "sql=select timestamp, event_message from auth_logs order by timestamp desc limit 1000" \
-              --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end" \
-              | jq -r --arg id "$USER_ID" '
-                  (.result // [])[]
-                  | (.event_message | fromjson? // {msg: .}) as $e
-                  | select((($e.status // 0) >= 400) or ($e.level == "error") or ($e.level == "warning")
-                           or ($id != "" and (($e.actor_id // $e.user_id // "") == $id)))
-                  | [ ((.timestamp / 1000000) | floor | todate), ($e.level // ""), ($e.status // "" | tostring),
-                      ($e.method // ""), ($e.path // ""), ($e.action // ""), ($e.login_method // $e.grant_type // ""),
-                      ($e.error_code // ""), ($e.msg // $e.error // "") ]
-                  | @tsv' \
-              | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/<email>/g; s/\b([0-9]{1,3}\.){3}[0-9]{1,3}\b/<ip>/g; s/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/<id>/g' \
-              || echo "Journaux indisponibles pour $start → $end"
-          done

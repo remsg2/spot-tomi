@@ -48,6 +48,15 @@ function storeMode(mode: Mode) {
 
 const noSubscription = () => () => {};
 
+/**
+ * App installée sur l'écran d'accueil d'un iPhone ou d'un iPad : son stockage
+ * (cookies) est séparé de Safari, où s'ouvrent les liens des emails. Le lien
+ * magique (PKCE) ne peut donc pas la connecter : le mot de passe passe en premier.
+ */
+function isIosInstalledApp(): boolean {
+  return (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
 const input =
   "min-h-12 w-full rounded-[14px] border border-line bg-card px-4 text-base text-text placeholder:text-muted focus:outline-3 focus:outline-offset-1 focus:outline-text";
 const secondary =
@@ -61,7 +70,8 @@ const secondary =
 export function LoginForm({ next }: { next: string }) {
   const storedMode = useSyncExternalStore(noSubscription, readStoredMode, () => null);
   const [chosenMode, setMode] = useState<Mode | null>(null);
-  const mode: Mode = chosenMode ?? storedMode ?? "magic";
+  const installedApp = useSyncExternalStore(noSubscription, isIosInstalledApp, () => false);
+  const mode: Mode = chosenMode ?? storedMode ?? (installedApp ? "password" : "magic");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const pending = status.kind === "pending";
 
@@ -209,6 +219,12 @@ export function LoginForm({ next }: { next: string }) {
           </label>
         )}
 
+        {mode === "magic" && installedApp && (
+          <p data-testid="installed-app-notice" className="rounded-[14px] bg-soft p-3 text-sm font-semibold">
+            {t.auth.installedApp}
+          </p>
+        )}
+
         {mode === "magic" ? (
           <PrimaryButton type="submit" fullWidth disabled={pending}>
             {pending ? t.auth.pending : t.auth.sendMagicLink}
@@ -252,7 +268,9 @@ export function LoginForm({ next }: { next: string }) {
         >
           {mode === "magic" ? t.auth.usePassword : t.auth.useMagicLink}
         </button>
-        {mode === "password" && <p className="text-muted">{t.auth.forgotPassword}</p>}
+        {mode === "password" && (
+          <p className="text-muted">{installedApp ? t.auth.forgotPasswordInstalled : t.auth.forgotPassword}</p>
+        )}
       </div>
     </div>
   );

@@ -77,7 +77,9 @@ export const fr = {
     emailPlaceholder: "toi@exemple.fr",
     sendMagicLink: "Recevoir un lien de connexion",
     magicLinkSent: (email: string) =>
-      `C'est parti : un lien de connexion vient d'être envoyé à ${email}. Ouvre-le sur cet appareil.`,
+      `C'est parti : un lien de connexion vient d'être envoyé à ${email}. Ouvre-le dans ce même navigateur.`,
+    installedApp:
+      "Dans l'app installée sur l'écran d'accueil, le lien reçu par email s'ouvre dans Safari et ne te connecte pas ici : utilise ton mot de passe.",
     usePassword: "Utiliser un mot de passe",
     useMagicLink: "Utiliser un lien par email",
     password: "Mot de passe",
@@ -87,11 +89,14 @@ export const fr = {
     signUpSent: (email: string) =>
       `Compte créé. Confirme ton adresse avec le lien envoyé à ${email}.`,
     forgotPassword: "Mot de passe oublié ? Reçois un lien de connexion, puis change-le dans tes réglages.",
+    forgotPasswordInstalled:
+      "Mot de passe oublié ? Ouvre Spot Tomi dans Safari, reçois un lien de connexion, puis change ton mot de passe dans tes réglages.",
     signOut: "Se déconnecter",
     loginCta: "Se connecter",
     myProfile: "Mon profil",
     pending: "Un instant…",
-    callbackError: "La connexion n'a pas abouti. Le lien a peut-être expiré : réessaie.",
+    callbackError:
+      "La connexion n'a pas abouti. Le lien a peut-être expiré, ou il a été ouvert dans un autre navigateur que celui où tu l'as demandé : réessaie.",
     errors: {
       invalid_credentials: "Email ou mot de passe incorrect.",
       email_not_confirmed: "Confirme d'abord ton adresse avec le lien reçu par email.",
