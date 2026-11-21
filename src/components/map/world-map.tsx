@@ -17,14 +17,14 @@ import { containsArgs, containsPoint, padBounds, toBboxArgs, type BboxArgs, type
 import { fetchCountryRarity, fetchSpotsInBbox } from "@/lib/map/data";
 import { filtersKey, filtersToRpc } from "@/lib/map/filters";
 import {
-  CLUSTER_PROPERTIES,
   clusterIconExpression,
-  clusterKey,
-  markerIconExpression,
-  markerKey,
+  clusterKeyFromProperties,
+  clusterProperties,
+  clusterSlots,
   parseClusterKey,
-  parseMarkerKey,
-} from "@/lib/map/markers";
+  sameSlots,
+} from "@/lib/map/clusters";
+import { markerIconExpression, markerKey, parseMarkerKey } from "@/lib/map/markers";
 import { RARITY_MAX_ZOOM, rarityPaint, rarityPalette } from "@/lib/map/rarity";
 import type { CameraTarget } from "@/lib/map/search";
 import {
@@ -107,8 +107,9 @@ async function loadBaseStyle(theme: ThemeName): Promise<{ style: StyleSpecificat
 
 /**
  * Carte mondiale MapLibre : tuiles OpenFreeMap, pays colorés par rareté au
- * dézoom, stickers chargés par zone visible et regroupés en pastilles. Tout est
- * rendu en couches GL (aucun marqueur DOM), pour rester fluide avec 5 000 stickers.
+ * dézoom, stickers chargés par zone visible et regroupés par année (un sticker
+ * de Tomi par année présente, avec son nombre de stickers). Tout est rendu en
+ * couches GL (aucun marqueur DOM), pour rester fluide avec 5 000 stickers.
  */
 export default function WorldMap() {
   const context = useMapContext();
@@ -121,6 +122,8 @@ export default function WorldMap() {
   const assetsRef = useRef<MarkerAssets | null>(null);
   const imagesRef = useRef(new Set<string>());
   const dataRef = useRef<SpotCollection>(EMPTY_COLLECTION);
+  /** Couleurs d'année comptées dans chaque groupe, dans l'ordre des années. */
+  const slotsRef = useRef<string[]>([]);
   const rarityRef = useRef<CountryRarity[]>([]);
   const lastLoadRef = useRef<{ args: BboxArgs; key: string; truncated: boolean } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -140,7 +143,7 @@ export default function WorldMap() {
   });
 
   const filterKey = filtersKey(context.filters);
-  const { selectedId, focus } = context;
+  const { selectedId, focus, seasons } = context;
 
   useEffect(() => {
     themeRef.current = theme;
@@ -191,7 +194,8 @@ export default function WorldMap() {
         if (controller.signal.aborted || !map) return;
         dataRef.current = collection;
         lastLoadRef.current = { args, key, truncated: Boolean(collection.truncated) };
-        (map.getSource(SOURCE_SPOTS) as GeoJSONSource | undefined)?.setData(collection);
+        // Une année encore inconnue reçoit son créneau : la source est alors recréée avec les données.
+        if (!syncSlots()) (map.getSource(SOURCE_SPOTS) as GeoJSONSource | undefined)?.setData(collection);
         live.current.setStatus({ loading: false, dataError: false, truncated: Boolean(collection.truncated) });
         updateVisible();
       } catch {
@@ -218,11 +222,87 @@ export default function WorldMap() {
       map.setPaintProperty(LAYER_RARITY, "fill-opacity", paint["fill-opacity"]);
     };
 
+    /** Source des stickers et ses trois couches, sous le point « ma position ». */
+    const addSpots = () => {
+      if (!map) return;
+      const currentTheme = appliedThemeRef.current ?? themeRef.current;
+      const slots = slotsRef.current;
+      const before = map.getLayer(LAYER_ME) ? LAYER_ME : undefined;
+      map.addSource(SOURCE_SPOTS, {
+        type: "geojson",
+        data: dataRef.current,
+        cluster: true,
+        clusterRadius: 64,
+        clusterMaxZoom: 13,
+        clusterProperties: clusterProperties(slots) as never,
+      });
+      map.addLayer(
+        {
+          id: LAYER_CLUSTERS,
+          type: "symbol",
+          source: SOURCE_SPOTS,
+          filter: ["has", "point_count"],
+          layout: {
+            "icon-image": clusterIconExpression(slots, currentTheme),
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            "symbol-sort-key": ["get", "point_count"],
+          },
+        },
+        before,
+      );
+      map.addLayer(
+        {
+          id: LAYER_MARKERS,
+          type: "symbol",
+          source: SOURCE_SPOTS,
+          filter: ["!", ["has", "point_count"]],
+          layout: {
+            "icon-image": markerIconExpression(currentTheme, false),
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            "symbol-sort-key": ["to-number", ["get", "points"], 0],
+          },
+        },
+        before,
+      );
+      map.addLayer(
+        {
+          id: LAYER_SELECTED,
+          type: "symbol",
+          source: SOURCE_SPOTS,
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], live.current.selectedId ?? ""]],
+          layout: {
+            "icon-image": markerIconExpression(currentTheme, true),
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+          },
+        },
+        before,
+      );
+    };
+
+    /**
+     * Recalcule les créneaux d'années (saisons connues, puis couleurs des données).
+     * S'ils changent, la source est recréée : les clusterProperties d'une source
+     * GeoJSON sont fixées à sa création. Renvoie vrai si la source a été recréée.
+     */
+    const syncSlots = (): boolean => {
+      const next = clusterSlots(live.current.seasons, dataRef.current);
+      if (sameSlots(next, slotsRef.current)) return false;
+      slotsRef.current = next;
+      if (!map?.getSource(SOURCE_SPOTS)) return false; // install() la créera
+      for (const id of INTERACTIVE_LAYERS) if (map.getLayer(id)) map.removeLayer(id);
+      map.removeSource(SOURCE_SPOTS);
+      addSpots();
+      return true;
+    };
+
     /** Sources et couches de l'app, à (ré)installer après chaque changement de fond. */
     const install = () => {
       if (!map) return;
-      const currentTheme = appliedThemeRef.current ?? themeRef.current;
       imagesRef.current.clear();
+      slotsRef.current = clusterSlots(live.current.seasons, dataRef.current);
       const style = map.getStyle();
       const beforeLabels = firstSymbolLayerId(style);
 
@@ -246,49 +326,7 @@ export default function WorldMap() {
         offline && map.getLayer(FALLBACK_OUTLINE_LAYER) ? FALLBACK_OUTLINE_LAYER : beforeLabels,
       );
 
-      map.addSource(SOURCE_SPOTS, {
-        type: "geojson",
-        data: dataRef.current,
-        cluster: true,
-        clusterRadius: 48,
-        clusterMaxZoom: 13,
-        clusterProperties: CLUSTER_PROPERTIES as never,
-      });
-      map.addLayer({
-        id: LAYER_CLUSTERS,
-        type: "symbol",
-        source: SOURCE_SPOTS,
-        filter: ["has", "point_count"],
-        layout: {
-          "icon-image": clusterIconExpression(currentTheme),
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-          "symbol-sort-key": ["get", "point_count"],
-        },
-      });
-      map.addLayer({
-        id: LAYER_MARKERS,
-        type: "symbol",
-        source: SOURCE_SPOTS,
-        filter: ["!", ["has", "point_count"]],
-        layout: {
-          "icon-image": markerIconExpression(currentTheme, false),
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-          "symbol-sort-key": ["to-number", ["get", "points"], 0],
-        },
-      });
-      map.addLayer({
-        id: LAYER_SELECTED,
-        type: "symbol",
-        source: SOURCE_SPOTS,
-        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], live.current.selectedId ?? ""]],
-        layout: {
-          "icon-image": markerIconExpression(currentTheme, true),
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-        },
-      });
+      addSpots();
 
       map.addSource(SOURCE_ME, {
         type: "geojson",
@@ -309,7 +347,7 @@ export default function WorldMap() {
       });
     };
 
-    /** Images des marqueurs et pastilles, dessinées à la demande. */
+    /** Images des marqueurs et des groupes, dessinées à la demande. */
     const resolveImage = (id: string) => {
       const assets = assetsRef.current;
       if (!map || !assets || map.hasImage(id)) return;
@@ -331,7 +369,7 @@ export default function WorldMap() {
       for (const feature of map.queryRenderedFeatures({ layers: INTERACTIVE_LAYERS })) {
         const p = feature.properties as Record<string, unknown>;
         if (typeof p.point_count === "number") {
-          used.add(clusterKey({ count: p.point_count, points: Number(p.points), theme: currentTheme }));
+          used.add(clusterKeyFromProperties(slotsRef.current, p, currentTheme));
         } else {
           const input = {
             points: Number(p.points),
@@ -503,6 +541,9 @@ export default function WorldMap() {
 
     // Les autres effets déclenchent ces actions via des événements de la carte.
     const reload = () => scheduleLoad(true);
+    const reslot = () => {
+      if (map?.getSource(SOURCE_SPOTS)) syncSlots();
+    };
     const restyle = (event: Event) => {
       const next = (event as CustomEvent<ThemeName>).detail;
       if (!map || appliedThemeRef.current === next) return;
@@ -516,6 +557,7 @@ export default function WorldMap() {
     };
     container.addEventListener("spot-tomi:reload", reload);
     container.addEventListener("spot-tomi:theme", restyle);
+    container.addEventListener("spot-tomi:seasons", reslot);
 
     return () => {
       cancelled = true;
@@ -523,6 +565,7 @@ export default function WorldMap() {
       abortRef.current?.abort();
       container.removeEventListener("spot-tomi:reload", reload);
       container.removeEventListener("spot-tomi:theme", restyle);
+      container.removeEventListener("spot-tomi:seasons", reslot);
       live.current.commands.current = null;
       map?.remove();
       mapRef.current = null;
@@ -542,6 +585,11 @@ export default function WorldMap() {
   useEffect(() => {
     containerRef.current?.dispatchEvent(new CustomEvent("spot-tomi:theme", { detail: theme }));
   }, [theme]);
+
+  // Saisons chargées ou modifiées : ordre et couleurs des années des groupes.
+  useEffect(() => {
+    containerRef.current?.dispatchEvent(new Event("spot-tomi:seasons"));
+  }, [seasons]);
 
   // Sticker sélectionné : anneau autour de son marqueur.
   useEffect(() => {

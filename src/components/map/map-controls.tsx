@@ -68,6 +68,13 @@ export function MapLegend({ className }: { className?: string }) {
         />
         {tm.map.legend.gold}
       </div>
+      <div className="flex items-center gap-2 text-xs">
+        <span aria-hidden="true" className="relative size-4 shrink-0">
+          <span className="absolute inset-0 translate-x-[3px] -translate-y-[3px] rotate-[8deg] rounded-[4px] bg-year brightness-[0.78]" />
+          <span className="absolute inset-0 -rotate-[5deg] rounded-[4px] bg-year" />
+        </span>
+        {tm.map.legend.group}
+      </div>
     </div>
   );
 }

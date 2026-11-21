@@ -41,8 +41,12 @@ export const fr = {
       `Mon score : ${score} points, ${rank === 1 ? "1er" : `${rank}e`} au classement`,
   },
   cluster: {
-    label: (count: number, points: string) =>
-      `${count} stickers, ${points} points au total`,
+    label: (total: number, groups: { count: number; year?: number }[]) => {
+      const years = groups.every((group) => group.year !== undefined)
+        ? ` : ${groups.map((group) => `${group.count} en ${group.year}`).join(", ")}`
+        : "";
+      return `Groupe de ${total} sticker${total > 1 ? "s" : ""}${years}`;
+    },
   },
   album: {
     toConquer: (points: number) => `+${points} et plus`,

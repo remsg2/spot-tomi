@@ -43,6 +43,7 @@ export const mapFr = {
       medium: "20-79",
       large: "80+ pts",
       gold: "Premier du pays ou lieu exceptionnel",
+      group: "Groupe : nombre de stickers de l'année",
     },
   },
   filters: {

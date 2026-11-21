@@ -1,5 +1,6 @@
 /**
- * Marqueurs et pastilles de regroupement rendus par MapLibre (couches GL).
+ * Marqueurs des stickers rendus par MapLibre (couches GL). Les groupes de
+ * stickers sont dans clusters.ts.
  *
  * Chaque apparence distincte est une image générée une seule fois puis réutilisée
  * par tous les marqueurs qui la partagent : sa clé décrit taille, couleur, anneau
@@ -104,39 +105,6 @@ export function markerIconExpression(theme: ThemeName, selected: boolean): Expre
     `|${selected ? 1 : 0}|${theme}`,
   ];
 }
-
-export type ClusterSpec = { count: number; points: number; theme: ThemeName };
-
-export function clusterKey({ count, points, theme }: ClusterSpec): string {
-  return `c|${count}|${points}|${theme}`;
-}
-
-export function parseClusterKey(key: string): ClusterSpec | null {
-  const parts = key.split("|");
-  if (parts.length !== 4 || parts[0] !== "c") return null;
-  const count = Number(parts[1]);
-  const points = Number(parts[2]);
-  const theme = parts[3];
-  if (!Number.isInteger(count) || !Number.isFinite(points)) return null;
-  if (theme !== "light" && theme !== "dark") return null;
-  return { count, points, theme };
-}
-
-export function clusterIconExpression(theme: ThemeName): ExpressionSpecification {
-  return [
-    "concat",
-    "c|",
-    ["to-string", ["get", "point_count"]],
-    "|",
-    ["to-string", ["get", "points"]],
-    `|${theme}`,
-  ];
-}
-
-/** Somme des points des stickers d'un groupe (source GeoJSON cluster: true). */
-export const CLUSTER_PROPERTIES = {
-  points: ["+", ["to-number", ["get", "points"], 0]],
-} as const;
 
 /** Rayon d'arrondi du sticker, comme le composant MapMarker. */
 export function markerRadius(size: number): number {
