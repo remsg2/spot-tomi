@@ -208,7 +208,7 @@ export function FilterDialog({ open, onClose }: { open: boolean; onClose: () => 
           >
             {tm.filters.reset}
           </button>
-          <PrimaryButton className="flex-1" onClick={onClose}>
+          <PrimaryButton className="flex-1 px-3" onClick={onClose}>
             {tm.filters.apply}
           </PrimaryButton>
         </div>

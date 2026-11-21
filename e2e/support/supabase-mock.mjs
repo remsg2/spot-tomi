@@ -174,7 +174,7 @@ function pick(rows, select) {
 
 const CORS = {
   "access-control-allow-origin": "*",
-  "access-control-allow-headers": "*",
+  "access-control-allow-headers": "authorization, apikey, content-type, accept, accept-profile, content-profile, prefer, range, x-client-info, x-supabase-api-version",
   "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
   "access-control-expose-headers": "content-range",
 };

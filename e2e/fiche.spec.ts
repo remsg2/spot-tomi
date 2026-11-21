@@ -5,7 +5,8 @@ import { MONT_BLANC_ID, USHUAIA_ID, usesMockData } from "./support/demo";
 test.use({ serviceWorkers: "block" });
 test.skip(!usesMockData, "données simulées : build locale seulement");
 
-const sheet = (page: import("@playwright/test").Page) => page.getByTestId("spot-sheet");
+// Pendant le streaming, React peut garder un instant une copie cachée du contenu : on ne vise que le visible.
+const sheet = (page: import("@playwright/test").Page) => page.getByTestId("spot-sheet").filter({ visible: true });
 
 test("fiche conforme à la maquette : badges, points et détail", async ({ page }) => {
   await page.goto(`/spots/${USHUAIA_ID}`);
@@ -51,7 +52,7 @@ test("mobile : fiche plein écran, retour à la carte, sans barre d'onglets", as
   await page.goto(`/spots/${USHUAIA_ID}`);
   await expect(page.getByRole("heading", { level: 1, name: "Ushuaïa" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Navigation principale" })).toHaveCount(0);
-  await expect(page.getByTestId("shell-map")).toBeHidden();
+  await expect(page.getByTestId("shell-map").filter({ visible: true })).toHaveCount(0);
   const box = (await sheet(page).boundingBox())!;
   expect(box.width).toBe(page.viewportSize()!.width);
   await page.getByRole("link", { name: "Retour à la carte" }).click();
@@ -62,7 +63,7 @@ test("mobile : fiche plein écran, retour à la carte, sans barre d'onglets", as
 test("web : la fiche s'affiche dans la colonne, la carte à droite", async ({ page, isMobile }) => {
   test.skip(isMobile, "mise en page à partir de 1024 px");
   await page.goto(`/spots/${USHUAIA_ID}`);
-  const column = page.getByTestId("shell-column");
+  const column = page.getByTestId("shell-column").filter({ visible: true });
   await expect(column.getByRole("heading", { level: 1, name: "Ushuaïa" })).toBeVisible();
   expect((await column.boundingBox())!.width).toBe(440);
   await expect(page.getByTestId("world-map").locator("canvas")).toBeVisible();
