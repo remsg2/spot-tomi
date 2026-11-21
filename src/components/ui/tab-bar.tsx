@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { t } from "@/i18n/fr";
 import { cn } from "@/lib/cn";
+import { HapticTouch } from "./haptic-touch";
 
 const icon = {
   map: (
@@ -40,30 +41,34 @@ const TABS: Tab[] = [
 ];
 
 function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
+  const router = useRouter();
   return (
-    <Link
-      href={tab.href}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex min-h-11 flex-col items-center gap-1 pt-2 text-[11px]",
-        active ? "font-bold text-text" : "font-semibold text-muted",
-      )}
-    >
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
+    <span className="relative flex justify-center">
+      <Link
+        href={tab.href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex min-h-11 flex-col items-center gap-1 pt-2 text-[11px]",
+          active ? "font-bold text-text" : "font-semibold text-muted",
+        )}
       >
-        {icon[tab.icon]}
-      </svg>
-      {tab.label}
-    </Link>
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          {icon[tab.icon]}
+        </svg>
+        {tab.label}
+      </Link>
+      <HapticTouch onActivate={() => router.push(tab.href)} />
+    </span>
   );
 }
 
@@ -79,6 +84,7 @@ export function TabBar({
   responsive?: boolean;
 }) {
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const [map, leaderboard, album, profile] = TABS;
 
   return (
@@ -92,28 +98,31 @@ export function TabBar({
     >
       <TabLink tab={map} active={map.match(pathname)} />
       <TabLink tab={leaderboard} active={leaderboard.match(pathname)} />
-      <Link
-        href="/spots/new"
-        aria-label={t.nav.add}
-        aria-current={pathname === "/spots/new" ? "page" : undefined}
-        className="relative -top-4 flex size-[62px] -rotate-5 items-center justify-center justify-self-center overflow-hidden rounded-[18px] bg-year text-on-year"
-        style={{ boxShadow: "0 0 0 4px var(--card), 0 8px 18px rgb(0 0 0 / 0.28)" }}
-      >
-        <span className="absolute inset-0 bg-band [clip-path:polygon(0_100%,0_88%,100%_58%,100%_100%)]" />
-        <svg
-          width="30"
-          height="30"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          aria-hidden="true"
-          className="relative -mt-2"
+      <span className="relative -top-4 flex justify-self-center">
+        <Link
+          href="/spots/new"
+          aria-label={t.nav.add}
+          aria-current={pathname === "/spots/new" ? "page" : undefined}
+          className="relative flex size-[62px] -rotate-5 items-center justify-center overflow-hidden rounded-[18px] bg-year text-on-year"
+          style={{ boxShadow: "0 0 0 4px var(--card), 0 8px 18px rgb(0 0 0 / 0.28)" }}
         >
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </Link>
+          <span className="absolute inset-0 bg-band [clip-path:polygon(0_100%,0_88%,100%_58%,100%_100%)]" />
+          <svg
+            width="30"
+            height="30"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            aria-hidden="true"
+            className="relative -mt-2"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </Link>
+        <HapticTouch onActivate={() => router.push("/spots/new")} />
+      </span>
       <TabLink tab={album} active={album.match(pathname)} />
       <TabLink tab={profile} active={profile.match(pathname)} />
     </nav>

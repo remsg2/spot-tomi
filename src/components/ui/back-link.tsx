@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
 import { cn } from "@/lib/cn";
 import { canGoBackInApp } from "@/lib/navigation/back";
+import { HapticTouch } from "./haptic-touch";
 
 export type BackLinkProps = {
   /** Page parente, suivie quand il n'y a pas de page précédente dans l'app (lien partagé, ouverture directe). */
@@ -48,33 +49,42 @@ export function BackLink({
     router.back();
   }
 
+  /** Toucher sur iPhone (interrupteur natif) : même destination que le lien. */
+  function go() {
+    if (history && canGoBackInApp()) router.back();
+    else if (replace) router.replace(href);
+    else router.push(href);
+  }
+
   return (
-    <Link
-      href={href}
-      replace={replace}
-      aria-label={label}
-      onClick={onClick}
-      data-testid="back-link"
-      className={cn(
-        "flex size-11 shrink-0 items-center justify-center rounded-full bg-card text-text focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-text",
-        variant === "outline" ? "border border-line" : "shadow-[0_4px_12px_rgb(0_0_0/0.2)]",
-        className,
-      )}
-    >
-      <svg
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-        focusable="false"
+    <span className={cn("relative inline-flex shrink-0", className)}>
+      <Link
+        href={href}
+        replace={replace}
+        aria-label={label}
+        onClick={onClick}
+        data-testid="back-link"
+        className={cn(
+          "flex size-11 shrink-0 items-center justify-center rounded-full bg-card text-text focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-text",
+          variant === "outline" ? "border border-line" : "shadow-[0_4px_12px_rgb(0_0_0/0.2)]",
+        )}
       >
-        {icon === "close" ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="m15 5-7 7 7 7" />}
-      </svg>
-    </Link>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          focusable="false"
+        >
+          {icon === "close" ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="m15 5-7 7 7 7" />}
+        </svg>
+      </Link>
+      <HapticTouch onActivate={go} />
+    </span>
   );
 }

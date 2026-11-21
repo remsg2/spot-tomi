@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { Logo, TabBar } from "@/components/ui";
+import { HapticTouch, Logo, TabBar } from "@/components/ui";
 import { MapArea } from "@/components/map/map-area";
 import { PlusIcon } from "@/components/map/icons";
 import { tm } from "@/i18n/map.fr";
@@ -37,6 +37,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const mode = mobileModeFor(pathname);
   const wide = useMediaQuery(WIDE_QUERY);
   const isHome = pathname === "/";
@@ -58,17 +59,20 @@ export function AppShell({
             {account}
           </div>
           {nav}
-          <Link
-            href="/spots/new"
-            className="relative flex h-[52px] shrink-0 items-center gap-2.5 overflow-hidden rounded-[16px] bg-year px-[18px] text-on-year"
-          >
-            <PlusIcon size={22} className="relative" />
-            <span className="relative font-display text-base">{tm.shell.addSticker}</span>
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 bg-band [clip-path:polygon(74%_100%,100%_0,100%_100%)]"
-            />
-          </Link>
+          <span className="relative flex shrink-0">
+            <Link
+              href="/spots/new"
+              className="relative flex h-[52px] flex-1 items-center gap-2.5 overflow-hidden rounded-[16px] bg-year px-[18px] text-on-year"
+            >
+              <PlusIcon size={22} className="relative" />
+              <span className="relative font-display text-base">{tm.shell.addSticker}</span>
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 bg-band [clip-path:polygon(74%_100%,100%_0,100%_100%)]"
+              />
+            </Link>
+            <HapticTouch onActivate={() => router.push("/spots/new")} />
+          </span>
         </header>
         <div className="flex flex-1 flex-col">{children}</div>
     </>

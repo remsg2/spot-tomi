@@ -14,17 +14,23 @@ export function ZoomControls({ className }: { className?: string }) {
   const { commands } = useMapContext();
   return (
     <div className={cn("flex flex-col overflow-hidden rounded-[14px] bg-card shadow-card", className)}>
-      <button
-        type="button"
-        aria-label={tm.map.zoomIn}
-        onClick={() => commands.current?.zoomIn()}
-        className={cn(squareButton, "border-b border-line")}
-      >
-        <PlusIcon size={18} />
-      </button>
-      <button type="button" aria-label={tm.map.zoomOut} onClick={() => commands.current?.zoomOut()} className={squareButton}>
-        <MinusIcon size={18} />
-      </button>
+      <span className="relative flex">
+        <button
+          type="button"
+          aria-label={tm.map.zoomIn}
+          onClick={() => commands.current?.zoomIn()}
+          className={cn(squareButton, "border-b border-line")}
+        >
+          <PlusIcon size={18} />
+        </button>
+        <HapticTouch onActivate={() => commands.current?.zoomIn()} />
+      </span>
+      <span className="relative flex">
+        <button type="button" aria-label={tm.map.zoomOut} onClick={() => commands.current?.zoomOut()} className={squareButton}>
+          <MinusIcon size={18} />
+        </button>
+        <HapticTouch onActivate={() => commands.current?.zoomOut()} />
+      </span>
     </div>
   );
 }

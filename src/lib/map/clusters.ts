@@ -20,6 +20,8 @@ export const CLUSTER_FALLBACK = "#9A9A94";
 
 export type ClusterSpec = {
   theme: ThemeName;
+  /** Bulle touchée (état appuyé) : contour de la couleur de l'année. */
+  pressed: boolean;
   /** Nombre total de stickers du groupe. */
   total: number;
   /** Couleurs des années présentes, dans l'ordre des années. */
@@ -57,22 +59,23 @@ export function clusterProperties(slots: readonly string[]): Record<string, Expr
 }
 
 /** Même calcul que clusterKeyFromProperties, évalué par MapLibre pour chaque groupe. */
-export function clusterIconExpression(slots: readonly string[], theme: ThemeName): ExpressionSpecification {
+export function clusterIconExpression(slots: readonly string[], theme: ThemeName, pressed = false): ExpressionSpecification {
   const parts: ExpressionSpecification[] = slots.map((color, i) => [
     "case",
     [">", ["to-number", ["get", slotProperty(i)], 0], 0],
     `|${color}`,
     "",
   ]);
-  return ["concat", `c|${theme}|`, ["to-string", ["get", "point_count"]], ...parts];
+  return ["concat", `${pressed ? "cp" : "c"}|${theme}|`, ["to-string", ["get", "point_count"]], ...parts];
 }
 
 export function clusterKeyFromProperties(
   slots: readonly string[],
   properties: Record<string, unknown>,
   theme: ThemeName,
+  pressed = false,
 ): string {
-  let key = `c|${theme}|${Number(properties.point_count)}`;
+  let key = `${pressed ? "cp" : "c"}|${theme}|${Number(properties.point_count)}`;
   slots.forEach((color, i) => {
     if (Number(properties[slotProperty(i)] ?? 0) > 0) key += `|${color}`;
   });
@@ -85,11 +88,11 @@ export function clusterKeyFromProperties(
  */
 export function parseClusterKey(key: string): ClusterSpec | null {
   const [tag, theme, total, ...colors] = key.split("|");
-  if (tag !== "c" || (theme !== "light" && theme !== "dark")) return null;
+  if ((tag !== "c" && tag !== "cp") || (theme !== "light" && theme !== "dark")) return null;
   const count = Number(total);
   if (!Number.isInteger(count) || count < 1) return null;
   if (colors.some((color) => !HEX.test(color))) return null;
-  return { theme, total: count, colors: colors.length > 0 ? colors : [CLUSTER_FALLBACK] };
+  return { theme, pressed: tag === "cp", total: count, colors: colors.length > 0 ? colors : [CLUSTER_FALLBACK] };
 }
 
 const countFormat = new Intl.NumberFormat("fr-FR");

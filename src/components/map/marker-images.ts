@@ -189,13 +189,15 @@ export function drawCluster(spec: ClusterSpec, assets: MarkerAssets, ratio: numb
   const y0 = margin;
 
   // Anneau de la couleur des cartes et ombre douce, comme les pastilles de l'app.
+  // Bulle touchée : anneau plus épais de la couleur de l'année.
+  const ring = spec.pressed ? BUBBLE_RING + 1 : BUBBLE_RING;
   ctx.save();
   ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
   ctx.shadowBlur = 16 * ratio;
   ctx.shadowOffsetY = 6 * ratio;
-  const outer = BUBBLE_HEIGHT + BUBBLE_RING * 2;
-  roundRect(ctx, x0 - BUBBLE_RING, y0 - BUBBLE_RING, bubbleWidth + BUBBLE_RING * 2, outer, outer / 2);
-  ctx.fillStyle = colors.card;
+  const outer = BUBBLE_HEIGHT + ring * 2;
+  roundRect(ctx, x0 - ring, y0 - ring, bubbleWidth + ring * 2, outer, outer / 2);
+  ctx.fillStyle = spec.pressed ? assets.yearColor : colors.card;
   ctx.fill();
   ctx.restore();
 
