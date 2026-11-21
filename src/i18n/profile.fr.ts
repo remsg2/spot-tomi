@@ -1,6 +1,6 @@
 /**
  * Textes du profil et de l'album (étape 7), regroupés pour une traduction future.
- * Formulaires du profil (pseudo, avatar, domicile) : voir src/i18n/fr.ts (étape 3).
+ * Formulaires du profil (pseudo, avatar) : voir src/i18n/fr.ts (étape 3).
  */
 import { ordinalFr } from "./leaderboard.fr";
 
@@ -28,7 +28,7 @@ export const profileFr = {
     conqueredLabel: (country: string, points: string, year: number, gold: boolean) =>
       `${country}, conquis en ${year} : ${points} points${gold ? ", premier du pays" : ""}`,
     lockedLabel: (country: string, points: number) =>
-      `${country}, à conquérir : ${points} points de base et plus`,
+      `${country}, à conquérir : au moins ${points} points`,
     emptyMe: "Ton album est vide : colle ton premier sticker pour conquérir un pays.",
     emptyOther: "Aucun pays conquis pour l'instant.",
     toConquer: "À conquérir",

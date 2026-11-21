@@ -3,7 +3,7 @@
 -- statistiques, records, classements par zone, journal d'erreurs, suppression d'un
 -- compte par un admin.
 begin;
-select plan(53);
+select plan(56);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-000000000c0a', 'a@example.test'),
@@ -172,6 +172,12 @@ select is(
   (select sum(points)::int from public.points_ledger
    where spot_id = (select id from t where label = 'lyon') and year = 2025),
   0, 'changer d''édition déplace les points au journal (édition 2025 → 2026)');
+select is(
+  (public.my_spot_edit_info((select id from t where label = 'lyon')) ->> 'windowOpen')::boolean,
+  true, 'my_spot_edit_info : fenêtre de modification ouverte (horloge du serveur)');
+select is(
+  public.my_spot_edit_info((select id from t where label = 'paris')),
+  null, 'my_spot_edit_info : rien pour le sticker d''un autre membre');
 select throws_ok(
   $$ select public.update_my_spot((select id from t where label = 'lyon'), p_lat => 45.80, p_lng => 4.832) $$,
   'ST010', null, 'une position à plus de 200 m de celle de la photo est refusée'
@@ -192,6 +198,9 @@ reset role;
 update public.spots set created_at = now() - interval '10 days' where id = (select id from t where label = 'lyon');
 set local role authenticated;
 select pg_temp.login('00000000-0000-0000-0000-000000000c0b');
+select is(
+  (public.my_spot_edit_info((select id from t where label = 'lyon')) ->> 'windowOpen')::boolean,
+  false, 'my_spot_edit_info : fenêtre fermée après edit_window_days jours');
 select throws_ok(
   $$ select public.update_my_spot((select id from t where label = 'lyon'), p_year => 2025) $$,
   'ST007', null, 'après edit_window_days jours, la date, l''édition et la position sont figées'

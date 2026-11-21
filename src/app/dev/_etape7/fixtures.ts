@@ -81,7 +81,8 @@ export function leaderboardFixture(period: Period, scenario: LeaderboardScenario
 
 // Profil -------------------------------------------------------------------------
 
-const BASE: Record<CountryTier, number> = { courant: 10, lointain: 25, rare: 60, extreme: 150 };
+// Points possibles par niveau de pays (country_potential_points) : base 100 + bonus du niveau.
+const BASE: Record<CountryTier, number> = { courant: 100, lointain: 100, rare: 200, extreme: 300 };
 
 function tile(iso3: string, nameFr: string, year: number, points: number, gold = false): AlbumRow {
   return {

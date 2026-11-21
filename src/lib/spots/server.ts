@@ -66,6 +66,8 @@ export type SpotEditInfo = {
   radiusM: number;
   createdAt: string;
   editableUntil: string;
+  /** Fenêtre de modification encore ouverte (horloge du serveur). */
+  windowOpen: boolean;
   needsReview: boolean;
   status: SpotPageData["status"];
 };
@@ -199,7 +201,7 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
       points: spot.points_total,
       lines,
       comment: spot.comment,
-      editionName: spot.edition_name,
+      editionName: spot.edition_name ?? `Édition ${spot.year}`,
       editionVisualUrl: editionVisualUrl(spot.year, null, null),
       rarityCategory: spot.rarity_category,
       rarityReason: spot.rarity_reason,

@@ -31,7 +31,7 @@ export function PointsBreakdown({
   className?: string;
 }) {
   return (
-    <section className={cn("flex flex-col", className)}>
+    <section data-testid="points-breakdown" className={cn("flex flex-col", className)}>
       <h2 className="mb-1 font-display text-base font-normal">{title}</h2>
       <ul>
         {lines.map((line) => (

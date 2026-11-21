@@ -564,6 +564,8 @@ as $$
     'createdAt', s.created_at,
     'editableUntil', s.created_at + make_interval(days => coalesce(
       (select value from public.scoring_rules where key = 'edit_window_days'), 7)::int),
+    'windowOpen', now() < s.created_at + make_interval(days => coalesce(
+      (select value from public.scoring_rules where key = 'edit_window_days'), 7)::int),
     'needsReview', s.needs_review,
     'status', s.status
   )

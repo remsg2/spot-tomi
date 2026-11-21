@@ -61,7 +61,13 @@ test("connecté : estimation, envoi Storage puis publish-spot, sans jamais envoy
 
   await choosePhoto(page, GPS_PHOTO);
   await expect(page.getByText("Argentine · 54,80° S, 68,30° O")).toBeVisible();
-  await expect(page.getByTestId("estimate")).toContainText("195");
+  await expect(page.getByTestId("estimate")).toContainText("120");
+  // Éditions lues par la page serveur (list_editions) : 2027 pas encore choisissable,
+  // 2026 proposée d'après la date de la photo, avec le visuel officiel.
+  const editions = page.getByRole("radiogroup", { name: "Édition du sticker" }).getByRole("radio");
+  await expect(editions).toHaveCount(2);
+  await expect(page.getByRole("radio", { name: /Édition 2026/ })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("radio", { name: /Édition 2026/ }).locator("img")).toHaveAttribute("src", "/editions/2026.webp");
   // Rayon d'ajustement lu dans scoring_rules (edit_radius_m) par la page serveur.
   await expect(page.getByTestId("picker-pane")).toContainText(`${EDIT_RADIUS_M} m maximum`);
 
@@ -75,6 +81,7 @@ test("connecté : estimation, envoi Storage puis publish-spot, sans jamais envoy
     p_taken_at: "2026-03-14T19:42:00.000Z",
     p_gps_source: "exif",
     p_date_source: "exif",
+    p_year: 2026,
   });
   expect(callsTo(/^\/storage\//)).toHaveLength(0);
 
@@ -83,16 +90,19 @@ test("connecté : estimation, envoi Storage puis publish-spot, sans jamais envoy
   await expect(page.getByRole("heading", { name: "Sticker collé !" })).toBeVisible();
   await expect(page.getByTestId("rank")).toHaveText("Tu passes 2ᵉ du classement");
 
-  // Storage : spot-photos/{user_id}/{uuid}.webp, WebP propre, jeton de l'utilisateur.
+  // Storage : spot-photos/{user_id}/{uuid}.webp et sa miniature, WebP propres, jeton de l'utilisateur.
   const uploads = callsTo(/^\/storage\/v1\/object\/spot-photos\//);
-  expect(uploads).toHaveLength(1);
-  const [upload] = uploads;
+  expect(uploads).toHaveLength(2);
+  const [upload, thumb] = uploads;
   const path = upload.path.replace("/storage/v1/object/spot-photos/", "");
   expect(path).toMatch(new RegExp(`^${ME}/[0-9a-f-]{36}\\.webp$`));
-  expect(upload.headers.authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
-  const webp = webpFromMultipart(upload.body);
-  expectNoMetadata(webp);
-  expect(inspectWebp(webp).chunks).toEqual(["VP8 "]);
+  expect(thumb.path).toBe(`/storage/v1/object/spot-photos/${path.replace(/\.webp$/, ".thumb.webp")}`);
+  for (const call of uploads) {
+    expect(call.headers.authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
+    const webp = webpFromMultipart(call.body);
+    expectNoMetadata(webp);
+    expect(inspectWebp(webp).chunks).toEqual(["VP8 "]);
+  }
 
   // publish-spot : entrée du contrat §4, jeton de l'utilisateur.
   const [publish] = callsTo("/functions/v1/publish-spot");
@@ -106,6 +116,10 @@ test("connecté : estimation, envoi Storage puis publish-spot, sans jamais envoy
     gpsSource: "exif",
     dateSource: "exif",
     name: "Panneau du bout du monde",
+    year: 2026,
+    comment: null,
+    thumbPath: path.replace(/\.webp$/, ".thumb.webp"),
+    photoHash: expect.stringMatching(/^-?\d{1,20}$/),
   });
 
   // Rien de la photo d'origine (JPEG, EXIF, GPS, XMP, ICC) n'a quitté le navigateur.
@@ -133,7 +147,8 @@ test("refus du serveur : limite quotidienne, message clair et nouvel essai possi
   supabase.state.publish = (body) => ({ status: 200, json: publishResult(body) });
   await page.getByRole("button", { name: "Réessayer" }).click();
   await expect(page.getByRole("heading", { name: "Sticker collé !" })).toBeVisible();
-  expect(callsTo(/^\/storage\/v1\/object\/spot-photos\//)).toHaveLength(2);
+  // Photo et miniature à chaque essai.
+  expect(callsTo(/^\/storage\/v1\/object\/spot-photos\//)).toHaveLength(4);
 });
 
 test("estimation bloquante : déjà un sticker à moins de 200 m aujourd'hui", async ({ page, context }) => {

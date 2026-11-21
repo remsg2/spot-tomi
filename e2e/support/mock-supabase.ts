@@ -76,10 +76,10 @@ function getLeaderboard(args: Record<string, unknown>) {
 
 function album(userId: string) {
   const suggestions = [
-    ["NO", "NOR", "Norvège", "courant", 10],
-    ["JP", "JPN", "Japon", "lointain", 25],
-    ["BT", "BTN", "Bhoutan", "rare", 60],
-    ["KP", "PRK", "Corée du Nord", "extreme", 150],
+    ["NO", "NOR", "Norvège", "courant", 100],
+    ["JP", "JPN", "Japon", "lointain", 100],
+    ["BT", "BTN", "Bhoutan", "rare", 200],
+    ["KP", "PRK", "Corée du Nord", "extreme", 300],
   ].map(([iso2, iso3, name_fr, tier, points]) => ({
     iso2, iso3, name_fr, tier, conquered: false, first_year: null, color_hex: null, points, stickers: 0, gold: false, suggestion_rank: 1,
   }));
@@ -91,11 +91,20 @@ function album(userId: string) {
   ];
 }
 
+/** Passeport (rpc passport) : un tampon par pays, premier collage et édition. */
+function passport(userId: string) {
+  if (userId !== LEA && userId !== ME) return [];
+  return [
+    { iso2: "AR", name_fr: "Argentine", continent: "amerique_sud", continent_label: "Amérique du Sud", first_spot_id: "10000000-0000-4000-8000-000000000001", first_pasted_at: "2026-10-02T15:00:00Z", first_year: 2026, edition_name: "Édition 2026", color_hex: "#5DB043", stickers: 1, points: 120, pioneer: true },
+    { iso2: "FR", name_fr: "France", continent: "europe", continent_label: "Europe", first_spot_id: "10000000-0000-4000-8000-000000000003", first_pasted_at: "2024-07-14T21:00:00Z", first_year: 2024, edition_name: "Édition 2024", color_hex: "#F2C230", stickers: 3, points: 300, pioneer: false },
+  ];
+}
+
 function profileSpots(userId: string, caller: string | null) {
   const spots = [
-    { id: "10000000-0000-4000-8000-000000000001", name: "Fin du monde", city: "Ushuaïa", country_iso2: "AR", country_name_fr: "Argentine", year: 2026, color_hex: "#5DB043", status: "published", points_total: 195, is_first_in_country: true, is_exceptional: false, taken_at: "2026-10-02T15:00:00Z" },
-    { id: "10000000-0000-4000-8000-000000000002", name: "Pont du Gard", city: null, country_iso2: "FR", country_name_fr: "France", year: 2026, color_hex: "#5DB043", status: "pending_review", points_total: 25, is_first_in_country: false, is_exceptional: false, taken_at: "2026-08-14T09:30:00Z" },
-    { id: "10000000-0000-4000-8000-000000000003", name: "Tour Eiffel", city: "Paris", country_iso2: "FR", country_name_fr: "France", year: 2024, color_hex: "#F2C230", status: "published", points_total: 10, is_first_in_country: false, is_exceptional: true, taken_at: "2024-07-14T21:00:00Z" },
+    { id: "10000000-0000-4000-8000-000000000001", name: "Fin du monde", city: "Ushuaïa", country_iso2: "AR", country_name_fr: "Argentine", year: 2026, color_hex: "#5DB043", status: "published", points_total: 120, is_first_in_country: true, is_exceptional: false, taken_at: "2026-10-02T15:00:00Z" },
+    { id: "10000000-0000-4000-8000-000000000002", name: "Pont du Gard", city: null, country_iso2: "FR", country_name_fr: "France", year: 2026, color_hex: "#5DB043", status: "pending_review", points_total: 100, is_first_in_country: false, is_exceptional: false, taken_at: "2026-08-14T09:30:00Z" },
+    { id: "10000000-0000-4000-8000-000000000003", name: "Tour Eiffel", city: "Paris", country_iso2: "FR", country_name_fr: "France", year: 2024, color_hex: "#F2C230", status: "published", points_total: 150, is_first_in_country: false, is_exceptional: true, taken_at: "2024-07-14T21:00:00Z" },
   ];
   if (userId !== LEA && userId !== ME) return [];
   // Comme la base : en attente et masqués seulement pour soi.
@@ -172,8 +181,14 @@ export async function startMockSupabase(): Promise<MockSupabase> {
         return json(200, album(String(args.p_user)));
       case "profile_spots":
         return json(200, profileSpots(String(args.p_user), caller));
+      case "passport":
+        return json(200, passport(String(args.p_user)));
+      // Badges et progression : vides ; member_stats non simulé (section masquée).
+      case "member_badges":
+      case "points_progress":
+        return json(200, []);
       case "schema_version":
-        return json(200, "20261125000000_classement");
+        return json(200, "20261202000000_cahier_recalcul");
     }
     if (url.pathname === "/rest/v1/public_profiles") {
       const pattern = url.searchParams.get("username")?.replace(/^ilike\./, "") ?? "%";

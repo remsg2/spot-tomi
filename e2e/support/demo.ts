@@ -1,6 +1,7 @@
 /** Données de démonstration des tests de la carte (mêmes identifiants que le faux Supabase). */
 export const USHUAIA_ID = "00000000-0000-4000-8000-00000000c001";
 export const MONT_BLANC_ID = "00000000-0000-4000-8000-00000000c002";
+export const TAVEUNI_EST_ID = "00000000-0000-4000-8000-00000000c006";
 
 /** Les tests qui lisent ces données ne tournent que contre la build locale (faux Supabase). */
 export const usesMockData = !process.env.PLAYWRIGHT_BASE_URL;

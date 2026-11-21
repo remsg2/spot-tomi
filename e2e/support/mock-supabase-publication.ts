@@ -29,22 +29,29 @@ export type PublicationSupabase = {
 export const EDIT_RADIUS_M = 150;
 
 export const ESTIMATE = {
-  pointsTotal: 195,
+  pointsTotal: 120,
   status: "published",
   year: 2026,
   colorHex: "#5DB043",
   countryIso2: "AR",
   countryNameFr: "Argentine",
   isFirstInCountry: true,
+  category: "touristique",
+  categoryLabel: "Lieu touristique",
   blocked: null,
+  nearest: null,
   lines: [
-    { ruleKey: "base_country", label: "Pays lointain", detail: null, points: 25 },
-    { ruleKey: "first_country", label: "Premier sticker du pays", detail: null, points: 50 },
-    { ruleKey: "first_city", label: "Première ville", detail: "Ushuaïa", points: 15 },
-    { ruleKey: "isolation", label: "Isolement", detail: null, points: 40 },
-    { ruleKey: "home_distance", label: "Loin de chez toi", detail: null, points: 65 },
+    { ruleKey: "base", label: "Sticker publié", detail: "Points de base", points: 100 },
+    { ruleKey: "rarity", label: "Lieu touristique", detail: "Site touristique à moins de 300 m", points: 20 },
   ],
 };
+
+/** Éditions (list_editions) : 2027 annoncée mais pas encore choisissable. */
+export const EDITIONS = [
+  { year: 2027, name: "Édition 2027", color_hex: "#34B503", visual_path: null, status: "active", is_current: false, selectable: false, color_locked: false, spot_count: 0 },
+  { year: 2026, name: "Édition 2026", color_hex: "#C57CB3", visual_path: null, status: "active", is_current: true, selectable: true, color_locked: false, spot_count: 4 },
+  { year: 2025, name: "Édition 2025", color_hex: "#F68A27", visual_path: null, status: "active", is_current: false, selectable: true, color_locked: true, spot_count: 9 },
+];
 
 export function publishResult(body: Record<string, unknown>) {
   return {
@@ -56,7 +63,7 @@ export function publishResult(body: Record<string, unknown>) {
       year: 2026,
       colorHex: "#5DB043",
       status: "published",
-      pointsTotal: 195,
+      pointsTotal: 120,
       isFirstInCountry: true,
       isExceptional: false,
     },
@@ -105,11 +112,13 @@ export async function startPublicationSupabase(): Promise<PublicationSupabase> {
         ? [{ id: ME, username: "Remi", avatar_path: null, role: "user", suspended_at: null, theme: "system", created_at: "2024-01-01T00:00:00Z" }]
         : []);
     }
-    if (url.pathname === "/rest/v1/scoring_rules") return json(200, [{ value: EDIT_RADIUS_M }]);
+    if (url.pathname === "/rest/v1/scoring_rules") {
+      return json(200, [{ key: "edit_radius_m", value: EDIT_RADIUS_M }, { key: "comment_max_length", value: 280 }]);
+    }
 
     const rpc = url.pathname.match(/^\/rest\/v1\/rpc\/(\w+)$/)?.[1];
     if (rpc === "current_season") return json(200, [{ year: 2026, color_hex: "#5DB043" }]);
-    if (rpc === "get_my_home") return json(200, []);
+    if (rpc === "list_editions") return json(200, EDITIONS);
     if (rpc === "estimate_spot_points") {
       return authorized ? json(200, state.estimate) : json(401, { code: "42501", message: "permission denied" });
     }

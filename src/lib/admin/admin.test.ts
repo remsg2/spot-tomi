@@ -22,7 +22,15 @@ describe("rôles", () => {
   });
 
   it("n'affiche que les onglets permis", () => {
-    expect(visibleTabs("admin").map((tab) => tab.tab)).toEqual(["season", "moderation", "scoring", "roles", "journal"]);
+    expect(visibleTabs("admin").map((tab) => tab.tab)).toEqual([
+      "season",
+      "moderation",
+      "scoring",
+      "roles",
+      "badges",
+      "errors",
+      "journal",
+    ]);
     expect(visibleTabs("moderator").map((tab) => tab.tab)).toEqual(["moderation"]);
     expect(visibleTabs(null)).toEqual([]);
     expect(adminHome("admin")).toBe("/admin/season");
@@ -43,10 +51,17 @@ describe("erreurs", () => {
 describe("barème", () => {
   it("groupe les règles connues et garde les nouvelles dans « Autres »", () => {
     const rule = (key: string) => ({ key, value: 1, updated_at: "2026-11-21T00:00:00Z" });
-    const groups = groupRules([rule("bonus_first_city"), rule("tier_rare"), rule("tier_courant"), rule("bonus_meteo")]);
+    const groups = groupRules([
+      rule("edit_window_days"),
+      rule("bonus_isole"),
+      rule("base_points"),
+      rule("isole_city_km"),
+      rule("bonus_meteo"),
+    ]);
     expect(groups.map((group) => [group.group, group.rules.map((r) => r.key)])).toEqual([
-      ["tiers", ["tier_courant", "tier_rare"]],
-      ["bonus", ["bonus_first_city"]],
+      ["base", ["base_points", "bonus_isole"]],
+      ["index", ["isole_city_km"]],
+      ["limits", ["edit_window_days"]],
       ["other", ["bonus_meteo"]],
     ]);
   });

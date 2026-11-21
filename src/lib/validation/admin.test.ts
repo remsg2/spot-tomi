@@ -6,7 +6,13 @@ import {
   normalizeHex,
   parseCountryTierForm,
   parseExceptionalForm,
+  parseAdjustForm,
+  parseBadgeForm,
+  parseDeleteUserForm,
+  parseEditionForm,
   parseModerationForm,
+  parseRarityForm,
+  parseReasonForm,
   parseRoleForm,
   parseRuleForm,
   parseRuleValue,
@@ -123,7 +129,11 @@ describe("modération et rôles", () => {
   it("n'accepte que les actions de modération connues", () => {
     expect(parseModerationForm(form({ spotId: SPOT, intent: "hide" }))).toEqual({
       ok: true,
-      data: { spotId: SPOT, intent: "hide" },
+      data: { spotId: SPOT, intent: "hide", reason: null },
+    });
+    expect(parseModerationForm(form({ spotId: SPOT, intent: "delete", reason: "  Photo d'un autre membre " }))).toEqual({
+      ok: true,
+      data: { spotId: SPOT, intent: "delete", reason: "Photo d'un autre membre" },
     });
     expect(parseModerationForm(form({ spotId: SPOT, intent: "publish_all" })).ok).toBe(false);
     expect(parseModerationForm(form({ spotId: "pas-un-id", intent: "hide" })).ok).toBe(false);
@@ -148,5 +158,73 @@ describe("modération et rôles", () => {
       data: { userId: SPOT, suspended: true },
     });
     expect(parseSuspendForm(form({ userId: SPOT, suspended: "oui" })).ok).toBe(false);
+  });
+});
+
+describe("cahier des charges V1.1", () => {
+  it("catégorie de rareté : motif obligatoire, « auto » rend la main au calcul", () => {
+    expect(parseRarityForm(form({ spotId: SPOT, category: "remarquable", reason: "Vue sur le Mont-Blanc" }))).toEqual({
+      ok: true,
+      data: { spotId: SPOT, category: "remarquable", reason: "Vue sur le Mont-Blanc" },
+    });
+    expect(parseRarityForm(form({ spotId: SPOT, category: "auto", reason: "Retour au calcul" }))).toMatchObject({
+      ok: true,
+      data: { category: null },
+    });
+    expect(parseRarityForm(form({ spotId: SPOT, category: "remarquable", reason: " a " })).ok).toBe(false);
+    expect(parseRarityForm(form({ spotId: SPOT, category: "legendaire", reason: "Motif valable" })).ok).toBe(false);
+  });
+
+  it("motif de 3 à 200 caractères", () => {
+    expect(parseReasonForm(form({ reason: "  Barème corrigé  " }))).toEqual({ ok: true, data: "Barème corrigé" });
+    expect(parseReasonForm(form({})).ok).toBe(false);
+    expect(parseReasonForm(form({ reason: "x".repeat(201) })).ok).toBe(false);
+  });
+
+  it("correction de points : entier non nul, borné, avec motif", () => {
+    expect(parseAdjustForm(form({ userId: SPOT, points: "-150", reason: "Doublon de photo" }))).toEqual({
+      ok: true,
+      data: { userId: SPOT, points: -150, reason: "Doublon de photo" },
+    });
+    expect(parseAdjustForm(form({ userId: SPOT, points: "0", reason: "Doublon de photo" })).ok).toBe(false);
+    expect(parseAdjustForm(form({ userId: SPOT, points: "12.5", reason: "Doublon de photo" })).ok).toBe(false);
+    expect(parseAdjustForm(form({ userId: SPOT, points: "100001", reason: "Doublon de photo" })).ok).toBe(false);
+    expect(parseAdjustForm(form({ userId: SPOT, points: "50" })).ok).toBe(false);
+  });
+
+  it("suppression d'un compte par un admin : identifiant et motif", () => {
+    expect(parseDeleteUserForm(form({ userId: SPOT, reason: "Spam répété" }))).toEqual({
+      ok: true,
+      data: { userId: SPOT, reason: "Spam répété" },
+    });
+    expect(parseDeleteUserForm(form({ userId: "abc", reason: "Spam répété" })).ok).toBe(false);
+  });
+
+  it("édition : couleur lisible, visuel rangé sous son année", () => {
+    const base = { year: "2026", name: "Édition 2026", colorHex: "c57cb3", status: "active" };
+    expect(parseEditionForm(form(base))).toEqual({
+      ok: true,
+      data: { year: 2026, name: "Édition 2026", colorHex: "#C57CB3", status: "active", makeCurrent: false, visualPath: null },
+    });
+    const visual = "2026/0f8fad5b-d9cb-469f-a165-70867728950e.webp";
+    expect(parseEditionForm(form({ ...base, makeCurrent: "on", visualPath: visual }))).toMatchObject({
+      ok: true,
+      data: { makeCurrent: true, visualPath: visual },
+    });
+    expect(parseEditionForm(form({ ...base, visualPath: "" }))).toMatchObject({ ok: true, data: { visualPath: "" } });
+    expect(parseEditionForm(form({ ...base, visualPath: "2025/0f8fad5b-d9cb-469f-a165-70867728950e.webp" })).ok).toBe(false);
+    expect(parseEditionForm(form({ ...base, visualPath: "../secret.webp" })).ok).toBe(false);
+    expect(parseEditionForm(form({ ...base, colorHex: "#FFFF00" })).ok).toBe(true);
+    expect(parseEditionForm(form({ ...base, colorHex: "#222222" })).ok).toBe(false);
+    expect(parseEditionForm(form({ ...base, status: "draft" })).ok).toBe(false);
+  });
+
+  it("badge : code technique, nom et description", () => {
+    expect(parseBadgeForm(form({ code: "first_spot", active: "on", name: " Premier ", description: "Ton premier sticker" }))).toEqual({
+      ok: true,
+      data: { code: "first_spot", active: true, name: "Premier", description: "Ton premier sticker" },
+    });
+    expect(parseBadgeForm(form({ code: "Premier Badge", name: "Premier", description: "Ton premier sticker" })).ok).toBe(false);
+    expect(parseBadgeForm(form({ code: "first_spot", name: "", description: "Ton premier sticker" })).ok).toBe(false);
   });
 });

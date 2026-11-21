@@ -122,7 +122,7 @@ export function AuthorActions({
   const [year, setYear] = useState<number | null>(info?.year ?? null);
   const [point, setPoint] = useState<LatLng | null>(info ? { lat: info.lat, lng: info.lng } : null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const windowOpen = info !== null && new Date(info.editableUntil).getTime() > Date.now();
+  const windowOpen = info?.windowOpen ?? false;
   const origin: LatLng | null = info && info.gpsSource !== "manual" ? { lat: info.originLat, lng: info.originLng } : null;
   const moved = info && point ? Math.round(distanceMeters({ lat: info.lat, lng: info.lng }, point)) : 0;
   const choices = info && !editions.some((e) => e.year === info.year)

@@ -114,8 +114,15 @@ test.describe("onglet Couleur (partie client, /dev/admin)", () => {
     await card.getByText("Photo, position et signalements").click();
     await expect(card.getByText("Photo floue")).toBeVisible();
     await expect(card.getByText("45.76230, 4.82270")).toBeVisible();
-    await card.getByRole("checkbox", { name: /Lieu exceptionnel/ }).check();
-    await expect(card.getByRole("status")).toHaveText("Simulation : lieu exceptionnel");
+    // Envoi immédiat au changement ; la simulation ne change rien, la case revient à son état.
+    await card.getByRole("checkbox", { name: /Site remarquable/ }).click();
+    await expect(card.getByRole("status")).toHaveText("Simulation : site remarquable");
+
+    // Catégorie de rareté imposée : motif obligatoire.
+    await card.getByRole("combobox").selectOption("tres_rare");
+    await card.getByRole("textbox", { name: "Motif (obligatoire)" }).fill("Sommet à 4 000 m vérifié");
+    await card.getByRole("button", { name: "Appliquer" }).click();
+    await expect(card.getByRole("status")).toHaveText("Simulation : catégorie tres_rare");
   });
 
   test("supprimer un sticker demande une confirmation", async ({ page }) => {
