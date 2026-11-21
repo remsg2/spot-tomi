@@ -66,6 +66,7 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Tout sauf les fichiers statiques, les images et le contrôle de santé.
-    "/((?!_next/static|_next/image|favicon.ico|tomi/|api/health|.*\\.(?:png|jpg|jpeg|webp|svg|ico|txt|xml|webmanifest)$).*)",
+    // Fichiers PWA et carte générés au build : service worker, worker MapLibre, frontières, icônes.
+    "/((?!_next/static|_next/image|favicon.ico|tomi/|icons/|geo/|vendor/|sw\\.js|api/health|.*\\.(?:png|jpg|jpeg|webp|svg|ico|txt|xml|webmanifest|json|map)$).*)",
   ],
 };

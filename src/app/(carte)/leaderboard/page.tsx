@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
-import { ColumnPage, LoadError } from "@/components/leaderboard/column-page";
+import { LoadError } from "@/components/leaderboard/column-page";
 import { LeaderboardPanel, LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-panel";
 import { leaderboardFr as l } from "@/i18n/leaderboard.fr";
 import { getSessionUser } from "@/lib/auth/server";
@@ -13,14 +13,19 @@ export const metadata: Metadata = {
   description: l.metaDescription,
 };
 
-/** Classement public : ?periode=toujours|AAAA et ?critere=points|pays|stickers. */
+/**
+ * Classement public : ?periode=toujours|AAAA et ?critere=points|pays|stickers.
+ * Rendu dans le gabarit (carte) : plein écran avec la barre d'onglets sur mobile,
+ * colonne de gauche et carte à droite à partir de 768 px (maquette Web-dark).
+ * Fond --bg sur mobile comme la maquette Classement, --card dans la colonne.
+ */
 export default function LeaderboardPage({ searchParams }: PageProps<"/leaderboard">) {
   return (
-    <ColumnPage>
+    <div className="flex flex-1 flex-col gap-3.5 bg-bg px-4 pt-5 pb-8 [--edge:var(--bg)] md:bg-card md:px-6 md:pt-0 md:[--edge:var(--card)]">
       <Suspense fallback={<LeaderboardSkeleton />}>
         <LeaderboardContent searchParams={searchParams} />
       </Suspense>
-    </ColumnPage>
+    </div>
   );
 }
 
