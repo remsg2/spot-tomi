@@ -21,6 +21,10 @@ test("fiche conforme à la maquette : badges, points et détail", async ({ page 
 
   const lines = sheet(page).getByRole("listitem");
   await expect(lines).toHaveCount(5);
+  await expect(sheet(page).getByRole("link", { name: "Comment sont calculés les points ?" })).toHaveAttribute(
+    "href",
+    "/points",
+  );
   await expect(lines.nth(0)).toContainText("Pays lointain");
   await expect(lines.nth(0)).toContainText("25");
   await expect(lines.nth(4)).toContainText("Loin de chez toi");

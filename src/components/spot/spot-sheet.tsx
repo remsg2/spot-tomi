@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { BackIcon } from "@/components/map/icons";
 import { PointsBlock, PointsBreakdown, Sticker } from "@/components/ui";
 import { tm } from "@/i18n/map.fr";
+import { rulesFr } from "@/i18n/rules.fr";
 import type { SpotPageData } from "@/lib/spots/server";
 import { AuthorActions, ReportForm, ShareButton, SpotFocus } from "./spot-client";
 
@@ -135,6 +136,9 @@ export function SpotSheet({
         ) : (
           <p className="text-sm text-muted">{tm.spot.noLines}</p>
         )}
+        <Link href="/points" className="-mt-1 inline-flex min-h-11 items-center self-start text-sm font-semibold underline underline-offset-4">
+          {rulesFr.link}
+        </Link>
 
         {isAuthor ? <AuthorActions id={spot.id} name={spot.name} /> : viewerId && <ReportForm id={spot.id} />}
       </div>
