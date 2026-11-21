@@ -1,31 +1,49 @@
 import { expect, test } from "@playwright/test";
 
-test("la page de connexion propose l'email (Google et Apple désactivés)", async ({ page }) => {
+test("la page de connexion : mot de passe d'emblée, lien par email en option (Google et Apple désactivés)", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continuer avec Google" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Continuer avec Apple" })).toHaveCount(0);
   await expect(page.getByLabel("Adresse email")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Recevoir un lien de connexion" })).toBeVisible();
-
-  await page.getByRole("button", { name: "Utiliser un mot de passe" }).click();
   await expect(page.getByLabel("Mot de passe")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Se connecter", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Créer un compte" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Utiliser un lien par email" }).click();
+  await expect(page.getByRole("button", { name: "Recevoir un lien de connexion" })).toBeVisible();
+  await expect(page.getByLabel("Mot de passe")).toHaveCount(0);
 });
 
-test("champs reconnus par les gestionnaires de mots de passe, mode mot de passe retenu", async ({ page }) => {
+test("champs reconnus par les gestionnaires de mots de passe, mode retenu sur l'appareil", async ({ page }) => {
   await page.goto("/login");
   const email = page.getByLabel("Adresse email");
   await expect(email).toHaveAttribute("type", "email");
   await expect(email).toHaveAttribute("autocomplete", "username");
-  await page.getByRole("button", { name: "Utiliser un mot de passe" }).click();
   await expect(page.getByLabel("Mot de passe")).toHaveAttribute("autocomplete", "current-password");
-  // Choix gardé sur l'appareil : email et mot de passe présents dès l'ouverture, prêts à être remplis.
-  await page.reload();
-  await expect(page.getByLabel("Mot de passe")).toBeVisible();
+  // Choix gardé sur l'appareil.
   await page.getByRole("button", { name: "Utiliser un lien par email" }).click();
   await page.reload();
   await expect(page.getByRole("button", { name: "Recevoir un lien de connexion" })).toBeVisible();
+  await page.getByRole("button", { name: "Utiliser un mot de passe" }).click();
+  await page.reload();
+  await expect(page.getByLabel("Mot de passe")).toBeVisible();
+});
+
+test("envoi d'emails limité : le formulaire passe au mot de passe, avec une explication", async ({ page }) => {
+  await page.route("**/auth/v1/otp**", (route) =>
+    route.fulfill({
+      status: 429,
+      json: { code: "over_email_send_rate_limit", error_code: "over_email_send_rate_limit", msg: "Email rate limit exceeded" },
+    }),
+  );
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Utiliser un lien par email" }).click();
+  await page.getByLabel("Adresse email").fill("ami@example.test");
+  await page.getByRole("button", { name: "Recevoir un lien de connexion" }).click();
+  await expect(page.getByText("L'envoi d'emails est limité pour le moment")).toBeVisible();
+  await expect(page.getByLabel("Mot de passe")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Créer un compte" })).toBeVisible();
 });
 
 test("app installée sur iPhone : mot de passe d'emblée, lien magique déconseillé", async ({ page }) => {

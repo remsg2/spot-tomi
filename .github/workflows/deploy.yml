@@ -6,6 +6,9 @@
 #   2. migrations et fonctions sur Supabase prod, build Vercel, contrôle du
 #      bundle, déploiement en production, puis tests contre le site en ligne.
 #
+# Les réglages Auth versionnés (supabase/auth.json) sont appliqués aux deux
+# projets juste après les migrations (scripts/supabase-auth-config.sh).
+#
 # La CLI Supabase v3 vise la base locale par défaut : `--remote` cible le
 # projet lié par `supabase link`, et `--yes` confirme les changements distants.
 #
@@ -50,6 +53,8 @@ jobs:
       - run: supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
       - name: Migrations
         run: supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --yes
+      - name: Réglages Auth (supabase/auth.json)
+        run: scripts/supabase-auth-config.sh "${{ vars.SUPABASE_PROJECT_REF }}"
       - name: Fonctions Edge
         run: |
           if compgen -G "supabase/functions/*/index.ts" > /dev/null; then
@@ -84,6 +89,8 @@ jobs:
       - run: supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
       - name: Migrations
         run: supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --yes
+      - name: Réglages Auth (supabase/auth.json)
+        run: scripts/supabase-auth-config.sh "${{ vars.SUPABASE_PROJECT_REF }}"
       - name: Fonctions Edge
         run: |
           if compgen -G "supabase/functions/*/index.ts" > /dev/null; then

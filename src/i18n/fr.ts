@@ -102,7 +102,8 @@ export const fr = {
       email_not_confirmed: "Confirme d'abord ton adresse avec le lien reçu par email.",
       user_already_exists: "Un compte existe déjà avec cet email : connecte-toi.",
       weak_password: "Mot de passe trop faible : 8 caractères minimum.",
-      over_email_send_rate_limit: "Trop d'emails envoyés. Réessaie dans quelques minutes.",
+      over_email_send_rate_limit:
+        "L'envoi d'emails est limité pour le moment. Connecte-toi, ou crée ton compte, avec un mot de passe : aucun email n'est nécessaire.",
       over_request_rate_limit: "Trop de tentatives. Réessaie dans quelques minutes.",
       email_address_invalid: "Cette adresse email n'est pas valide.",
       signup_disabled: "Les inscriptions sont fermées pour le moment.",
