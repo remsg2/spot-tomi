@@ -1,5 +1,5 @@
 export { AlbumTile } from "./album-tile";
-export { ClusterPill } from "./cluster-pill";
+export { ClusterStack, type ClusterStackGroup } from "./cluster-stack";
 export { Logo } from "./logo";
 export { MapMarker } from "./map-marker";
 export { PointsBlock } from "./points-block";

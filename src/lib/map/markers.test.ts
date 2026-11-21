@@ -1,14 +1,10 @@
 import { expression, type ExpressionSpecification } from "@maplibre/maplibre-gl-style-spec";
 import { describe, expect, it } from "vitest";
 import {
-  CLUSTER_PROPERTIES,
-  clusterIconExpression,
-  clusterKey,
   markerIconExpression,
   markerKey,
   markerLabel,
   markerSpec,
-  parseClusterKey,
   parseMarkerKey,
   selectionRing,
 } from "./markers";
@@ -80,25 +76,5 @@ describe("clés d'images des marqueurs", () => {
         }
       }
     }
-  });
-});
-
-describe("pastilles de regroupement", () => {
-  it("clé lisible et réversible", () => {
-    const key = clusterKey({ count: 18, points: 312, theme: "light" });
-    expect(key).toBe("c|18|312|light");
-    expect(parseClusterKey(key)).toEqual({ count: 18, points: 312, theme: "light" });
-    expect(parseClusterKey("m|26|#F2C230|0|0||0|light")).toBeNull();
-  });
-
-  it("l'expression de la pastille utilise le nombre et la somme des points du groupe", () => {
-    expect(evaluate(clusterIconExpression("dark"), { point_count: 18, points: 312 })).toBe("c|18|312|dark");
-  });
-
-  it("clusterProperties additionne les points des stickers", () => {
-    const [operator, map] = CLUSTER_PROPERTIES.points;
-    expect(operator).toBe("+");
-    expect(evaluate(map, { points: 53 })).toBe(53);
-    expect(evaluate(map, {})).toBe(0);
   });
 });
