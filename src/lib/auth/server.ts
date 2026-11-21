@@ -1,5 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { getPublicEnvResult } from "@/lib/env/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { Theme } from "@/lib/validation/profile";
 
@@ -17,6 +18,8 @@ export type Profile = {
 
 /** Utilisateur connecté, d'après le jeton vérifié (getClaims), ou null. */
 export async function getSessionUser(): Promise<SessionUser | null> {
+  // Sans configuration Supabase (build ou CI sans base), personne n'est connecté.
+  if (!(await getPublicEnvResult()).ok) return null;
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims?.sub) return null;

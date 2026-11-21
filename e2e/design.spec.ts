@@ -67,6 +67,7 @@ test.describe("page /dev/design", () => {
 
 test("la page /dev/design est absente en production", async ({ page }) => {
   test.skip(!isProduction, "vérifié seulement contre la production");
-  await page.goto("/dev/design");
+  const response = await page.goto("/dev/design");
+  expect(response?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "Mode clair" })).toHaveCount(0);
 });
