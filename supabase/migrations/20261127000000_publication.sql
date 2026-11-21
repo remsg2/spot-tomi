@@ -472,4 +472,4 @@ returns text
 language sql
 stable
 set search_path = ''
-as $$ select '20261123000000_publication'::text $$;
+as $$ select '20261127000000_publication'::text $$;

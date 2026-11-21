@@ -51,12 +51,15 @@ tout ce qui n'est pas précisé ici ; en cas de contradiction, **ce document l'e
 | `20261121000000_comptes.sql` | 3 | `user_role`, `profiles`, `public_profiles`, `is_admin()`, `is_moderator()`, `private.user_homes`, `set_my_home`/`get_my_home`/`clear_my_home`, bucket `avatars` |
 | `20261122000000_modele.sql` | 4 | modèle de données, points, RLS (§3) |
 | `20261122000001_pays.sql` | 4 | frontières Natural Earth et niveaux par défaut (données) |
-| `20261123000000_publication.sql` | 5 | bucket `spot-photos`, `create_spot`, limites (§4) |
-| `20261124000000_carte.sql` | 6 | `spots_in_bbox`, `country_rarity`, `search_spots` (§5) |
+| `20261127000000_publication.sql` | 5 | bucket `spot-photos`, `create_spot`, limites (§4) — renommée : intégrée après les étapes 7 et 8 |
+| `20261128000000_carte.sql` | 6 | `spots_in_bbox`, `country_rarity`, `search_spots` (§5) — renommée : intégrée en dernier |
 | `20261125000000_classement.sql` | 7 | vue matérialisée `leaderboard`, `refresh_leaderboard`, `profile_stats`, `album` (§6) |
 | `20261126000000_admin.sql` | 8 | fonctions admin, journal, file de modération (§7) |
 
 Chaque migration met à jour `public.schema_version()` avec son propre nom.
+Une migration ne peut pas être appliquée si une migration plus récente l'est déjà en
+production : celles des étapes 5 et 6, intégrées après les étapes 7 et 8, ont donc été
+renommées avec un horodatage postérieur.
 Les étapes 5 à 8 testent leur SQL en appliquant d'abord les migrations 1, 3 et le
 **schéma du §3 tel quel** (copie de travail locale, non commitée, si l'étape 4 n'est pas
 encore là).

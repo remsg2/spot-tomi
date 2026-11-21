@@ -106,7 +106,7 @@ select ok(
   has_function_privilege('service_role', 'public.geocode_cache_put(float8, float8, text, text)', 'execute'),
   'service_role écrit dans le cache de géocodage'
 );
-select ok(public.schema_version() >= '20261123000000_publication', 'schema_version inclut la migration publication');
+select ok(public.schema_version() >= '20261127000000_publication', 'schema_version inclut la migration publication');
 
 -- Un utilisateur ne peut pas créer de sticker lui-même ------------------------------
 
