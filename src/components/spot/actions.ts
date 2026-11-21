@@ -13,33 +13,95 @@ export type SpotActionState = { ok: boolean; message: string } | null;
 const idSchema = z.uuid();
 const nameSchema = z.string().trim().min(1).max(80);
 const reasonSchema = z.string().trim().max(500);
+const commentSchema = z.string().max(500);
+const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const yearSchema = z.coerce.number().int().min(2000).max(2100);
+const coordSchema = z.coerce.number().finite();
+
+/** Codes d'erreur de update_my_spot → messages. */
+function updateError(code: string | undefined, message: string | undefined): string {
+  switch (code) {
+    case "ST007":
+      return errors.editWindow;
+    case "ST008":
+      return errors.edition;
+    case "ST009":
+      return message || errors.date;
+    case "ST010":
+      return message || errors.tooFar;
+    case "ST002":
+      return errors.suspended;
+    case "ST005":
+      return message || errors.generic;
+    default:
+      return errors.notAllowed;
+  }
+}
 
 const errors = tm.spot.errors;
 
 /**
- * L'auteur renomme son sticker. La base n'autorise que la colonne name, et
- * seulement sur ses propres stickers (privilège de colonne et RLS de l'étape 4).
+ * L'auteur modifie son sticker (rpc update_my_spot) : nom et commentaire à tout moment ;
+ * date du collage, édition et position pendant le délai de modification. Les champs
+ * absents du formulaire ne changent pas.
  */
-export async function renameSpot(_previous: SpotActionState, formData: FormData): Promise<SpotActionState> {
+export async function updateSpot(_previous: SpotActionState, formData: FormData): Promise<SpotActionState> {
   const id = idSchema.safeParse(formData.get("id"));
-  const name = nameSchema.safeParse(formData.get("name"));
   if (!id.success) return { ok: false, message: errors.generic };
+  const name = nameSchema.safeParse(formData.get("name"));
   if (!name.success) return { ok: false, message: errors.nameInvalid };
+  const comment = commentSchema.safeParse(formData.get("comment") ?? "");
+  if (!comment.success) return { ok: false, message: errors.commentTooLong };
+
+  const params: Record<string, unknown> = {
+    p_spot_id: id.data,
+    p_name: name.data,
+    p_comment: comment.data,
+  };
+  if (formData.has("pastedOn")) {
+    const day = daySchema.safeParse(formData.get("pastedOn"));
+    if (!day.success) return { ok: false, message: errors.date };
+    // Midi UTC : le jour saisi ne change dans aucun fuseau.
+    params.p_taken_at = `${day.data}T12:00:00.000Z`;
+  }
+  if (formData.has("year")) {
+    const year = yearSchema.safeParse(formData.get("year"));
+    if (!year.success) return { ok: false, message: errors.edition };
+    params.p_year = year.data;
+  }
+  if (formData.has("lat") && formData.has("lng")) {
+    const lat = coordSchema.safeParse(formData.get("lat"));
+    const lng = coordSchema.safeParse(formData.get("lng"));
+    if (!lat.success || !lng.success) return { ok: false, message: errors.generic };
+    params.p_lat = lat.data;
+    params.p_lng = lng.data;
+  }
 
   const user = await getSessionUser();
   if (!user) return { ok: false, message: errors.loginRequired };
 
   const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("spots")
-    .update({ name: name.data })
-    .eq("id", id.data)
-    .eq("author_id", user.id)
-    .select("id");
-  if (error || !data || data.length === 0) return { ok: false, message: errors.notAllowed };
+  const { data, error } = await supabase.rpc("update_my_spot", params);
+  if (error) return { ok: false, message: updateError(error.code, error.message) };
 
   refresh();
-  return { ok: true, message: tm.spot.author.renamed };
+  const changed = (data as { changed?: boolean } | null)?.changed !== false;
+  return { ok: true, message: changed ? tm.spot.author.saved : tm.spot.author.unchanged };
+}
+
+/** Like ou retrait du like (rpc toggle_like). */
+export async function toggleLike(id: string): Promise<{ ok: boolean; liked: boolean; count: number; message?: string }> {
+  const spotId = idSchema.safeParse(id);
+  if (!spotId.success) return { ok: false, liked: false, count: 0, message: errors.generic };
+  const user = await getSessionUser();
+  if (!user) return { ok: false, liked: false, count: 0, message: tm.spot.like.login };
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("toggle_like", { p_spot_id: spotId.data });
+  if (error) {
+    return { ok: false, liked: false, count: 0, message: error.code === "ST002" ? errors.suspended : errors.generic };
+  }
+  const result = data as { liked: boolean; count: number };
+  return { ok: true, liked: result.liked, count: Number(result.count) };
 }
 
 /** L'auteur supprime son sticker (et sa photo), puis revient à la carte. */
@@ -56,11 +118,13 @@ export async function deleteSpot(_previous: SpotActionState, formData: FormData)
     .delete()
     .eq("id", id.data)
     .eq("author_id", user.id)
-    .select("id, photo_path");
+    .select("id, photo_path, thumb_path");
   if (error || !data || data.length === 0) return { ok: false, message: errors.notAllowed };
 
-  // La photo est dans le dossier de l'auteur : sa suppression lui est permise.
-  const paths = data.map((row) => row.photo_path as string).filter(Boolean);
+  // La photo et la miniature sont dans le dossier de l'auteur : leur suppression lui est permise.
+  const paths = data.flatMap((row) => [row.photo_path as string, row.thumb_path as string | null]).filter(
+    (path): path is string => Boolean(path),
+  );
   if (paths.length > 0) await supabase.storage.from("spot-photos").remove(paths);
 
   redirect("/");

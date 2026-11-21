@@ -540,6 +540,40 @@ grant execute on function
   public.update_my_spot(uuid, text, text, timestamptz, int, double precision, double precision)
 to authenticated;
 
+-- Ce que le formulaire de modification de l'auteur affiche : position exacte et position
+-- d'origine (rayon autorisé), date, édition, délai restant. Null pour un autre membre.
+create function public.my_spot_edit_info(p_spot_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', s.id,
+    'name', s.name,
+    'comment', s.comment,
+    'year', s.year,
+    'takenAt', s.taken_at,
+    'gpsSource', s.gps_source,
+    'lat', extensions.st_y(s.location::extensions.geometry),
+    'lng', extensions.st_x(s.location::extensions.geometry),
+    'originLat', extensions.st_y(coalesce(s.original_location, s.location)::extensions.geometry),
+    'originLng', extensions.st_x(coalesce(s.original_location, s.location)::extensions.geometry),
+    'radiusM', coalesce((select value from public.scoring_rules where key = 'edit_radius_m'), 200),
+    'createdAt', s.created_at,
+    'editableUntil', s.created_at + make_interval(days => coalesce(
+      (select value from public.scoring_rules where key = 'edit_window_days'), 7)::int),
+    'needsReview', s.needs_review,
+    'status', s.status
+  )
+  from public.spots s
+  where s.id = p_spot_id and s.author_id = auth.uid()
+$$;
+
+revoke execute on function public.my_spot_edit_info(uuid) from public, anon, authenticated;
+grant execute on function public.my_spot_edit_info(uuid) to authenticated;
+
 -- Nouvelle photo d'un sticker (Edge Function publish-spot, après contrôle du WebP).
 -- Renvoie les anciens chemins, que l'Edge Function supprime de Storage.
 create function public.replace_spot_photo(

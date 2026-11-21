@@ -1,12 +1,21 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useState, useTransition, type CSSProperties } from "react";
 import { useMapContext } from "@/components/map/map-provider";
 import { FlagIcon, PencilIcon, ShareIcon, TrashIcon } from "@/components/map/icons";
+import { PickerPane } from "@/components/publish/picker-pane";
 import { HapticTouch, PrimaryButton } from "@/components/ui";
 import { tm } from "@/i18n/map.fr";
 import { cn } from "@/lib/cn";
-import { deleteSpot, renameSpot, reportSpot, type SpotActionState } from "./actions";
+import { reportClientError } from "@/lib/errors/report";
+import { haptic } from "@/lib/haptics";
+import { distanceMeters, type LatLng } from "@/lib/publish/geo";
+import type { EditionOption } from "@/lib/publish/pasted";
+import { ACCEPTED_PHOTO_TYPES } from "@/lib/publish/photo";
+import type { SpotEditInfo } from "@/lib/spots/server";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { deleteSpot, reportSpot, toggleLike, updateSpot, type SpotActionState } from "./actions";
 
 /** Montre le sticker de la fiche sur la carte de droite (tablette et web). */
 export function SpotFocus({ id, lng, lat }: { id: string; lng: number | null; lat: number | null }) {
@@ -66,6 +75,7 @@ export function ShareButton({ name, className }: { name: string; className?: str
 
 const secondaryButton =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] bg-soft px-4 text-sm font-semibold text-text disabled:opacity-60";
+const fieldClass = "h-12 rounded-[14px] border border-line bg-bg px-3.5 text-[15px] outline-none focus:border-text";
 
 function Feedback({ state }: { state: SpotActionState }) {
   if (!state) return null;
@@ -76,26 +86,103 @@ function Feedback({ state }: { state: SpotActionState }) {
   );
 }
 
-/** Actions de l'auteur : renommer ou supprimer son sticker. */
-export function AuthorActions({ id, name }: { id: string; name: string }) {
-  const [mode, setMode] = useState<"idle" | "rename" | "delete">("idle");
-  const [renameState, renameAction, renaming] = useActionState(
+/** Actions de l'auteur : modifier (nom, commentaire, date, édition, position, photo) ou supprimer. */
+export function AuthorActions({
+  id,
+  name,
+  userId,
+  info,
+  editions,
+  commentMax,
+}: {
+  id: string;
+  name: string;
+  userId: string;
+  /** Données de modification (rpc my_spot_edit_info) ; null : nom et commentaire seulement. */
+  info: SpotEditInfo | null;
+  editions: EditionOption[];
+  commentMax: number;
+}) {
+  const router = useRouter();
+  const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
+  const [updateState, updateAction, updating] = useActionState(
     async (previous: SpotActionState, formData: FormData) => {
-      const result = await renameSpot(previous, formData);
+      const result = await updateSpot(previous, formData);
       if (result?.ok) setMode("idle");
       return result;
     },
     null,
   );
   const [deleteState, deleteAction, deleting] = useActionState(deleteSpot, null);
+  const [photoState, setPhotoState] = useState<SpotActionState>(null);
+  const [sendingPhoto, setSendingPhoto] = useState(false);
+
+  const [comment, setComment] = useState(info?.comment ?? "");
+  const [pastedOn, setPastedOn] = useState(info ? info.takenAt.slice(0, 10) : "");
+  const [year, setYear] = useState<number | null>(info?.year ?? null);
+  const [point, setPoint] = useState<LatLng | null>(info ? { lat: info.lat, lng: info.lng } : null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const windowOpen = info !== null && new Date(info.editableUntil).getTime() > Date.now();
+  const origin: LatLng | null = info && info.gpsSource !== "manual" ? { lat: info.originLat, lng: info.originLng } : null;
+  const moved = info && point ? Math.round(distanceMeters({ lat: info.lat, lng: info.lng }, point)) : 0;
+  const choices = info && !editions.some((e) => e.year === info.year)
+    ? [...editions, { year: info.year, name: `Édition ${info.year}`, colorHex: "#9A9A94", isCurrent: false }]
+    : editions;
+
+  async function changePhoto(file: File) {
+    setSendingPhoto(true);
+    setPhotoState({ ok: true, message: tm.spot.author.photoSending });
+    try {
+      const [{ preparePhoto, reencodeToWebp }, { photoHash }, { createSupabaseServices }, contract] = await Promise.all([
+        import("@/lib/publish/browser-image"),
+        import("@/lib/publish/photo-hash"),
+        import("@/lib/publish/services"),
+        import("@/lib/publish/contract"),
+      ]);
+      const prepared = await preparePhoto(file);
+      URL.revokeObjectURL(prepared.previewUrl);
+      const services = createSupabaseServices(getSupabaseBrowserClient);
+      const path = contract.photoPathFor(userId, crypto.randomUUID());
+      await services.upload(path, await reencodeToWebp(prepared.decodable));
+      let thumbPath: string | null = null;
+      try {
+        await services.upload(
+          contract.thumbPathFor(path),
+          await reencodeToWebp(prepared.decodable, { maxSide: contract.THUMB_SIDE, quality: 0.8 }),
+        );
+        thumbPath = contract.thumbPathFor(path);
+      } catch (error) {
+        reportClientError("upload", error, "/spots (miniature)");
+      }
+      await services.replacePhoto?.({
+        replaceSpotId: id,
+        photoPath: path,
+        thumbPath,
+        photoHash: await photoHash(prepared.decodable),
+      });
+      haptic("success");
+      setPhotoState({ ok: true, message: tm.spot.author.photoDone });
+      router.refresh();
+    } catch (error) {
+      haptic("error");
+      reportClientError("upload", error, "/spots (nouvelle photo)");
+      const code = (error as { code?: string } | null)?.code;
+      setPhotoState({
+        ok: false,
+        message: code === "edit_window" ? tm.spot.errors.editWindow : tm.spot.author.photoFailed,
+      });
+    } finally {
+      setSendingPhoto(false);
+    }
+  }
 
   return (
     <section aria-labelledby="author-actions" className="flex flex-col gap-3 rounded-[18px] border border-line p-4">
       <h2 id="author-actions" className="font-display text-base font-normal">
         {tm.spot.author.title}
       </h2>
-      {mode === "rename" ? (
-        <form action={renameAction} className="flex flex-col gap-3">
+      {mode === "edit" ? (
+        <form action={updateAction} className="flex flex-col gap-3" data-testid="edit-spot-form">
           <input type="hidden" name="id" value={id} />
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-semibold">{tm.spot.author.renameLabel}</span>
@@ -105,11 +192,96 @@ export function AuthorActions({ id, name }: { id: string; name: string }) {
               required
               maxLength={80}
               autoFocus
-              className="h-12 rounded-[14px] border border-line bg-bg px-3.5 text-[15px] outline-none focus:border-text"
+              className={fieldClass}
             />
           </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="flex justify-between text-sm font-semibold">
+              {tm.spot.author.commentLabel}
+              <span className="font-normal text-muted">{`${comment.trim().length} / ${commentMax}`}</span>
+            </span>
+            <textarea
+              name="comment"
+              rows={2}
+              value={comment}
+              onChange={(event) => setComment(event.currentTarget.value)}
+              maxLength={500}
+              className={cn(fieldClass, "h-auto min-h-[72px] py-2.5")}
+            />
+          </label>
+          {info && (
+            <p className="text-xs text-muted">
+              {windowOpen ? tm.spot.author.windowOpen(info.editableUntil) : tm.spot.author.windowClosed}
+            </p>
+          )}
+          {info && windowOpen && (
+            <>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-semibold">{tm.spot.author.pastedLabel}</span>
+                <input
+                  type="date"
+                  name="pastedOn"
+                  value={pastedOn}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(event) => setPastedOn(event.currentTarget.value)}
+                  className={fieldClass}
+                />
+              </label>
+              {choices.length > 0 && (
+                <fieldset className="flex flex-col gap-1.5">
+                  <legend className="mb-1.5 text-sm font-semibold">{tm.spot.author.editionLabel}</legend>
+                  <input type="hidden" name="year" value={year ?? ""} />
+                  <div className="flex flex-wrap gap-2">
+                    {choices.map((option) => (
+                      <button
+                        key={option.year}
+                        type="button"
+                        role="radio"
+                        aria-checked={option.year === year}
+                        onClick={() => setYear(option.year)}
+                        style={{ "--swatch": option.colorHex } as CSSProperties}
+                        className={cn(
+                          "flex min-h-11 items-center gap-2 rounded-full border px-3 text-sm font-semibold",
+                          option.year === year ? "border-text bg-text text-bg" : "border-line bg-bg text-text",
+                        )}
+                      >
+                        <span aria-hidden="true" className="size-3.5 rounded-full border border-black/20 bg-(--swatch)" />
+                        {option.name}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-semibold">{tm.spot.author.positionLabel}</span>
+                {point && moved >= 1 && (
+                  <>
+                    <input type="hidden" name="lat" value={point.lat} />
+                    <input type="hidden" name="lng" value={point.lng} />
+                  </>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-muted">{tm.spot.author.positionValue(moved)}</span>
+                  <button type="button" onClick={() => setPickerOpen(true)} className={secondaryButton}>
+                    {tm.spot.author.positionAdjust}
+                  </button>
+                </div>
+                {origin && <p className="text-xs text-muted">{tm.spot.author.positionHint(info.radiusM)}</p>}
+                <PickerPane
+                  overlay
+                  open={pickerOpen}
+                  onClose={() => setPickerOpen(false)}
+                  origin={origin}
+                  value={point}
+                  fallbackCenter={point}
+                  radius={info.radiusM}
+                  onChange={setPoint}
+                />
+              </div>
+            </>
+          )}
           <div className="flex gap-2">
-            <button type="submit" disabled={renaming} className={cn(secondaryButton, "bg-year text-on-year")}>
+            <button type="submit" disabled={updating} className={cn(secondaryButton, "bg-year text-on-year")}>
               {tm.spot.author.renameSave}
             </button>
             <button type="button" onClick={() => setMode("idle")} className={secondaryButton}>
@@ -132,18 +304,95 @@ export function AuthorActions({ id, name }: { id: string; name: string }) {
         </form>
       ) : (
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setMode("rename")} className={secondaryButton}>
+          <button type="button" onClick={() => setMode("edit")} className={secondaryButton}>
             <PencilIcon size={18} />
             {tm.spot.author.rename}
           </button>
+          {windowOpen && (
+            <label className={cn(secondaryButton, "cursor-pointer focus-within:outline-3 focus-within:outline-text")}>
+              {tm.spot.author.photoChange}
+              <input
+                type="file"
+                accept={ACCEPTED_PHOTO_TYPES}
+                className="sr-only"
+                disabled={sendingPhoto}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = "";
+                  if (file) void changePhoto(file);
+                }}
+              />
+            </label>
+          )}
           <button type="button" onClick={() => setMode("delete")} className={secondaryButton}>
             <TrashIcon size={18} />
             {tm.spot.author.delete}
           </button>
         </div>
       )}
-      <Feedback state={mode === "delete" ? deleteState : renameState} />
+      <Feedback state={mode === "delete" ? deleteState : mode === "edit" ? updateState : (photoState ?? updateState)} />
     </section>
+  );
+}
+
+/** « J'aime » : compteur public, bouton pour les connectés. */
+export function LikeButton({
+  id,
+  initialCount,
+  initialLiked,
+  canLike,
+}: {
+  id: string;
+  initialCount: number;
+  initialLiked: boolean;
+  canLike: boolean;
+}) {
+  const [state, setState] = useState({ count: initialCount, liked: initialLiked });
+  const [message, setMessage] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function toggle() {
+    if (!canLike) {
+      setMessage(tm.spot.like.login);
+      return;
+    }
+    const previous = state;
+    // Réponse immédiate, corrigée par le serveur.
+    setState({ liked: !previous.liked, count: previous.count + (previous.liked ? -1 : 1) });
+    haptic("selection");
+    startTransition(async () => {
+      const result = await toggleLike(id);
+      if (result.ok) setState({ liked: result.liked, count: result.count });
+      else {
+        setState(previous);
+        setMessage(result.message ?? null);
+      }
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={pending}
+        aria-pressed={state.liked}
+        aria-label={tm.spot.like.label(state.count, state.liked)}
+        data-testid="like-button"
+        className={cn(
+          "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-bold",
+          state.liked ? "border-year bg-year text-on-year" : "border-line bg-card text-text",
+        )}
+      >
+        <span aria-hidden="true">{state.liked ? "♥" : "♡"}</span>
+        {tm.spot.like.count(state.count)}
+      </button>
+      {message && (
+        <span role="status" className="text-xs font-semibold text-muted">
+          {message}
+        </span>
+      )}
+    </div>
   );
 }
 

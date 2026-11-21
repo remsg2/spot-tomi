@@ -29,6 +29,42 @@ export type SpotPageData = {
   isExceptional: boolean;
   points: number;
   lines: ReturnType<typeof toPointLines>;
+  comment: string | null;
+  editionName: string;
+  rarityCategory: string | null;
+  rarityReason: string | null;
+};
+
+/** Sticker proche, sur la fiche (rpc nearby_spots). */
+export type NearbySpot = {
+  id: string;
+  name: string;
+  city: string | null;
+  countryName: string | null;
+  year: number;
+  color: string;
+  points: number;
+  thumbUrl: string | null;
+  distanceM: number;
+};
+
+/** Formulaire de modification de l'auteur (rpc my_spot_edit_info). */
+export type SpotEditInfo = {
+  id: string;
+  name: string;
+  comment: string | null;
+  year: number;
+  takenAt: string;
+  gpsSource: "exif" | "device" | "manual";
+  lat: number;
+  lng: number;
+  originLat: number;
+  originLng: number;
+  radiusM: number;
+  createdAt: string;
+  editableUntil: string;
+  needsReview: boolean;
+  status: SpotPageData["status"];
 };
 
 export type Viewer = { user: SessionUser | null; profile: Profile | null };
@@ -83,6 +119,10 @@ type PublicSpotRow = {
   is_exceptional: boolean;
   is_first_in_country: boolean;
   points_total: number;
+  comment: string | null;
+  edition_name: string;
+  rarity_category: string | null;
+  rarity_reason: string | null;
 };
 
 type OwnSpotRow = {
@@ -98,6 +138,9 @@ type OwnSpotRow = {
   is_exceptional: boolean;
   is_first_in_country: boolean;
   points_total: number;
+  comment: string | null;
+  rarity_category: string | null;
+  rarity_reason: string | null;
   country: { name_fr: string; tier: string } | null;
 };
 
@@ -115,7 +158,7 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
     supabase
       .from("public_spots")
       .select(
-        "id, author_id, author_username, author_avatar_path, name, lat, lng, altitude_m, taken_at, year, color_hex, country_name_fr, country_tier, city, photo_path, is_exceptional, is_first_in_country, points_total",
+        "id, author_id, author_username, author_avatar_path, name, lat, lng, altitude_m, taken_at, year, color_hex, country_name_fr, country_tier, city, photo_path, is_exceptional, is_first_in_country, points_total, comment, edition_name, rarity_category, rarity_reason",
       )
       .eq("id", id)
       .maybeSingle<PublicSpotRow>(),
@@ -152,6 +195,10 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
       isExceptional: spot.is_exceptional,
       points: spot.points_total,
       lines,
+      comment: spot.comment,
+      editionName: spot.edition_name,
+      rarityCategory: spot.rarity_category,
+      rarityReason: spot.rarity_reason,
     };
   }
 
@@ -161,18 +208,19 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
   const { data: own } = await supabase
     .from("spots")
     .select(
-      "id, author_id, name, altitude_m, taken_at, year, city, photo_path, status, is_exceptional, is_first_in_country, points_total, country:countries(name_fr, tier)",
+      "id, author_id, name, altitude_m, taken_at, year, city, photo_path, status, is_exceptional, is_first_in_country, points_total, comment, rarity_category, rarity_reason, country:countries(name_fr, tier)",
     )
     .eq("id", id)
     .maybeSingle<OwnSpotRow>();
   if (!own) return null;
 
-  const [{ data: author }, { data: color }] = await Promise.all([
+  const [{ data: author }, { data: color }, { data: edition }] = await Promise.all([
     supabase.from("public_profiles").select("username, avatar_path").eq("id", own.author_id).maybeSingle<{
       username: string;
       avatar_path: string | null;
     }>(),
     supabase.rpc("year_color", { p_year: own.year }),
+    supabase.from("seasons").select("name").eq("year", own.year).maybeSingle<{ name: string }>(),
   ]);
 
   return {
@@ -197,5 +245,64 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
     isExceptional: own.is_exceptional,
     points: own.points_total,
     lines,
+    comment: own.comment,
+    editionName: edition?.name ?? `Édition ${own.year}`,
+    rarityCategory: own.rarity_category,
+    rarityReason: own.rarity_reason,
   };
 });
+
+/** Stickers publiés les plus proches (50 km au plus), du plus proche au plus loin. */
+export async function getNearbySpots(id: string, limit = 6): Promise<NearbySpot[]> {
+  try {
+    const { supabaseUrl } = await getPublicEnv();
+    const supabase = await getSupabaseServerClient();
+    const { data } = await supabase.rpc("nearby_spots", { p_spot_id: id, p_limit: limit });
+    return ((data ?? []) as Array<{
+      id: string;
+      name: string;
+      city: string | null;
+      country_name_fr: string | null;
+      year: number;
+      color_hex: string;
+      points_total: number;
+      thumb_path: string | null;
+      distance_m: number;
+    }>).map((row) => ({
+      id: row.id,
+      name: row.name,
+      city: row.city,
+      countryName: row.country_name_fr,
+      year: row.year,
+      color: row.color_hex,
+      points: row.points_total,
+      thumbUrl: row.thumb_path ? publicStorageUrl(supabaseUrl, "spot-photos", row.thumb_path) : null,
+      distanceM: row.distance_m,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Likes d'un sticker et « liké par moi ». */
+export async function getLikeInfo(id: string): Promise<{ count: number; liked: boolean }> {
+  try {
+    const supabase = await getSupabaseServerClient();
+    const { data } = await supabase.rpc("spot_like_info", { p_spot_id: id });
+    const info = data as { count?: number; liked?: boolean } | null;
+    return { count: Number(info?.count ?? 0), liked: Boolean(info?.liked) };
+  } catch {
+    return { count: 0, liked: false };
+  }
+}
+
+/** Données du formulaire de modification, pour l'auteur seulement (sinon null). */
+export async function getSpotEditInfo(id: string): Promise<SpotEditInfo | null> {
+  try {
+    const supabase = await getSupabaseServerClient();
+    const { data } = await supabase.rpc("my_spot_edit_info", { p_spot_id: id });
+    return (data as SpotEditInfo | null) ?? null;
+  } catch {
+    return null;
+  }
+}

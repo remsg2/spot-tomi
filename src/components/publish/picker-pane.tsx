@@ -46,6 +46,7 @@ export function PickerPane({
   fallbackCenter,
   radius,
   onChange,
+  overlay = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -54,8 +55,10 @@ export function PickerPane({
   fallbackCenter: LatLng | null;
   radius: number;
   onChange: (point: LatLng) => void;
+  /** Plein écran à toutes les tailles, seulement quand il est ouvert (fiche d'un sticker). */
+  overlay?: boolean;
 }) {
-  const isDesktop = useIsDesktop();
+  const isDesktop = useIsDesktop() && !overlay;
   const [draft, setDraft] = useState<{ point: LatLng; zoom: number } | null>(null);
   const adjusting = origin !== null;
   const title = adjusting ? tp.picker.titleAdjust : tp.picker.titlePlace;
@@ -77,13 +80,14 @@ export function PickerPane({
     <section
       aria-label={title}
       className={cn(
-        "inset-0 z-40 flex-col bg-bg",
+        "inset-0 flex-col bg-bg",
+        overlay ? "z-[60]" : "z-40",
         open ? "fixed flex" : "hidden",
-        "lg:relative lg:inset-auto lg:z-auto lg:flex lg:h-dvh",
+        !overlay && "lg:relative lg:inset-auto lg:z-auto lg:flex lg:h-dvh",
       )}
       data-testid="picker-pane"
     >
-      <div className="flex items-center gap-3 px-4 pt-4 pb-3 lg:hidden">
+      <div className={cn("flex items-center gap-3 px-4 pt-4 pb-3", !overlay && "lg:hidden")}>
         <button
           type="button"
           onClick={onClose}
@@ -105,8 +109,14 @@ export function PickerPane({
         />
       )}
 
-      <div className="flex flex-col gap-3 border-t border-line bg-card px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] lg:absolute lg:bottom-6 lg:left-1/2 lg:w-[min(480px,calc(100%-48px))] lg:-translate-x-1/2 lg:rounded-[18px] lg:border lg:pb-4 lg:shadow-card-lg">
-        <h2 className="hidden font-display text-base font-normal lg:block">{title}</h2>
+      <div
+        className={cn(
+          "flex flex-col gap-3 border-t border-line bg-card px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))]",
+          !overlay &&
+            "lg:absolute lg:bottom-6 lg:left-1/2 lg:w-[min(480px,calc(100%-48px))] lg:-translate-x-1/2 lg:rounded-[18px] lg:border lg:pb-4 lg:shadow-card-lg",
+        )}
+      >
+        {!overlay && <h2 className="hidden font-display text-base font-normal lg:block">{title}</h2>}
         <p className="text-[13px] text-muted">{adjusting ? tp.picker.hintAdjust(radius) : tp.picker.hintPlace}</p>
         {adjusting ? (
           <p className="text-[13px] font-bold" aria-live="polite">
@@ -116,7 +126,7 @@ export function PickerPane({
           !canPlace && <p className="text-[13px] font-bold">{tp.picker.zoomIn}</p>
         )}
         {adjusting ? (
-          <PrimaryButton fullWidth onClick={onClose} className="lg:hidden">
+          <PrimaryButton fullWidth onClick={onClose} className={overlay ? undefined : "lg:hidden"}>
             {tp.picker.confirm}
           </PrimaryButton>
         ) : (
