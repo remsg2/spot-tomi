@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type DragEvent } from "react";
-import { Sticker } from "@/components/ui";
+import { HapticTouch, Sticker } from "@/components/ui";
 import { tp } from "@/i18n/publish.fr";
 import { cn } from "@/lib/cn";
 import { isAppleMobile, type PhotoOrigin } from "@/lib/publish/device-position";
@@ -30,6 +30,8 @@ export function PhotoStep({
 }) {
   const [dragging, setDragging] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const libraryInput = useRef<HTMLInputElement>(null);
   // Avant l'hydratation, un fichier choisi serait perdu : les choix restent désactivés.
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   const appleMobile = useSyncExternalStore(subscribe, isAppleMobile, () => false);
@@ -79,37 +81,46 @@ export function PhotoStep({
         </div>
 
         <div className="flex w-full flex-col gap-2.5" aria-busy={busy}>
-          <label className={cn(choiceClass, "bg-year text-on-year lg:hidden", disabled && "pointer-events-none opacity-50")}>
-            <CameraIcon />
-            {tp.photo.take}
-            <input
-              type="file"
-              accept={ACCEPTED_PHOTO_TYPES}
-              capture="environment"
-              className="sr-only"
-              disabled={disabled}
-              onChange={(event) => pick(event, "camera")}
-              data-testid="photo-camera"
-            />
-          </label>
-          <label
-            className={cn(
-              choiceClass,
-              "border border-line bg-bg text-text lg:border-0 lg:bg-year lg:text-on-year",
-              disabled && "pointer-events-none opacity-50",
-            )}
-          >
-            <ImageIcon />
-            {tp.photo.choose}
-            <input
-              type="file"
-              accept={ACCEPTED_PHOTO_TYPES}
-              className="sr-only"
-              disabled={disabled}
-              onChange={(event) => pick(event, "library")}
-              data-testid="photo-input"
-            />
-          </label>
+          {/* iPhone : interrupteur natif posé sur chaque choix (tic du système), qui ouvre le sélecteur. */}
+          <span className="relative flex flex-col lg:hidden">
+            <label className={cn(choiceClass, "bg-year text-on-year", disabled && "pointer-events-none opacity-50")}>
+              <CameraIcon />
+              {tp.photo.take}
+              <input
+                ref={cameraInput}
+                type="file"
+                accept={ACCEPTED_PHOTO_TYPES}
+                capture="environment"
+                className="sr-only"
+                disabled={disabled}
+                onChange={(event) => pick(event, "camera")}
+                data-testid="photo-camera"
+              />
+            </label>
+            <HapticTouch disabled={disabled} onActivate={() => cameraInput.current?.click()} />
+          </span>
+          <span className="relative flex flex-col">
+            <label
+              className={cn(
+                choiceClass,
+                "border border-line bg-bg text-text lg:border-0 lg:bg-year lg:text-on-year",
+                disabled && "pointer-events-none opacity-50",
+              )}
+            >
+              <ImageIcon />
+              {tp.photo.choose}
+              <input
+                ref={libraryInput}
+                type="file"
+                accept={ACCEPTED_PHOTO_TYPES}
+                className="sr-only"
+                disabled={disabled}
+                onChange={(event) => pick(event, "library")}
+                data-testid="photo-input"
+              />
+            </label>
+            <HapticTouch disabled={disabled} onActivate={() => libraryInput.current?.click()} />
+          </span>
           <span className="hidden text-[13px] font-semibold text-muted lg:block">
             {dragging ? tp.photo.dropActive : tp.photo.drop}
           </span>

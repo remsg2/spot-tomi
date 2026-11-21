@@ -4,6 +4,7 @@ import {
   getVersion,
   Map as MapLibreMap,
   setWorkerUrl,
+  type FilterSpecification,
   type GeoJSONSource,
   type MapGeoJSONFeature,
   type StyleSpecification,
@@ -51,8 +52,24 @@ const LAYER_RARITY = "countries-rarity";
 const LAYER_CLUSTERS = "spots-clusters";
 const LAYER_MARKERS = "spots-markers";
 const LAYER_SELECTED = "spots-selected";
+/** Groupe ou sticker touché : agrandi (et contour de la couleur de l'année pour un groupe). */
+const LAYER_CLUSTERS_PRESSED = "spots-clusters-pressed";
+const LAYER_MARKERS_PRESSED = "spots-markers-pressed";
 const LAYER_ME = "me-dot";
 const INTERACTIVE_LAYERS = [LAYER_SELECTED, LAYER_MARKERS, LAYER_CLUSTERS];
+const SPOT_LAYERS = [...INTERACTIVE_LAYERS, LAYER_CLUSTERS_PRESSED, LAYER_MARKERS_PRESSED];
+/** Durée de l'état touché après le lever du doigt, pour qu'il se voie même sur un toucher bref. */
+const PRESS_LINGER_MS = 160;
+
+type Pressed = { kind: "cluster"; id: number } | { kind: "marker"; id: string } | null;
+
+function pressedClusterFilter(pressed: Pressed): FilterSpecification {
+  return ["==", ["get", "cluster_id"], pressed?.kind === "cluster" ? pressed.id : -1];
+}
+
+function pressedMarkerFilter(pressed: Pressed): FilterSpecification {
+  return ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], pressed?.kind === "marker" ? pressed.id : ""]];
+}
 
 /** Anti-rebond du chargement par zone visible. */
 const LOAD_DEBOUNCE_MS = 250;
@@ -139,6 +156,8 @@ export default function WorldMap() {
   const dataRef = useRef<SpotCollection>(EMPTY_COLLECTION);
   /** Couleurs d'année comptées dans chaque groupe, dans l'ordre des années. */
   const slotsRef = useRef<string[]>([]);
+  /** Groupe ou sticker sous le doigt (état touché). */
+  const pressedRef = useRef<Pressed>(null);
   const rarityRef = useRef<CountryRarity[]>([]);
   const lastLoadRef = useRef<{ args: BboxArgs; key: string; truncated: boolean } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -268,6 +287,21 @@ export default function WorldMap() {
       );
       map.addLayer(
         {
+          id: LAYER_CLUSTERS_PRESSED,
+          type: "symbol",
+          source: SOURCE_SPOTS,
+          filter: pressedClusterFilter(pressedRef.current),
+          layout: {
+            "icon-image": clusterIconExpression(slots, currentTheme, true),
+            "icon-size": 1.12,
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+          },
+        },
+        before,
+      );
+      map.addLayer(
+        {
           id: LAYER_MARKERS,
           type: "symbol",
           source: SOURCE_SPOTS,
@@ -277,6 +311,21 @@ export default function WorldMap() {
             "icon-allow-overlap": true,
             "icon-ignore-placement": true,
             "symbol-sort-key": ["to-number", ["get", "points"], 0],
+          },
+        },
+        before,
+      );
+      map.addLayer(
+        {
+          id: LAYER_MARKERS_PRESSED,
+          type: "symbol",
+          source: SOURCE_SPOTS,
+          filter: pressedMarkerFilter(pressedRef.current),
+          layout: {
+            "icon-image": markerIconExpression(currentTheme, false),
+            "icon-size": 1.2,
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
           },
         },
         before,
@@ -307,7 +356,7 @@ export default function WorldMap() {
       if (sameSlots(next, slotsRef.current)) return false;
       slotsRef.current = next;
       if (!map?.getSource(SOURCE_SPOTS)) return false; // install() la créera
-      for (const id of INTERACTIVE_LAYERS) if (map.getLayer(id)) map.removeLayer(id);
+      for (const id of SPOT_LAYERS) if (map.getLayer(id)) map.removeLayer(id);
       map.removeSource(SOURCE_SPOTS);
       addSpots();
       return true;
@@ -381,10 +430,11 @@ export default function WorldMap() {
       const used = new Set<string>();
       const currentTheme = appliedThemeRef.current ?? themeRef.current;
       const selected = live.current.selectedId;
-      for (const feature of map.queryRenderedFeatures({ layers: INTERACTIVE_LAYERS })) {
+      const layers = SPOT_LAYERS.filter((id) => map?.getLayer(id));
+      for (const feature of map.queryRenderedFeatures({ layers })) {
         const p = feature.properties as Record<string, unknown>;
         if (typeof p.point_count === "number") {
-          used.add(clusterKeyFromProperties(slotsRef.current, p, currentTheme));
+          used.add(clusterKeyFromProperties(slotsRef.current, p, currentTheme, feature.layer.id === LAYER_CLUSTERS_PRESSED));
         } else {
           const input = {
             points: Number(p.points),
@@ -452,6 +502,41 @@ export default function WorldMap() {
       // l'autre sans empiler l'historique : « fermer » revient toujours à la carte.
       if (!wide && live.current.selectedId) routerRef.current.replace(`/spots/${id}`);
       else routerRef.current.push(`/spots/${id}`);
+    };
+
+    let releaseTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const applyPressed = () => {
+      if (!map) return;
+      if (map.getLayer(LAYER_CLUSTERS_PRESSED)) map.setFilter(LAYER_CLUSTERS_PRESSED, pressedClusterFilter(pressedRef.current));
+      if (map.getLayer(LAYER_MARKERS_PRESSED)) map.setFilter(LAYER_MARKERS_PRESSED, pressedMarkerFilter(pressedRef.current));
+    };
+
+    /** Doigt (ou souris) posé : le groupe ou le sticker dessous passe à l'état touché. */
+    const press = (point: { x: number; y: number }) => {
+      clearTimeout(releaseTimer);
+      const properties = pickFeature(point)?.properties as Record<string, unknown> | undefined;
+      pressedRef.current =
+        typeof properties?.cluster_id === "number"
+          ? { kind: "cluster", id: properties.cluster_id }
+          : properties?.id
+            ? { kind: "marker", id: String(properties.id) }
+            : null;
+      applyPressed();
+    };
+
+    const release = (delay = PRESS_LINGER_MS) => {
+      clearTimeout(releaseTimer);
+      if (!pressedRef.current) return;
+      releaseTimer = setTimeout(() => {
+        pressedRef.current = null;
+        applyPressed();
+      }, delay);
+    };
+
+    const onTouchStart = (event: { point: { x: number; y: number }; points: unknown[] }) => {
+      if (event.points.length === 1) press(event.point);
+      else release(0);
     };
 
     const onMouseMove = (event: { point: { x: number; y: number } }) => {
@@ -528,6 +613,13 @@ export default function WorldMap() {
       map.on("style.load", install);
       map.on("click", onClick);
       map.on("mousemove", onMouseMove);
+      map.on("mousedown", (event) => press(event.point));
+      map.on("touchstart", onTouchStart);
+      map.on("mouseup", () => release());
+      map.on("touchend", () => release());
+      map.on("touchcancel", () => release(0));
+      // Glisser la carte n'est pas toucher un sticker.
+      map.on("dragstart", () => release(0));
       map.on("moveend", onMoveEnd);
       map.on("idle", pruneImages);
       map.once("load", () => {
@@ -583,6 +675,7 @@ export default function WorldMap() {
     return () => {
       cancelled = true;
       clearTimeout(timerRef.current);
+      clearTimeout(releaseTimer);
       abortRef.current?.abort();
       container.removeEventListener("spot-tomi:reload", reload);
       container.removeEventListener("spot-tomi:theme", restyle);

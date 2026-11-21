@@ -94,7 +94,7 @@ describe("groupes : bulle avec les années présentes et le total", () => {
     const props = aggregate(slots, ["#5B8DEF", "#F2C230", "#5B8DEF"]);
     const key = clusterKeyFromProperties(slots, props, "light");
     expect(key).toBe("c|light|3|#F2C230|#5B8DEF");
-    expect(parseClusterKey(key)).toEqual({ theme: "light", total: 3, colors: ["#F2C230", "#5B8DEF"] });
+    expect(parseClusterKey(key)).toEqual({ theme: "light", pressed: false, total: 3, colors: ["#F2C230", "#5B8DEF"] });
   });
 
   it("même image pour deux groupes de même total et mêmes années", () => {
@@ -107,9 +107,18 @@ describe("groupes : bulle avec les années présentes et le total", () => {
     const props = aggregate(slots, ["#ABCDEF", "#ABCDEF"]);
     expect(parseClusterKey(clusterKeyFromProperties(slots, props, "dark"))).toEqual({
       theme: "dark",
+      pressed: false,
       total: 2,
       colors: [CLUSTER_FALLBACK],
     });
+  });
+
+  it("bulle touchée : clé et expression distinctes (« cp »), même lecture", () => {
+    const props = aggregate(slots, ["#5B8DEF", "#F2C230"]);
+    const key = clusterKeyFromProperties(slots, props, "light", true);
+    expect(key).toBe("cp|light|2|#F2C230|#5B8DEF");
+    expect(evaluate(clusterIconExpression(slots, "light", true), props)).toBe(key);
+    expect(parseClusterKey(key)).toEqual({ theme: "light", pressed: true, total: 2, colors: ["#F2C230", "#5B8DEF"] });
   });
 
   it("refuse les clés qui ne sont pas des groupes", () => {

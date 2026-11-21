@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { useMapContext } from "@/components/map/map-provider";
 import { FlagIcon, PencilIcon, ShareIcon, TrashIcon } from "@/components/map/icons";
-import { PrimaryButton } from "@/components/ui";
+import { HapticTouch, PrimaryButton } from "@/components/ui";
 import { tm } from "@/i18n/map.fr";
 import { cn } from "@/lib/cn";
 import { deleteSpot, renameSpot, reportSpot, type SpotActionState } from "./actions";
@@ -41,17 +41,17 @@ export function ShareButton({ name, className }: { name: string; className?: str
 
   return (
     <>
-      <button
-        type="button"
-        onClick={share}
-        aria-label={tm.spot.share}
-        className={cn(
-          "flex size-11 items-center justify-center rounded-full bg-card text-text shadow-[0_4px_12px_rgb(0_0_0/0.2)]",
-          className,
-        )}
-      >
-        <ShareIcon />
-      </button>
+      <span className={cn("relative flex", className)}>
+        <button
+          type="button"
+          onClick={share}
+          aria-label={tm.spot.share}
+          className="flex size-11 items-center justify-center rounded-full bg-card text-text shadow-[0_4px_12px_rgb(0_0_0/0.2)]"
+        >
+          <ShareIcon />
+        </button>
+        <HapticTouch onActivate={() => void share()} />
+      </span>
       <span role="status" aria-live="polite" className="sr-only">
         {status}
       </span>
