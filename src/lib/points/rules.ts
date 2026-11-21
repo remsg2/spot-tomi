@@ -1,26 +1,24 @@
 import type { PointLine } from "@/components/ui";
+import type { RarityCategory } from "@/lib/types/database";
 
-/** Règles du barème (table scoring_rules), avec les valeurs par défaut de la spec. */
+/** Règles du barème (table scoring_rules), avec les valeurs par défaut du cahier des charges V1.1. */
 export const DEFAULT_RULES = {
-  tier_courant: 10,
-  tier_lointain: 25,
-  tier_rare: 60,
-  tier_extreme: 150,
-  bonus_first_country: 50,
-  bonus_first_city: 15,
-  isolation_points_per_10km: 1,
-  isolation_cap: 40,
-  bonus_exceptional: 20,
-  altitude_threshold_m: 3000,
-  bonus_altitude: 15,
-  home_points_per_1000km: 5,
+  base_points: 100,
+  bonus_touristique: 20,
+  bonus_remarquable: 50,
+  bonus_isole: 100,
+  bonus_tres_rare: 200,
+  isole_city_km: 50,
+  tres_rare_city_km: 300,
+  isole_altitude_m: 3000,
+  tres_rare_altitude_m: 4000,
   neighbor_radius_m: 200,
-  neighbor_divisor: 4,
-  home_blur_radius_m: 500,
   daily_publish_limit: 20,
   daily_report_limit: 10,
   reports_before_review: 3,
   edit_radius_m: 200,
+  edit_window_days: 7,
+  comment_max_length: 280,
 } as const;
 
 export type RuleKey = keyof typeof DEFAULT_RULES;
@@ -36,28 +34,35 @@ export function toRules(rows: ReadonlyArray<{ key: string; value: number | strin
   return rules;
 }
 
-/** Points d'isolement pour une distance en km au sticker le plus proche. */
-export function isolationPoints(km: number, rules: Rules): number {
-  return Math.min(rules.isolation_cap, Math.floor(km / 10) * rules.isolation_points_per_10km);
+/** Bonus d'une catégorie de rareté (le lieu courant n'en a pas). */
+export function categoryBonus(category: RarityCategory, rules: Rules): number {
+  switch (category) {
+    case "courant":
+      return 0;
+    case "touristique":
+      return rules.bonus_touristique;
+    case "remarquable":
+      return rules.bonus_remarquable;
+    case "isole":
+      return rules.bonus_isole;
+    case "tres_rare":
+      return rules.bonus_tres_rare;
+  }
 }
 
-/** Points « loin de chez toi » pour une distance en km au domicile. */
-export function homePoints(km: number, rules: Rules): number {
-  return Math.floor(km / 1000) * rules.home_points_per_1000km;
+/** Points d'un sticker : base + bonus, sans bonus pour un doublon (autre sticker à moins de 200 m). */
+export function spotPoints(category: RarityCategory, duplicate: boolean, rules: Rules): number {
+  return rules.base_points + (duplicate ? 0 : categoryBonus(category, rules));
 }
 
 /**
- * Exemple de la spécification (Ushuaïa, Argentine) recalculé avec le barème
- * en vigueur : pays lointain, premier du pays et de la ville, 1 240 km du
- * sticker le plus proche, 13 000 km du domicile.
+ * Exemple : un sticker dans les hautes terres d'Islande, à 100 km de la ville la plus
+ * proche, avec le barème en vigueur.
  */
-export function ushuaiaExample(rules: Rules): { lines: PointLine[]; total: number } {
+export function isolatedExample(rules: Rules): { lines: PointLine[]; total: number } {
   const lines: PointLine[] = [
-    { key: "base", label: "Pays lointain", detail: "Argentine, points de base", points: rules.tier_lointain, isBase: true, tone: "base" },
-    { key: "first_country", label: "Premier sticker du pays", detail: "Personne avant toi en Argentine", points: rules.bonus_first_country, tone: "gold" },
-    { key: "first_city", label: "Première ville", detail: "Ushuaïa", points: rules.bonus_first_city },
-    { key: "isolation", label: "Isolement", detail: "1 240 km du sticker le plus proche", points: isolationPoints(1240, rules) },
-    { key: "home", label: "Loin de chez toi", detail: "13 000 km du domicile", points: homePoints(13000, rules) },
+    { key: "base", label: "Sticker publié", detail: "Points de base", points: rules.base_points, isBase: true, tone: "base" },
+    { key: "rarity", label: "Lieu isolé", detail: "100 km de la ville la plus proche (Akureyri)", points: rules.bonus_isole },
   ];
   return { lines, total: lines.reduce((sum, line) => sum + line.points, 0) };
 }

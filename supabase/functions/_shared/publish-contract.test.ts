@@ -95,6 +95,10 @@ describe("contrat de sortie", () => {
     expect(SQL_ERRORS.ST002).toEqual({ code: "suspended", status: 403 });
     expect(SQL_ERRORS.ST003).toEqual({ code: "daily_limit", status: 429 });
     expect(SQL_ERRORS.ST004).toEqual({ code: "nearby_today", status: 409 });
-    expect(Object.keys(SQL_ERRORS).sort()).toEqual(["28000", "ST001", "ST002", "ST003", "ST004", "ST005", "ST006"]);
+    expect(SQL_ERRORS.ST008).toEqual({ code: "edition_unavailable", status: 400 });
+    expect(SQL_ERRORS.ST009).toEqual({ code: "invalid_date", status: 400 });
+    expect(Object.keys(SQL_ERRORS).sort()).toEqual([
+      "28000", "P0002", "ST001", "ST002", "ST003", "ST004", "ST005", "ST006", "ST007", "ST008", "ST009",
+    ]);
   });
 });

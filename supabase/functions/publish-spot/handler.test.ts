@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { photoPathFor, type PublishResult } from "../_shared/publish-contract.ts";
+import { photoPathFor, thumbPathFor, type PublishResult } from "../_shared/publish-contract.ts";
 import { handlePublishRequest, type PublishDeps } from "./handler.ts";
 
 const fixture = (name: string) =>
@@ -46,8 +46,10 @@ function deps(overrides: Partial<PublishDeps> = {}): PublishDeps & Record<string
     getUserId: vi.fn(async (token: string) => (token === "jeton-valide" ? USER : null)),
     downloadPhoto: vi.fn(async () => CLEAN),
     removePhoto: vi.fn(async () => {}),
-    geocodeCity: vi.fn(async () => "Ushuaïa"),
+    geocode: vi.fn(async () => ({ city: "Ushuaïa", tourist: false })),
+    elevation: vi.fn(async () => 812.4),
     createSpot: vi.fn(async () => ({ id: SPOT })),
+    replacePhoto: vi.fn(async () => ({ oldPhotoPath: "ancienne.webp", oldThumbPath: null })),
     loadSpot: vi.fn(async () => loaded),
     currentRank: vi.fn(async () => ranks.shift() ?? null),
     refreshLeaderboard: vi.fn(async () => {}),
@@ -94,9 +96,87 @@ describe("publish-spot", () => {
       p_date_source: "exif",
       p_photo_path: PATH,
       p_city: "Ushuaïa",
+      p_year: null,
+      p_comment: null,
+      p_tourist: false,
+      p_thumb_path: null,
+      p_altitude_source: "exif",
+      p_photo_hash: null,
     });
+    expect(d.elevation).not.toHaveBeenCalled();
     expect(d.refreshLeaderboard).toHaveBeenCalledTimes(1);
     expect(d.removePhoto).not.toHaveBeenCalled();
+  });
+
+  it("transmet l'édition, la date saisie, le commentaire, la miniature, l'empreinte et le site touristique", async () => {
+    const d = deps({ geocode: vi.fn(async () => ({ city: "Lyon", tourist: true })) });
+    const response = await handlePublishRequest(
+      post({
+        ...body,
+        dateSource: "manual",
+        takenAt: "2025-08-05T12:00:00.000Z",
+        year: 2025,
+        comment: "  Collé   avec Léa ",
+        thumbPath: thumbPathFor(PATH),
+        photoHash: "-123456789",
+      }),
+      d,
+    );
+    expect(response.status).toBe(200);
+    expect((d.createSpot as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
+      p_taken_at: "2025-08-05T12:00:00.000Z",
+      p_date_source: "manual",
+      p_year: 2025,
+      p_comment: "Collé avec Léa",
+      p_tourist: true,
+      p_thumb_path: thumbPathFor(PATH),
+      p_photo_hash: "-123456789",
+    });
+    expect(d.downloadPhoto).toHaveBeenCalledWith(thumbPathFor(PATH));
+  });
+
+  it("sans altitude GPS, l'altitude du terrain (service d'élévation) ; sinon jamais inventée", async () => {
+    const d = deps();
+    await handlePublishRequest(post({ ...body, altitude: null }), d);
+    expect((d.createSpot as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
+      p_altitude_m: 812.4,
+      p_altitude_source: "dem",
+    });
+    const down = deps({ elevation: vi.fn(async () => null) });
+    await handlePublishRequest(post({ ...body, altitude: null }), down);
+    expect((down.createSpot as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
+      p_altitude_m: null,
+      p_altitude_source: null,
+    });
+  });
+
+  it("refuse une miniature qui ne correspond pas à la photo", async () => {
+    const response = await handlePublishRequest(
+      post({ ...body, thumbPath: thumbPathFor(photoPathFor(USER, "9d9d9d9d-3333-4e4e-8f8f-000000000000")) }),
+      deps(),
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("nouvelle photo d'un sticker : contrôle du WebP, remplacement, anciens fichiers supprimés", async () => {
+    const d = deps();
+    const response = await handlePublishRequest(post({ replaceSpotId: SPOT, photoPath: PATH, photoHash: "42" }), d);
+    expect(response.status).toBe(200);
+    expect(d.replacePhoto).toHaveBeenCalledWith({
+      p_author: USER,
+      p_spot_id: SPOT,
+      p_photo_path: PATH,
+      p_thumb_path: null,
+      p_photo_hash: "42",
+    });
+    expect(d.removePhoto).toHaveBeenCalledWith("ancienne.webp");
+    expect(d.createSpot).not.toHaveBeenCalled();
+
+    const late = deps({ replacePhoto: vi.fn(async () => ({ sqlCode: "ST007", message: "Délai dépassé." })) });
+    const refused = await handlePublishRequest(post({ replaceSpotId: SPOT, photoPath: PATH }), late);
+    expect(refused.status).toBe(409);
+    expect((await refused.json()).error.code).toBe("edit_window");
+    expect(late.removePhoto).toHaveBeenCalledWith(PATH);
   });
 
   it("refuse et supprime une photo qui contient encore EXIF, XMP ou ICC", async () => {
@@ -156,7 +236,7 @@ describe("publish-spot", () => {
 
   it("géocodage et classement en panne : la publication réussit quand même (rang null)", async () => {
     const d = deps({
-      geocodeCity: vi.fn(async () => {
+      geocode: vi.fn(async () => {
         throw new Error("Photon injoignable");
       }),
       currentRank: vi.fn(async () => {
@@ -167,6 +247,7 @@ describe("publish-spot", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).rank).toEqual({ before: null, after: null });
     expect((d.createSpot as ReturnType<typeof vi.fn>).mock.calls[0][0].p_city).toBeNull();
+    expect((d.createSpot as ReturnType<typeof vi.fn>).mock.calls[0][0].p_tourist).toBe(false);
   });
 
   it("photo prise dans l'app : sources « device », la date du client n'est jamais transmise", async () => {
@@ -183,7 +264,7 @@ describe("publish-spot", () => {
     });
   });
 
-  it("sticker en attente : pas de rafraîchissement du classement, rang inchangé, date d'envoi", async () => {
+  it("sticker non publié : pas de rafraîchissement du classement, rang inchangé, date d'envoi", async () => {
     const pending = { ...loaded, spot: { ...loaded.spot, status: "pending_review" as const } };
     const d = deps({ loadSpot: vi.fn(async () => pending) });
     const response = await handlePublishRequest(post({ ...body, gpsSource: "manual", dateSource: "upload", takenAt: null }), d);

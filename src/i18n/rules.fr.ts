@@ -1,15 +1,47 @@
 /** Textes de la page « Comment gagner des points » (/points). */
 export const rulesFr = {
   title: "Comment gagner des points",
-  metaDescription: "Le barème de Spot Tomi : points de base par pays, bonus et malus.",
+  metaDescription: "Le barème de Spot Tomi : 100 points par sticker, plus un bonus selon la rareté du lieu.",
   intro:
-    "Chaque sticker rapporte des points selon l'endroit où il est collé. Ils sont calculés au moment de la publication, puis figés.",
-  baseTitle: "Points de base selon le pays",
+    "Chaque sticker publié rapporte 100 points, plus un bonus selon la rareté du lieu. Les points sont calculés par le serveur à la publication, puis figés.",
+  baseTitle: "Points de base",
+  baseRule: "Pour chaque sticker publié, quel que soit le lieu.",
+  rarityTitle: "Bonus de rareté",
+  rarityIntro:
+    "L'indice Spotomi classe chaque lieu dans une catégorie, d'après le pays, l'altitude et la distance à la ville la plus proche (plus de 15 000 habitants). La catégorie la plus haute l'emporte.",
+  categories: {
+    courant: { label: "Lieu courant ou urbain", rule: "Ville ou lieu fréquenté." },
+    touristique: {
+      label: "Lieu touristique",
+      rule: "Un site touristique ou historique OpenStreetMap à moins de 300 m (musée, monument, point de vue…).",
+    },
+    remarquable: {
+      label: "Site remarquable",
+      rule: "Site exceptionnel (patrimoine, monument célèbre) reconnu par un modérateur.",
+    },
+    isole: {
+      label: "Lieu isolé",
+      rule: (km: number, m: string) =>
+        `Pays rare, à plus de ${km} km de toute ville, au-dessus de ${m} m d'altitude, ou en mer.`,
+    },
+    tres_rare: {
+      label: "Lieu très rare ou difficile d'accès",
+      rule: (km: number, m: string) =>
+        `Pays très rare (Corée du Nord, Antarctique…), à plus de ${km} km de toute ville, ou au-dessus de ${m} m.`,
+    },
+  },
+  tiersTitle: "Niveau des pays",
   tiers: {
     courant: "Courant",
     lointain: "Lointain",
     rare: "Rare",
     extreme: "Extrême",
+  },
+  tierEffect: {
+    courant: "Pas de bonus par le pays.",
+    lointain: "Pas de bonus par le pays.",
+    rare: "Lieu isolé au minimum.",
+    extreme: "Lieu très rare.",
   },
   tierHint: {
     courant: "Europe de l'Ouest et centrale, États-Unis, Canada",
@@ -17,46 +49,26 @@ export const rulesFr = {
     rare: "Pays et îles difficiles d'accès",
     extreme: "Les plus inaccessibles",
   },
-  countryCount: (n: number) => (n > 1 ? `${n} pays` : `${n} pays`),
   examples: (names: string[], more: number) =>
     more > 0 ? `${names.join(", ")} et ${more} autres` : names.join(", "),
-  bonusTitle: "Bonus cumulables",
-  bonus: {
-    firstCountry: { label: "Premier sticker du pays", rule: "Personne n'en a encore publié dans ce pays." },
-    firstCity: { label: "Première ville", rule: "Personne n'en a encore publié dans cette ville." },
-    isolation: {
-      label: "Isolement",
-      rule: (per: number, cap: number) =>
-        `+${per} par tranche de 10 km jusqu'au sticker publié le plus proche, plafonné à +${cap}.`,
-    },
-    exceptional: {
-      label: "Lieu exceptionnel",
-      rule: "Sommet, monument célèbre, site Unesco : coché par un modérateur après publication.",
-    },
-    altitude: { label: "Altitude", rule: (m: string) => `Photo prise au-dessus de ${m} m.` },
-    home: {
-      label: "Loin de chez toi",
-      rule: (per: number) =>
-        `+${per} par tranche de 1 000 km entre le sticker et ton domicile (si tu l'as renseigné).`,
-    },
-  },
-  perTen: (per: number) => `+${per} / 10 km`,
-  perThousand: (per: number) => `+${per} / 1 000 km`,
-  malusTitle: "Malus et règles du jeu",
-  malus: {
-    neighbor: (m: number, d: number) =>
-      `À moins de ${m} m d'un autre sticker publié, le total est divisé par ${d} (arrondi à l'entier inférieur).`,
-    pending:
-      "Sans position GPS ou sans date dans la photo, le sticker attend la validation d'un modérateur : ses points ne comptent pas encore au classement.",
+  rulesTitle: "Règles du jeu",
+  rules: {
+    duplicate: (m: number) =>
+      `Doublon : à moins de ${m} m d'un sticker déjà publié, le sticker rapporte les points de base, sans bonus de rareté.`,
     oncePerArea: (m: number) => `Un seul sticker par zone de ${m} m et par jour pour une même personne.`,
     daily: (n: number) => `${n} stickers par jour au maximum.`,
+    direct:
+      "Publication directe : le sticker est visible tout de suite. Une position placée à la main est vérifiée ensuite par un modérateur.",
+    ledger:
+      "Chaque changement de points (publication, modération, suppression, correction) est inscrit dans un journal : ton score en est la somme.",
     frozen:
-      "Les points sont figés à la publication : un changement de barème ne modifie pas les stickers déjà collés.",
+      "Les points sont figés à la publication : un changement de barème ne modifie pas les stickers déjà collés sans recalcul.",
+    ties: "À égalité au classement, celui qui a atteint son score le premier passe devant, puis celui qui a le plus de stickers.",
   },
-  exampleTitle: "Exemple : Ushuaïa, Argentine",
-  exampleIntro: "Premier sticker en Argentine, posé à 13 000 km de chez soi.",
+  exampleTitle: "Exemple : les hautes terres d'Islande",
+  exampleIntro: "Un sticker collé à 100 km de la ville la plus proche, sans autre sticker autour.",
   exampleEyebrow: "Exemple",
-  exampleLabel: "Pays lointain",
+  exampleLabel: "Lieu isolé",
   error: "Le barème n'a pas pu être chargé : voici les valeurs par défaut.",
   link: "Comment sont calculés les points ?",
 } as const;

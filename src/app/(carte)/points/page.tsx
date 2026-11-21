@@ -5,7 +5,8 @@ import { t } from "@/i18n/fr";
 import { rulesFr as r } from "@/i18n/rules.fr";
 import { formatPoints } from "@/lib/design/points";
 import { getPublicEnvResult } from "@/lib/env/server";
-import { DEFAULT_RULES, toRules, ushuaiaExample, type Rules } from "@/lib/points/rules";
+import { categoryBonus, DEFAULT_RULES, isolatedExample, toRules, type Rules } from "@/lib/points/rules";
+import type { RarityCategory } from "@/lib/types/database";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: r.title, description: r.metaDescription };
@@ -14,9 +15,11 @@ type Tier = "courant" | "lointain" | "rare" | "extreme";
 const TIERS: Tier[] = ["courant", "lointain", "rare", "extreme"];
 const EXAMPLES_PER_TIER = 5;
 
+const CATEGORIES: RarityCategory[] = ["courant", "touristique", "remarquable", "isole", "tres_rare"];
+
 /**
- * Barème lisible par tous (spécifications, section 3), avec les valeurs en vigueur
- * (table scoring_rules, réglable dans l'admin) et des pays d'exemple par niveau.
+ * Barème lisible par tous (cahier des charges V1.1, section 7), avec les valeurs en
+ * vigueur (table scoring_rules, réglable dans l'admin) et des pays d'exemple par niveau.
  */
 export default function PointsRulesPage() {
   return (
@@ -53,12 +56,14 @@ async function loadRules(): Promise<{ rules: Rules; countries: Map<Tier, string[
 
 async function RulesContent() {
   const { rules, countries, ok } = await loadRules();
-  const example = ushuaiaExample(rules);
-  const tierValue: Record<Tier, number> = {
-    courant: rules.tier_courant,
-    lointain: rules.tier_lointain,
-    rare: rules.tier_rare,
-    extreme: rules.tier_extreme,
+  const example = isolatedExample(rules);
+  const categoryRule = (category: RarityCategory): string => {
+    const text = r.categories[category];
+    if (category === "isole") return r.categories.isole.rule(rules.isole_city_km, formatPoints(rules.isole_altitude_m));
+    if (category === "tres_rare") {
+      return r.categories.tres_rare.rule(rules.tres_rare_city_km, formatPoints(rules.tres_rare_altitude_m));
+    }
+    return (text as { rule: string }).rule;
   };
 
   return (
@@ -70,56 +75,55 @@ async function RulesContent() {
       )}
 
       <Section title={r.baseTitle}>
+        <ul className="flex flex-col">
+          <RuleRow label={r.baseTitle} rule={r.baseRule} value={formatPoints(rules.base_points)} />
+        </ul>
+      </Section>
+
+      <Section title={r.rarityTitle}>
+        <p className="text-sm text-muted">{r.rarityIntro}</p>
+        <ul className="flex flex-col" data-testid="rarity-categories">
+          {CATEGORIES.map((category) => (
+            <RuleRow
+              key={category}
+              label={r.categories[category].label}
+              rule={categoryRule(category)}
+              value={`+${formatPoints(categoryBonus(category, rules))}`}
+              gold={category === "remarquable" || category === "tres_rare"}
+            />
+          ))}
+        </ul>
+      </Section>
+
+      <Section title={r.tiersTitle}>
         <ul className="flex flex-col gap-2">
           {TIERS.map((tier) => {
             const names = countries.get(tier) ?? [];
             return (
-              <li key={tier} className="flex items-center gap-3 rounded-[16px] border border-line bg-card p-3.5">
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-[15px] font-bold">{r.tiers[tier]}</span>
-                  <span className="text-xs text-muted">
-                    {names.length > 0
-                      ? r.examples(names.slice(0, EXAMPLES_PER_TIER), names.length - EXAMPLES_PER_TIER)
-                      : r.tierHint[tier]}
-                  </span>
+              <li key={tier} className="flex flex-col gap-0.5 rounded-[16px] border border-line bg-card p-3.5">
+                <span className="text-[15px] font-bold">
+                  {r.tiers[tier]} · <span className="font-semibold text-muted">{r.tierEffect[tier]}</span>
                 </span>
-                <Value>{formatPoints(tierValue[tier])}</Value>
+                <span className="text-xs text-muted">
+                  {names.length > 0
+                    ? r.examples(names.slice(0, EXAMPLES_PER_TIER), names.length - EXAMPLES_PER_TIER)
+                    : r.tierHint[tier]}
+                </span>
               </li>
             );
           })}
         </ul>
       </Section>
 
-      <Section title={r.bonusTitle}>
-        <ul className="flex flex-col">
-          <RuleRow label={r.bonus.firstCountry.label} rule={r.bonus.firstCountry.rule} value={`+${rules.bonus_first_country}`} gold />
-          <RuleRow label={r.bonus.firstCity.label} rule={r.bonus.firstCity.rule} value={`+${rules.bonus_first_city}`} />
-          <RuleRow
-            label={r.bonus.isolation.label}
-            rule={r.bonus.isolation.rule(rules.isolation_points_per_10km, rules.isolation_cap)}
-            value={r.perTen(rules.isolation_points_per_10km)}
-          />
-          <RuleRow label={r.bonus.exceptional.label} rule={r.bonus.exceptional.rule} value={`+${rules.bonus_exceptional}`} gold />
-          <RuleRow
-            label={r.bonus.altitude.label}
-            rule={r.bonus.altitude.rule(formatPoints(rules.altitude_threshold_m))}
-            value={`+${rules.bonus_altitude}`}
-          />
-          <RuleRow
-            label={r.bonus.home.label}
-            rule={r.bonus.home.rule(rules.home_points_per_1000km)}
-            value={r.perThousand(rules.home_points_per_1000km)}
-          />
-        </ul>
-      </Section>
-
-      <Section title={r.malusTitle}>
+      <Section title={r.rulesTitle}>
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
-          <li>{r.malus.neighbor(rules.neighbor_radius_m, rules.neighbor_divisor)}</li>
-          <li>{r.malus.pending}</li>
-          <li>{r.malus.oncePerArea(rules.edit_radius_m)}</li>
-          <li>{r.malus.daily(rules.daily_publish_limit)}</li>
-          <li>{r.malus.frozen}</li>
+          <li>{r.rules.duplicate(rules.neighbor_radius_m)}</li>
+          <li>{r.rules.direct}</li>
+          <li>{r.rules.oncePerArea(rules.neighbor_radius_m)}</li>
+          <li>{r.rules.daily(rules.daily_publish_limit)}</li>
+          <li>{r.rules.ledger}</li>
+          <li>{r.rules.ties}</li>
+          <li>{r.rules.frozen}</li>
         </ul>
       </Section>
 
@@ -140,12 +144,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <h2 className="font-display text-lg font-normal">{title}</h2>
       {children}
     </section>
-  );
-}
-
-function Value({ children }: { children: ReactNode }) {
-  return (
-    <span className="shrink-0 rounded-[10px] bg-year px-2.5 py-1 font-display text-base text-on-year">{children}</span>
   );
 }
 

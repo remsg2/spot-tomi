@@ -1,12 +1,17 @@
-import type { DateSource, GpsSource, SpotStatus } from "./contract";
+import type { GpsSource, SpotStatus } from "./contract";
 
 /**
- * Statut d'un sticker à sa publication (spécifications 2.2 et 3.3), même règle
- * que create_spot : sans GPS ou sans date dans la photo, un modérateur le
- * vérifie d'abord et ses points restent en attente.
+ * Publication directe (cahier des charges V1.1, section 2) : tout sticker conforme est
+ * publié tout de suite. Une position placée à la main le signale seulement « à vérifier »
+ * aux modérateurs (create_spot, needs_review), sans le masquer.
  */
-export function statusFor(gpsSource: GpsSource, dateSource: DateSource): Extract<SpotStatus, "published" | "pending_review"> {
-  return gpsSource === "manual" || dateSource === "upload" ? "pending_review" : "published";
+export function statusFor(): Extract<SpotStatus, "published"> {
+  return "published";
+}
+
+/** Le sticker sera-t-il signalé « à vérifier » aux modérateurs ? */
+export function needsReview(gpsSource: GpsSource): boolean {
+  return gpsSource === "manual";
 }
 
 export function isPending(status: SpotStatus): boolean {

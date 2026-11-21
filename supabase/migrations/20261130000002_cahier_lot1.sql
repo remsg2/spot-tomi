@@ -1527,6 +1527,62 @@ $$;
 revoke execute on function public.admin_recent_errors(int) from public, anon, authenticated, service_role;
 grant execute on function public.admin_recent_errors(int) to authenticated;
 
+-- Cache du géocodage : la case garde aussi « site touristique ou historique à proximité »
+-- (null : inconnu, cases enregistrées avant ce lot).
+
+alter table private.geocode_cache add column tourist boolean;
+
+drop function if exists public.geocode_cache_get(double precision, double precision);
+drop function if exists public.geocode_cache_put(double precision, double precision, text, text);
+
+create function public.geocode_cache_get(p_lat double precision, p_lng double precision)
+returns table (hit boolean, city text, tourist boolean)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select true, g.city, g.tourist
+  from private.geocode_cache g
+  where g.cell = private.geocode_cell(p_lat, p_lng)
+    and g.created_at > now() - interval '180 days'
+$$;
+
+create function public.geocode_cache_put(
+  p_lat double precision,
+  p_lng double precision,
+  p_city text,
+  p_provider text,
+  p_tourist boolean default null
+)
+returns void
+language sql
+volatile
+security definer
+set search_path = ''
+as $$
+  insert into private.geocode_cache (cell, city, provider, tourist, created_at)
+  values (
+    private.geocode_cell(p_lat, p_lng),
+    left(nullif(btrim(coalesce(p_city, '')), ''), 120),
+    left(coalesce(p_provider, 'inconnu'), 40),
+    p_tourist,
+    now()
+  )
+  on conflict (cell) do update
+    set city = excluded.city, provider = excluded.provider, tourist = excluded.tourist,
+        created_at = excluded.created_at
+$$;
+
+revoke execute on function
+  public.geocode_cache_get(double precision, double precision),
+  public.geocode_cache_put(double precision, double precision, text, text, boolean)
+from public, anon, authenticated;
+grant execute on function
+  public.geocode_cache_get(double precision, double precision),
+  public.geocode_cache_put(double precision, double precision, text, text, boolean)
+to service_role;
+
 -- Version du schéma ----------------------------------------------------------------------------
 
 create or replace function public.schema_version()

@@ -15,6 +15,7 @@ import {
   type GpsSource,
   type PublishInput,
   type PublishResult,
+  type ReplacePhotoInput,
 } from "./contract";
 
 export type EstimateRequest = {
@@ -24,12 +25,16 @@ export type EstimateRequest = {
   takenAt: string | null;
   gpsSource: GpsSource;
   dateSource: DateSource;
+  /** Édition choisie (année). */
+  year: number | null;
 };
 
 export interface PublishServices {
   estimate(request: EstimateRequest): Promise<Estimate>;
   upload(path: string, photo: Blob): Promise<void>;
   publish(input: PublishInput): Promise<PublishResult>;
+  /** Nouvelle photo d'un sticker existant (modification par l'auteur). */
+  replacePhoto?(input: ReplacePhotoInput): Promise<void>;
 }
 
 /** Erreur d'une étape, avec un code traduit par src/i18n/publish.fr.ts. */
@@ -68,6 +73,7 @@ export function createSupabaseServices(getClient: () => SupabaseClient): Publish
         p_taken_at: request.takenAt,
         p_gps_source: request.gpsSource,
         p_date_source: request.dateSource,
+        p_year: request.year,
       });
       if (error) {
         if (!error.code && isNetworkError(new Error(error.message))) throw new PublishError("network");
@@ -91,19 +97,27 @@ export function createSupabaseServices(getClient: () => SupabaseClient): Publish
 
     async publish(input) {
       const { data, error } = await getClient().functions.invoke("publish-spot", { body: input });
-      if (error) {
-        if (error instanceof FunctionsHttpError) {
-          const body = await (error.context as Response).json().catch(() => null);
-          const parsed = publishErrorSchema.safeParse(body);
-          if (parsed.success) throw new PublishError(parsed.data.error.code, parsed.data.error.message);
-          throw new PublishError("server_error");
-        }
-        if (error instanceof FunctionsFetchError) throw new PublishError("network");
-        throw new PublishError("server_error");
-      }
+      if (error) throw await functionError(error);
       const parsed = publishResultSchema.safeParse(data);
       if (!parsed.success) throw new PublishError("server_error");
       return parsed.data;
     },
+
+    async replacePhoto(input) {
+      const { error } = await getClient().functions.invoke("publish-spot", { body: input });
+      if (error) throw await functionError(error);
+    },
   };
+}
+
+/** Erreur de l'Edge Function → code du parcours. */
+async function functionError(error: unknown): Promise<PublishError> {
+  if (error instanceof FunctionsHttpError) {
+    const body = await (error.context as Response).json().catch(() => null);
+    const parsed = publishErrorSchema.safeParse(body);
+    if (parsed.success) return new PublishError(parsed.data.error.code, parsed.data.error.message);
+    return new PublishError("server_error");
+  }
+  if (error instanceof FunctionsFetchError) return new PublishError("network");
+  return new PublishError("server_error");
 }

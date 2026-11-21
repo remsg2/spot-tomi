@@ -112,12 +112,12 @@ select ok(
   'un utilisateur connecté peut estimer ses points'
 );
 select ok(
-  not has_function_privilege('authenticated', 'public.geocode_cache_put(float8, float8, text, text)', 'execute')
+  not has_function_privilege('authenticated', 'public.geocode_cache_put(float8, float8, text, text, boolean)', 'execute')
   and not has_function_privilege('authenticated', 'public.geocode_cache_get(float8, float8)', 'execute'),
   'le cache de géocodage est fermé aux utilisateurs'
 );
 select ok(
-  has_function_privilege('service_role', 'public.geocode_cache_put(float8, float8, text, text)', 'execute'),
+  has_function_privilege('service_role', 'public.geocode_cache_put(float8, float8, text, text, boolean)', 'execute'),
   'service_role écrit dans le cache de géocodage'
 );
 select ok(public.schema_version() >= '20261127000000_publication', 'schema_version inclut la migration publication');

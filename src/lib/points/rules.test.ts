@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_RULES, homePoints, isolationPoints, toRules, ushuaiaExample } from "./rules";
+import { categoryBonus, DEFAULT_RULES, isolatedExample, spotPoints, toRules } from "./rules";
 
 describe("barème", () => {
   it("garde les valeurs par défaut sans données", () => {
@@ -8,27 +8,30 @@ describe("barème", () => {
 
   it("applique les valeurs de la base (numeric renvoyé en texte) et ignore l'inconnu", () => {
     const rules = toRules([
-      { key: "tier_rare", value: "75" },
+      { key: "bonus_isole", value: "120" },
       { key: "inconnu", value: 3 },
-      { key: "bonus_altitude", value: "pas un nombre" },
+      { key: "base_points", value: "pas un nombre" },
     ]);
-    expect(rules.tier_rare).toBe(75);
-    expect(rules.bonus_altitude).toBe(DEFAULT_RULES.bonus_altitude);
+    expect(rules.bonus_isole).toBe(120);
+    expect(rules.base_points).toBe(DEFAULT_RULES.base_points);
     expect("inconnu" in rules).toBe(false);
   });
 
-  it("isolement : +1 par 10 km entiers, plafonné", () => {
-    expect(isolationPoints(9, DEFAULT_RULES)).toBe(0);
-    expect(isolationPoints(59, DEFAULT_RULES)).toBe(5);
-    expect(isolationPoints(1240, DEFAULT_RULES)).toBe(40);
+  it("bonus de rareté du cahier des charges : 0, 20, 50, 100, 200", () => {
+    expect(
+      (["courant", "touristique", "remarquable", "isole", "tres_rare"] as const).map((category) =>
+        categoryBonus(category, DEFAULT_RULES),
+      ),
+    ).toEqual([0, 20, 50, 100, 200]);
   });
 
-  it("domicile : +5 par 1 000 km entiers", () => {
-    expect(homePoints(1400, DEFAULT_RULES)).toBe(5);
-    expect(homePoints(13000, DEFAULT_RULES)).toBe(65);
+  it("100 points de base, pas de bonus pour un doublon", () => {
+    expect(spotPoints("tres_rare", false, DEFAULT_RULES)).toBe(300);
+    expect(spotPoints("tres_rare", true, DEFAULT_RULES)).toBe(100);
+    expect(spotPoints("courant", false, DEFAULT_RULES)).toBe(100);
   });
 
-  it("l'exemple Ushuaïa donne 195 avec le barème par défaut (spec 3.5)", () => {
-    expect(ushuaiaExample(DEFAULT_RULES).total).toBe(195);
+  it("l'exemple d'un lieu isolé donne 200 avec le barème par défaut", () => {
+    expect(isolatedExample(DEFAULT_RULES).total).toBe(200);
   });
 });

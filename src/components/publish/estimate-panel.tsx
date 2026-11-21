@@ -31,6 +31,11 @@ export function EstimatePanel({ state, pending }: { state: EstimateState; pendin
             {tp.review.firstInCountry}
           </span>
         )}
+        {data?.category && data.category !== "courant" && data.categoryLabel && (
+          <span data-testid="estimate-category" className="rounded-[6px] bg-[#3A3A40] px-[7px] py-[3px] text-[11px] font-bold text-white">
+            {tp.review.estimateCategory(data.categoryLabel)}
+          </span>
+        )}
         {pending && data && (
           <span className="rounded-[6px] bg-[#3A3A40] px-[7px] py-[3px] text-[11px] font-bold text-white">
             {tp.review.estimatePending}

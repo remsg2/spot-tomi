@@ -5,7 +5,7 @@ import { formatCoordinates, formatTakenAt, ordinal } from "@/i18n/publish.fr";
 import { MAX_PHOTO_BYTES } from "./contract";
 import { checkPhoto, detectPhotoKind, targetSize } from "./photo";
 import { toPointLines } from "./points";
-import { isPending, statusFor } from "./status";
+import { isPending, needsReview, statusFor } from "./status";
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 const ascii = (text: string) => [...text].map((c) => c.charCodeAt(0));
@@ -48,12 +48,12 @@ describe("targetSize", () => {
   });
 });
 
-describe("statusFor : même règle que create_spot", () => {
-  it("en attente sans GPS ou sans date dans la photo", () => {
-    expect(statusFor("exif", "exif")).toBe("published");
-    expect(statusFor("manual", "exif")).toBe("pending_review");
-    expect(statusFor("exif", "upload")).toBe("pending_review");
-    expect(statusFor("manual", "upload")).toBe("pending_review");
+describe("statusFor : publication directe, comme create_spot", () => {
+  it("publié dans tous les cas ; une position placée à la main est « à vérifier »", () => {
+    expect(statusFor()).toBe("published");
+    expect(needsReview("manual")).toBe(true);
+    expect(needsReview("exif")).toBe(false);
+    expect(needsReview("device")).toBe(false);
     expect(isPending("published")).toBe(false);
     expect(isPending("hidden")).toBe(true);
   });

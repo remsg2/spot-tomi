@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { safeNextPath } from "@/lib/auth/next-path";
 import { authErrorMessage } from "@/lib/auth/errors";
-import { homeSchema, usernameSchema } from "./profile";
+import { usernameSchema } from "./profile";
 
 describe("usernameSchema", () => {
   it("accepte 3 à 20 lettres, chiffres ou _", () => {
@@ -18,14 +18,6 @@ describe("usernameSchema", () => {
 
   it("ignore les espaces autour", () => {
     expect(usernameSchema.parse("  tomi  ")).toBe("tomi");
-  });
-});
-
-describe("homeSchema", () => {
-  it("borne la latitude et la longitude", () => {
-    expect(homeSchema.safeParse({ lat: 45.1, lng: 6.9 }).success).toBe(true);
-    expect(homeSchema.safeParse({ lat: 91, lng: 0 }).success).toBe(false);
-    expect(homeSchema.safeParse({ lat: 0, lng: -181 }).success).toBe(false);
   });
 });
 
