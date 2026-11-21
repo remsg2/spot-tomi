@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo_Black, Inter } from "next/font/google";
 import { Suspense, type CSSProperties } from "react";
+import { ServiceWorker } from "@/components/pwa/service-worker";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { t } from "@/i18n/fr";
 import { RuntimeEnv } from "@/lib/env/runtime-env";
@@ -23,6 +24,13 @@ export const metadata: Metadata = {
   title: { default: t.app.name, template: `%s · ${t.app.name}` },
   description: t.app.description,
   applicationName: t.app.name,
+  // PWA : le manifeste vient de src/app/manifest.ts ; iOS lit ces balises.
+  appleWebApp: { capable: true, title: t.app.name, statusBarStyle: "default" },
+  icons: {
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  formatDetection: { telephone: false },
+  openGraph: { siteName: t.app.name, locale: "fr_FR", type: "website" },
 };
 
 export const viewport: Viewport = {
@@ -30,6 +38,8 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: light)", color: "#F3F1EB" },
     { media: "(prefers-color-scheme: dark)", color: "#0E0E10" },
   ],
+  // Plein écran sur iPhone (encoche, barre d'accueil) : les marges utilisent safe-area-inset.
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -48,6 +58,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={null}>
           <RuntimeEnv />
         </Suspense>
+        <ServiceWorker />
       </body>
     </html>
   );

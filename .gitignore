@@ -49,3 +49,8 @@ next-env.d.ts
 # supabase
 supabase/.branches
 supabase/.temp
+
+# PWA et carte : fichiers générés au build
+/public/sw.js
+/public/sw.js.map
+/public/vendor/
