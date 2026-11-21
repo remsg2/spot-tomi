@@ -11,6 +11,7 @@ import {
   type GpsSource,
   type PublishResult,
 } from "@/lib/publish/contract";
+import { haptic } from "@/lib/haptics";
 import { isFreshPhoto, readDevicePosition, type PhotoOrigin } from "@/lib/publish/device-position";
 import type { LatLng } from "@/lib/publish/geo";
 import { PublishError, type PublishServices } from "@/lib/publish/services";
@@ -190,8 +191,10 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
         dateSource,
         name: cleanName,
       });
+      haptic("success");
       setStep({ kind: "done", result });
     } catch (error) {
+      haptic("error");
       // Refus du serveur : la photo envoyée a été supprimée, une nouvelle tentative la renvoie.
       if (phase === "score") prepared.current.path = null;
       setStep({
@@ -212,6 +215,7 @@ export function PublishFlow({ userId, services, editRadius = DEFAULT_EDIT_RADIUS
     }
     setNameError(null);
     if (!position.point || blocked) return;
+    haptic("tap");
     void publish(parsed.data);
   }
 

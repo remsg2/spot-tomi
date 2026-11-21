@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatedPointsBreakdown, BackLink, Sticker } from "@/components/ui";
 import { tp } from "@/i18n/publish.fr";
 import { formatPoints } from "@/lib/design/points";
+import { haptic } from "@/lib/haptics";
 import type { PublishResult } from "@/lib/publish/contract";
 import { toPointLines } from "@/lib/publish/points";
 import { isPending } from "@/lib/publish/status";
@@ -37,6 +38,14 @@ export function DoneStep({ result, onAnother }: { result: PublishResult; onAnoth
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
   }, []);
+
+  // Un petit tic à chaque ligne de points qui apparaît (même rythme que l'animation).
+  const lineCount = pointLines.length;
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timers = Array.from({ length: lineCount }, (_, i) => window.setTimeout(() => haptic("selection"), 700 + i * 420));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [lineCount]);
 
   async function share() {
     const url = `${window.location.origin}/spots/${spot.id}`;

@@ -124,6 +124,17 @@ test.describe("connecté", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Remi");
   });
 
+  test("/me/settings : réglage « Vibrations » gardé sur l'appareil", async ({ page }) => {
+    await page.goto(`${next.url}/me/settings`);
+    const toggle = page.getByRole("switch", { name: "Vibrations" });
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(await page.evaluate(() => localStorage.getItem("spot-tomi:vibrations"))).toBe("off");
+    await page.reload();
+    await expect(page.getByRole("switch", { name: "Vibrations" })).toHaveAttribute("aria-checked", "false");
+  });
+
   test("/u/<pseudo> : bouton retour, vers le classement à l'ouverture directe", async ({ page }) => {
     await page.goto(`${next.url}/u/Lea`);
     const back = page.getByTestId("back-link").filter({ visible: true });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { useState, useSyncExternalStore, useTransition, type FormEvent, type ReactNode } from "react";
 import {
   AvatarField,
   HomeField,
@@ -15,6 +15,8 @@ import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { PrimaryButton } from "@/components/ui";
 import { t } from "@/i18n/fr";
 import { authErrorMessage } from "@/lib/auth/errors";
+import { haptic, hapticsEnabled, hapticsSupported, setHapticsEnabled } from "@/lib/haptics";
+import { isAppleMobile } from "@/lib/platform";
 import { clearHome, saveHome, updateTheme, updateUsername } from "@/lib/profile/actions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { passwordSchema } from "@/lib/validation/profile";
@@ -183,6 +185,49 @@ export function ThemeSection() {
           })
         }
       />
+    </Section>
+  );
+}
+
+const noSubscription = () => () => {};
+
+/** Vibrations de l'app : réglage gardé sur l'appareil (src/lib/haptics.ts). Affiché si l'appareil vibre. */
+export function VibrationsSection() {
+  const supported = useSyncExternalStore(noSubscription, hapticsSupported, () => false);
+  const stored = useSyncExternalStore(noSubscription, hapticsEnabled, () => true);
+  const [choice, setChoice] = useState<boolean | null>(null);
+  const enabled = choice ?? stored;
+  if (!supported) return null;
+
+  function toggle() {
+    const next = !enabled;
+    setHapticsEnabled(next);
+    setChoice(next);
+    if (next) haptic("success");
+  }
+
+  return (
+    <Section title={t.settings.vibrations}>
+      <p className="text-sm text-muted">
+        {t.settings.vibrationsIntro} {isAppleMobile() && t.settings.vibrationsIos}
+      </p>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        onClick={toggle}
+        className="flex min-h-11 items-center justify-between gap-3 self-stretch rounded-[14px] border border-line bg-bg px-4 text-sm font-semibold"
+      >
+        {t.settings.vibrationsToggle}
+        <span
+          aria-hidden="true"
+          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${enabled ? "bg-year" : "bg-line"}`}
+        >
+          <span
+            className={`absolute top-1 size-5 rounded-full bg-card shadow transition-[left] ${enabled ? "left-6" : "left-1"}`}
+          />
+        </span>
+      </button>
     </Section>
   );
 }

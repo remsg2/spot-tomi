@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { t } from "@/i18n/fr";
 import { tm } from "@/i18n/map.fr";
 import { cn } from "@/lib/cn";
+import { haptic } from "@/lib/haptics";
 import { formatPoints } from "@/lib/design/points";
 import { setMine, setPerson, toggleYear } from "@/lib/map/filters";
 import { CloseIcon } from "./icons";
@@ -35,7 +36,10 @@ export function Chip({
       type="button"
       aria-pressed={pressed}
       aria-label={label}
-      onClick={onClick}
+      onClick={() => {
+        haptic("selection");
+        onClick();
+      }}
       className={cn("group flex h-11 shrink-0 items-center", className)}
     >
       <span

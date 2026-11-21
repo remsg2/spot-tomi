@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  // Icônes rendues à la demande dans la couleur de l'année (src/lib/icons/app-icon.ts) :
+  // les images de Tomi doivent accompagner ces fonctions serveur.
+  outputFileTracingIncludes: {
+    "/icons/*": ["./public/tomi/tomi.png", "./public/tomi/tomi-head.png"],
+    "/favicon.ico": ["./public/tomi/tomi-head.png"],
+  },
   generateBuildId: async () => buildId,
   env: {
     SPOT_TOMI_BUILD_ID: buildId,

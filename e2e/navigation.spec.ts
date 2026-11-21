@@ -50,3 +50,14 @@ test("règles ouvertes depuis une fiche : le retour revient à la fiche", async 
   await expect(page).toHaveURL(new RegExp(`/spots/${USHUAIA_ID}$`));
   await expect(page.getByRole("heading", { level: 1, name: "Ushuaïa" })).toBeVisible();
 });
+
+test("vibrations : un tic au changement de filtre (API Vibration)", async ({ page }) => {
+  await page.addInitScript(() => {
+    const calls: unknown[] = [];
+    (window as Window & { __vibrations?: unknown[] }).__vibrations = calls;
+    Object.defineProperty(navigator, "vibrate", { configurable: true, value: (pattern: unknown) => (calls.push(pattern), true) });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Rares" }).first().click();
+  expect(await page.evaluate(() => (window as Window & { __vibrations?: unknown[] }).__vibrations)).toEqual([8]);
+});

@@ -39,6 +39,7 @@ import {
 } from "@/lib/map/style";
 import { EMPTY_COLLECTION, type CountryRarity, type SpotCollection, type ThemeName } from "@/lib/map/types";
 import { summarizeVisible } from "@/lib/map/visible";
+import { haptic } from "@/lib/haptics";
 import { canGoBackInApp } from "@/lib/navigation/back";
 import { drawCluster, drawMarker, loadMarkerAssets, type MarkerAssets } from "./marker-images";
 import { useMapContext } from "./map-provider";
@@ -436,6 +437,7 @@ export default function WorldMap() {
       }
       const properties = feature.properties as Record<string, unknown>;
       if (typeof properties.cluster_id === "number" && feature.geometry.type === "Point") {
+        haptic("selection");
         const center = feature.geometry.coordinates as [number, number];
         const source = map.getSource(SOURCE_SPOTS) as GeoJSONSource;
         void source.getClusterExpansionZoom(properties.cluster_id).then((zoom) => {
@@ -445,6 +447,7 @@ export default function WorldMap() {
       }
       const id = String(properties.id ?? "");
       if (!id) return;
+      haptic("tap");
       // Fiche du sticker : colonne en web, tiroir sur mobile. Sur mobile, d'un sticker à
       // l'autre sans empiler l'historique : « fermer » revient toujours à la carte.
       if (!wide && live.current.selectedId) routerRef.current.replace(`/spots/${id}`);
