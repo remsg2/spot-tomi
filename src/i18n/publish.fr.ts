@@ -109,6 +109,7 @@ export const publishFr = {
       `Tu as déjà collé « ${name} » à ${meterDistance.format(distance)} m d'ici.`,
     nearbyInfo: (distance: number) => `Le sticker le plus proche est à ${meterDistance.format(distance)} m.`,
     rulesTitle: "Règles de conduite",
+    rulesLink: "Toutes les règles et la modération",
     rules: [
       "Respecte les lois et les lieux : jamais sur un monument, une œuvre, un site naturel protégé ou un transport.",
       "Pas de propriété privée sans autorisation.",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProfileThemeSync } from "@/components/account/profile-theme-sync";
+import { LegalLinks } from "@/components/legal/legal-page";
 import { BackLink } from "@/components/ui";
 import { t } from "@/i18n/fr";
 import { requireProfile } from "@/lib/auth/server";
@@ -50,6 +51,7 @@ async function SettingsContent() {
       <VibrationsSection />
       <PasswordSection email={user.email ?? ""} />
       <DeleteAccountSection username={profile.username} />
+      <LegalLinks />
     </>
   );
 }

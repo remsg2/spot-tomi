@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { LegalLinks } from "@/components/legal/legal-page";
 import { BackLink, Logo, Sticker } from "@/components/ui";
 import { t } from "@/i18n/fr";
 import { safeNextPath } from "@/lib/auth/next-path";
@@ -26,6 +27,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <Suspense fallback={null}>
         <LoginContent searchParams={searchParams} />
       </Suspense>
+      <LegalLinks />
     </main>
   );
 }

@@ -367,6 +367,9 @@ export function ReviewStep(props: Props) {
                 <li key={rule}>{rule}</li>
               ))}
             </ul>
+            <a href="/moderation" target="_blank" rel="noopener" className="mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
+              {tp.review.rulesLink}
+            </a>
           </details>
         </div>
 
