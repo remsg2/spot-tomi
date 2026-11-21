@@ -24,6 +24,8 @@ export async function GET() {
 
   const { appEnv, supabaseUrl, supabaseKey } = result.env;
   let schemaVersion: string | null = null;
+  // Cause d'un échec, sans donnée sensible (code HTTP ou type d'erreur).
+  let schemaError: string | null = null;
   try {
     const response = await fetch(`${supabaseUrl}/rest/v1/rpc/schema_version`, {
       method: "POST",
@@ -36,8 +38,9 @@ export async function GET() {
       signal: AbortSignal.timeout(3000),
     });
     if (response.ok) schemaVersion = (await response.json()) as string;
-  } catch {
-    schemaVersion = null;
+    else schemaError = `HTTP ${response.status}`;
+  } catch (error) {
+    schemaError = error instanceof Error ? error.name : "erreur inconnue";
   }
 
   return NextResponse.json(
@@ -47,6 +50,7 @@ export async function GET() {
       buildId: BUILD_ID,
       supabaseHost: new URL(supabaseUrl).host,
       schemaVersion,
+      ...(schemaError ? { schemaError } : {}),
     },
     {
       status: schemaVersion ? 200 : 503,
