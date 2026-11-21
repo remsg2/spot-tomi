@@ -25,14 +25,17 @@ type Status = { kind: "idle" } | { kind: "pending" } | { kind: "error" | "info";
 type Mode = "magic" | "password";
 
 /**
- * Dernier mode de connexion réussi sur cet appareil : on rouvre directement le
- * mot de passe, pour que le navigateur remplisse email et mot de passe.
+ * Mode de connexion : le mot de passe par défaut (aucun email nécessaire, et le
+ * navigateur remplit email et mot de passe), le lien par email en option. Le
+ * dernier mode choisi est gardé sur l'appareil.
  */
 const MODE_KEY = "spot-tomi:connexion";
+const DEFAULT_MODE: Mode = "password";
 
 function readStoredMode(): Mode | null {
   try {
-    return window.localStorage.getItem(MODE_KEY) === "password" ? "password" : null;
+    const value = window.localStorage.getItem(MODE_KEY);
+    return value === "password" || value === "magic" ? value : null;
   } catch {
     return null;
   }
@@ -71,7 +74,7 @@ export function LoginForm({ next }: { next: string }) {
   const storedMode = useSyncExternalStore(noSubscription, readStoredMode, () => null);
   const [chosenMode, setMode] = useState<Mode | null>(null);
   const installedApp = useSyncExternalStore(noSubscription, isIosInstalledApp, () => false);
-  const mode: Mode = chosenMode ?? storedMode ?? (installedApp ? "password" : "magic");
+  const mode: Mode = chosenMode ?? storedMode ?? DEFAULT_MODE;
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const pending = status.kind === "pending";
 
@@ -104,6 +107,10 @@ export function LoginForm({ next }: { next: string }) {
         email: email.data,
         options: { emailRedirectTo: callbackUrl() },
       });
+      if (error?.code === "over_email_send_rate_limit") {
+        // Envoi d'emails limité (service d'email de Supabase) : le mot de passe n'en a pas besoin.
+        setMode("password");
+      }
       setStatus(
         error
           ? { kind: "error", message: authErrorMessage(error) }
