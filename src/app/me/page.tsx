@@ -25,7 +25,7 @@ export const metadata: Metadata = {
  */
 export default function MePage() {
   return (
-    <ColumnPage>
+    <ColumnPage back={{ href: "/", label: t.nav.backToMap, mobile: false }}>
       <Suspense fallback={<ProfileSkeleton />}>
         <MeContent />
       </Suspense>

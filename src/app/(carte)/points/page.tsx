@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
-import { PointsBlock, PointsBreakdown } from "@/components/ui";
+import { BackLink, PointsBlock, PointsBreakdown } from "@/components/ui";
+import { t } from "@/i18n/fr";
 import { rulesFr as r } from "@/i18n/rules.fr";
 import { formatPoints } from "@/lib/design/points";
 import { getPublicEnvResult } from "@/lib/env/server";
@@ -21,6 +22,7 @@ export default function PointsRulesPage() {
   return (
     <div className="flex flex-1 flex-col gap-6 bg-bg px-4 pt-5 pb-10 md:bg-card md:px-6 md:pt-0">
       <header className="flex flex-col gap-2">
+        <BackLink href="/leaderboard" label={t.nav.back} className="mb-1" />
         <h1 className="font-display text-[28px] leading-tight font-normal">{r.title}</h1>
         <p className="text-[15px] text-muted">{r.intro}</p>
       </header>

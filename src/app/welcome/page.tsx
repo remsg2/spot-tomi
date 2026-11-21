@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Logo, Sticker } from "@/components/ui";
+import { BackLink, Logo, Sticker } from "@/components/ui";
 import { t } from "@/i18n/fr";
 import { safeNextPath } from "@/lib/auth/next-path";
 import { getMyProfile, requireUser } from "@/lib/auth/server";
@@ -13,7 +13,11 @@ export const metadata: Metadata = { title: t.welcome.title };
 export default function WelcomePage({ searchParams }: PageProps<"/welcome">) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-8">
-      <Logo />
+      <div className="flex items-center gap-3">
+        {/* Vers la carte, pas l'historique : la page précédente est la connexion. */}
+        <BackLink href="/" label={t.nav.backToMap} history={false} />
+        <Logo />
+      </div>
       <div className="flex items-center gap-4">
         <Sticker size={84} tilt={4} />
         <div className="flex flex-col gap-1">

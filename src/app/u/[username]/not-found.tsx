@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { ColumnPage } from "@/components/leaderboard/column-page";
 import { PrimaryLink, Sticker } from "@/components/ui";
+import { t } from "@/i18n/fr";
 import { profileFr as p } from "@/i18n/profile.fr";
 
 /** Pseudo inconnu : page 404 du profil public. */
 export default function UserNotFound() {
   return (
-    <ColumnPage className="items-center justify-center text-center">
+    <ColumnPage className="items-center justify-center text-center" back={{ href: "/leaderboard", label: t.nav.back }}>
       <Sticker size={120} tilt={-6} band="404" />
       <h1 className="font-display text-2xl font-normal">{p.notFound.title}</h1>
       <p className="max-w-xs text-sm text-muted">{p.notFound.body}</p>
