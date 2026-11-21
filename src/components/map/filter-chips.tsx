@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { haptic } from "@/lib/haptics";
 import { formatPoints } from "@/lib/design/points";
 import { setMine, setPerson, toggleYear } from "@/lib/map/filters";
+import { HapticTouch } from "@/components/ui";
 import { CloseIcon } from "./icons";
 import { useMapContext } from "./map-provider";
 
@@ -32,26 +33,29 @@ export function Chip({
   className?: string;
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      aria-label={label}
-      onClick={() => {
-        haptic("selection");
-        onClick();
-      }}
-      className={cn("group flex h-11 shrink-0 items-center", className)}
-    >
-      <span
-        className={cn(
-          "flex h-[34px] items-center gap-1.5 rounded-full px-3 text-[13px] whitespace-nowrap shadow-card transition-colors group-focus-visible:outline-3 group-focus-visible:outline-offset-1 group-focus-visible:outline-text",
-          pressed ? "font-bold text-on-year" : "bg-card font-semibold text-text",
-        )}
-        style={pressed ? { background: activeStyle ?? "var(--year)" } : undefined}
+    <span className={cn("relative flex shrink-0", className)}>
+      <button
+        type="button"
+        aria-pressed={pressed}
+        aria-label={label}
+        onClick={() => {
+          haptic("selection");
+          onClick();
+        }}
+        className="group flex h-11 shrink-0 items-center"
       >
-        {children}
-      </span>
-    </button>
+        <span
+          className={cn(
+            "flex h-[34px] items-center gap-1.5 rounded-full px-3 text-[13px] whitespace-nowrap shadow-card transition-colors group-focus-visible:outline-3 group-focus-visible:outline-offset-1 group-focus-visible:outline-text",
+            pressed ? "font-bold text-on-year" : "bg-card font-semibold text-text",
+          )}
+          style={pressed ? { background: activeStyle ?? "var(--year)" } : undefined}
+        >
+          {children}
+        </span>
+      </button>
+      <HapticTouch onActivate={onClick} />
+    </span>
   );
 }
 

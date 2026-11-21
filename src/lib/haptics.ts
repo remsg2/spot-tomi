@@ -2,11 +2,12 @@
  * Vibrations (retours haptiques) de la web app.
  *
  * - Android (Chrome, Firefox) : API Vibration (`navigator.vibrate`), motifs complets.
- * - iPhone : Safari n'a pas l'API Vibration. Depuis iOS 18, basculer un
- *   interrupteur (`<input type="checkbox" switch>`) produit un léger « tic » du
- *   système : un interrupteur invisible est basculé, pendant le geste de
- *   l'utilisateur (hors geste, iOS peut l'ignorer). Un seul type de tic, répété
- *   pour une réussite ou une erreur.
+ * - iPhone : Safari n'a pas l'API Vibration. D'iOS 18 à 26.4, basculer par
+ *   programme un interrupteur invisible (`<input type="checkbox" switch>`)
+ *   produit un léger « tic » du système ; iOS 26.5 a fermé cette porte. Seul un
+ *   toucher direct sur un interrupteur natif le produit encore : voir
+ *   HapticTouch (src/components/ui/haptic-touch.tsx), posé sur les commandes
+ *   principales. Un seul type de tic, répété pour une réussite ou une erreur.
  * - Ailleurs (ordinateur) : rien.
  *
  * Désactivables dans les réglages (préférence gardée sur l'appareil).

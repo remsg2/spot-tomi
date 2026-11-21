@@ -12,7 +12,7 @@ import {
   type HomeState,
 } from "@/components/account/fields";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
-import { PrimaryButton } from "@/components/ui";
+import { HapticTouch, PrimaryButton } from "@/components/ui";
 import { t } from "@/i18n/fr";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { haptic, hapticsEnabled, hapticsSupported, setHapticsEnabled } from "@/lib/haptics";
@@ -211,23 +211,26 @@ export function VibrationsSection() {
       <p className="text-sm text-muted">
         {t.settings.vibrationsIntro} {isAppleMobile() && t.settings.vibrationsIos}
       </p>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={enabled}
-        onClick={toggle}
-        className="flex min-h-11 items-center justify-between gap-3 self-stretch rounded-[14px] border border-line bg-bg px-4 text-sm font-semibold"
-      >
-        {t.settings.vibrationsToggle}
-        <span
-          aria-hidden="true"
-          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${enabled ? "bg-year" : "bg-line"}`}
+      <span className="relative flex self-stretch">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          onClick={toggle}
+          className="flex min-h-11 flex-1 items-center justify-between gap-3 rounded-[14px] border border-line bg-bg px-4 text-sm font-semibold"
         >
+          {t.settings.vibrationsToggle}
           <span
-            className={`absolute top-1 size-5 rounded-full bg-card shadow transition-[left] ${enabled ? "left-6" : "left-1"}`}
-          />
-        </span>
-      </button>
+            aria-hidden="true"
+            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${enabled ? "bg-year" : "bg-line"}`}
+          >
+            <span
+              className={`absolute top-1 size-5 rounded-full bg-card shadow transition-[left] ${enabled ? "left-6" : "left-1"}`}
+            />
+          </span>
+        </button>
+        {enabled && <HapticTouch onActivate={toggle} />}
+      </span>
     </Section>
   );
 }

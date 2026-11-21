@@ -1,6 +1,7 @@
 export { AlbumTile } from "./album-tile";
 export { BackLink } from "./back-link";
 export { ClusterBubble } from "./cluster-bubble";
+export { HapticTouch } from "./haptic-touch";
 export { Logo } from "./logo";
 export { MapMarker } from "./map-marker";
 export { PointsBlock } from "./points-block";

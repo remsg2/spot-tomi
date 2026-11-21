@@ -61,3 +61,38 @@ test("vibrations : un tic au changement de filtre (API Vibration)", async ({ pag
   await page.getByRole("button", { name: "Rares" }).first().click();
   expect(await page.evaluate(() => (window as Window & { __vibrations?: unknown[] }).__vibrations)).toEqual([8]);
 });
+
+test.describe("vibrations sur iPhone (Safari sans API Vibration)", () => {
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 26_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+  });
+
+  test("interrupteur natif invisible sur les filtres : toucher le filtre l'active", async ({ page }) => {
+    await page.addInitScript(() => {
+      // Safari : pas d'API Vibration.
+      Object.defineProperty(Navigator.prototype, "vibrate", { configurable: true, value: undefined });
+    });
+    await page.goto("/");
+    const chip = page.getByRole("button", { name: "Rares" }).first();
+    await expect(chip).toBeVisible();
+    const overlay = chip.locator("xpath=following-sibling::input[@data-haptic-touch]");
+    await expect(overlay).toHaveAttribute("switch", "");
+    await expect(overlay).toHaveAttribute("aria-hidden", "true");
+    // Le toucher arrive sur l'interrupteur natif qui recouvre le filtre (tic d'iOS) et l'active.
+    const box = (await chip.boundingBox())!;
+    const overlayBox = (await overlay.boundingBox())!;
+    expect(overlayBox.width).toBeGreaterThanOrEqual(box.width - 1);
+    await overlay.click();
+    await expect(chip).toHaveAttribute("aria-pressed", "true");
+    await overlay.click();
+    await expect(chip).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("vibrations désactivées : pas d'interrupteur ajouté", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("spot-tomi:vibrations", "off"));
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: "Rares" }).first()).toBeVisible();
+    await expect(page.locator("[data-haptic-touch]")).toHaveCount(0);
+  });
+});
