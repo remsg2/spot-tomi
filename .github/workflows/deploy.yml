@@ -6,6 +6,9 @@
 #   2. migrations et fonctions sur Supabase prod, build Vercel, contrôle du
 #      bundle, déploiement en production, puis tests contre le site en ligne.
 #
+# La CLI Supabase v3 vise la base locale par défaut : `--remote` cible le
+# projet lié par `supabase link`, et `--yes` confirme les changements distants.
+#
 # L'environnement GitHub « production » peut exiger une validation manuelle
 # (Required reviewers) : le job attend alors ton feu vert.
 name: Déploiement
@@ -45,11 +48,12 @@ jobs:
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
       - run: supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
-      - run: supabase db push
+      - name: Migrations
+        run: supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --yes
       - name: Fonctions Edge
         run: |
           if compgen -G "supabase/functions/*/index.ts" > /dev/null; then
-            supabase functions deploy --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
+            supabase functions deploy --yes
           else
             echo "Aucune fonction Edge à déployer."
           fi
@@ -78,11 +82,12 @@ jobs:
 
       # Migrations d'abord : elles doivent rester compatibles avec l'app en place.
       - run: supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
-      - run: supabase db push
+      - name: Migrations
+        run: supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --yes
       - name: Fonctions Edge
         run: |
           if compgen -G "supabase/functions/*/index.ts" > /dev/null; then
-            supabase functions deploy --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
+            supabase functions deploy --yes
           else
             echo "Aucune fonction Edge à déployer."
           fi
