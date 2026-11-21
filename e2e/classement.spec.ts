@@ -213,9 +213,15 @@ test.describe("profil · aperçu", () => {
 
   test("l'onglet Album descend jusqu'à l'album", async ({ page }) => {
     await page.goto("/dev/profil#album");
+    // L'album est en haut de l'écran, ou la page est descendue au maximum.
     await expect
-      .poll(() => page.locator("#album").evaluate((el) => Math.round(el.getBoundingClientRect().top)))
-      .toBeLessThan(40);
+      .poll(() =>
+        page.locator("#album").evaluate((el) => {
+          const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 1;
+          return window.scrollY > 0 && (el.getBoundingClientRect().top < 40 || atBottom);
+        }),
+      )
+      .toBe(true);
   });
 
   test("liste des stickers filtrable par année, en attente et masqués signalés", async ({ page }) => {

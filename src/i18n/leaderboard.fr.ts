@@ -29,6 +29,11 @@ export const leaderboardFr = {
   stickers: (count: number) => (count <= 1 ? `${count} sticker` : `${count} stickers`),
   countries: (count: number) => `${count} pays`,
   points: (formatted: string) => `${formatted} pts`,
+  /** Petite unité sous la valeur d'une ligne (critères pays et stickers). */
+  units: {
+    countries: () => "pays",
+    stickers: (count: number) => (count <= 1 ? "sticker" : "stickers"),
+  },
   podiumLabel: "Podium",
   listLabel: "Classement complet",
   /** Lecture d'écran d'une ligne : « 2ᵉ, Rémi (toi), 1 435 points ». */

@@ -137,8 +137,8 @@ export function formatValue(entry: LeaderboardEntry, criterion: Criterion): stri
 
 /** Petite unité sous la valeur, sauf pour les points (comme les maquettes). */
 export function valueUnit(entry: LeaderboardEntry, criterion: Criterion): string | null {
-  if (criterion === "countries") return "pays";
-  if (criterion === "stickers") return entry.stickers <= 1 ? "sticker" : "stickers";
+  if (criterion === "countries") return l.units.countries();
+  if (criterion === "stickers") return l.units.stickers(entry.stickers);
   return null;
 }
 
