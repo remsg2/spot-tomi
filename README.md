@@ -98,7 +98,9 @@ Les migrations doivent rester compatibles avec la version précédente de l'app
 
 ## Comptes (Supabase Auth)
 
-- Connexion par **lien magique**, **mot de passe**, **Google** ou **Apple** (`/login`). Tous
+- Connexion par **lien magique** ou **mot de passe** (`/login`). Google et Apple sont prêts
+  mais désactivés : les ajouter à `ENABLED_OAUTH_PROVIDERS` (`src/lib/auth/providers.ts`)
+  après les avoir configurés dans Supabase (tableau ci-dessous). Tous
   les retours passent par `/auth/callback`, qui envoie vers `/welcome` tant que le pseudo
   n'est pas choisi.
 - `src/proxy.ts` rafraîchit la session et réserve `/me`, `/welcome`, `/spots/new` et

@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-test("la page de connexion propose Google, Apple et l'email", async ({ page }) => {
+test("la page de connexion propose l'email (Google et Apple désactivés)", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { level: 1, name: "Connexion" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continuer avec Google" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continuer avec Apple" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continuer avec Google" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Continuer avec Apple" })).toHaveCount(0);
   await expect(page.getByLabel("Adresse email")).toBeVisible();
   await expect(page.getByRole("button", { name: "Recevoir un lien de connexion" })).toBeVisible();
 
