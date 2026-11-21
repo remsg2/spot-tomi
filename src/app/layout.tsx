@@ -26,7 +26,12 @@ export const metadata: Metadata = {
   applicationName: t.app.name,
   // PWA : le manifeste vient de src/app/manifest.ts ; iOS lit ces balises.
   appleWebApp: { capable: true, title: t.app.name, statusBarStyle: "default" },
+  // Icônes dans la couleur de l'année en cours, rendues à la demande (src/lib/icons/app-icon.ts).
   icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icons/favicon-64.png", sizes: "64x64", type: "image/png" },
+    ],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   formatDetection: { telephone: false },

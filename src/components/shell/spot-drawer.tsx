@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, typ
 import { useMapContext } from "@/components/map/map-provider";
 import { tm } from "@/i18n/map.fr";
 import { cn } from "@/lib/cn";
+import { haptic } from "@/lib/haptics";
 import { canGoBackInApp } from "@/lib/navigation/back";
 
 /** Part de la hauteur du tiroir cachée sous l'écran à mi-hauteur (55 % visibles). */
@@ -89,6 +90,7 @@ export function SpotDrawer({ wide, children }: { wide: boolean; children: ReactN
   }
 
   function animateClose() {
+    haptic("tap");
     setDragging(false);
     setOffset(height());
     window.setTimeout(close, CLOSE_DELAY_MS);
@@ -139,7 +141,10 @@ export function SpotDrawer({ wide, children }: { wide: boolean; children: ReactN
     gesture.current = null;
     if (!g.moved) {
       // Toucher la poignée (hors bouton) : bascule mi-hauteur / plein écran.
-      if (g.grip && !g.onControl) setSnap((current) => (current === "half" ? "full" : "half"));
+      if (g.grip && !g.onControl) {
+        haptic("selection");
+        setSnap((current) => (current === "half" ? "full" : "half"));
+      }
       return;
     }
     suppressClick.current = true;
@@ -158,6 +163,7 @@ export function SpotDrawer({ wide, children }: { wide: boolean; children: ReactN
       return;
     }
     setOffset(null);
+    if (next !== snap) haptic("selection");
     setSnap(next);
   }
 

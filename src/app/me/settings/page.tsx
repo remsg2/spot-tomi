@@ -13,6 +13,7 @@ import {
   HomeSection,
   PasswordSection,
   ThemeSection,
+  VibrationsSection,
   UsernameSection,
 } from "./sections";
 
@@ -53,6 +54,7 @@ async function SettingsContent() {
       />
       <HomeSection hasHome={hasHome} />
       <ThemeSection />
+      <VibrationsSection />
       <PasswordSection email={user.email ?? ""} />
       <DeleteAccountSection username={profile.username} />
     </>

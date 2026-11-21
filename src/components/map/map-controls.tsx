@@ -2,6 +2,7 @@
 
 import { tm } from "@/i18n/map.fr";
 import { cn } from "@/lib/cn";
+import { haptic } from "@/lib/haptics";
 import { LocateIcon, MinusIcon, PlusIcon } from "./icons";
 import { useMapContext } from "./map-provider";
 
@@ -34,7 +35,10 @@ export function LocateButton({ className }: { className?: string }) {
       type="button"
       aria-label={tm.map.locate}
       title={tm.map.locate}
-      onClick={() => commands.current?.locate()}
+      onClick={() => {
+        haptic("tap");
+        commands.current?.locate();
+      }}
       className={cn(squareButton, "rounded-[14px] shadow-card", className)}
     >
       <LocateIcon />
