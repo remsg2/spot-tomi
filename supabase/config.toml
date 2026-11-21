@@ -432,3 +432,8 @@ enabled = true
 # (compatible avec les nouvelles clés de signature des JWT).
 [functions.delete-account]
 verify_jwt = false
+
+# Publication d'un sticker (étape 5) : même principe, ce qui permet aussi de
+# répondre aux requêtes CORS préalables, envoyées sans jeton.
+[functions.publish-spot]
+verify_jwt = false
