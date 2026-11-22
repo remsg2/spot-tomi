@@ -298,7 +298,6 @@ export function AuthorActions({
       ) : mode === "focus" && photo ? (
         <div className="flex flex-col gap-2.5">
           <h3 className="text-sm font-bold">{tphoto.focus.editTitle}</h3>
-          <p className="text-xs text-muted">{tphoto.focus.editIntro}</p>
           <FocusEditor
             key={photo.url}
             src={photo.url}

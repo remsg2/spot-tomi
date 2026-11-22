@@ -17,14 +17,14 @@ export function FocusEditor({
   initial,
   save,
   onDone,
-  title,
+  audience = "me",
   buttonClassName,
 }: {
   src: string;
   initial: PhotoFocus | null;
   save: (focus: PhotoFocus | null) => Promise<FocusSaveResult>;
   onDone?: () => void;
-  title?: string;
+  audience?: "me" | "other";
   buttonClassName?: string;
 }) {
   const [focus, setFocus] = useState<PhotoFocus | null>(initial);
@@ -54,7 +54,7 @@ export function FocusEditor({
       <FocusPicker
         src={src}
         value={focus}
-        title={title}
+        audience={audience}
         onChange={(next) => {
           setFocus(next);
           setResult(null);

@@ -131,11 +131,11 @@ test.describe("onglet Couleur (partie client, /dev/admin)", () => {
     await expect(card.locator("img").first()).toHaveCSS("object-position", "30% 70%");
     await card.getByText("Photo, position et signalements").click();
     const editor = card.getByTestId("focus-editor");
-    await expect(editor.getByText("Où est le sticker ?")).toBeVisible();
+    await expect(editor.getByRole("heading", { name: "Où est le sticker sur la photo ?" })).toBeVisible();
     await expect(editor.getByTestId("focus-marker")).toBeVisible();
     const save = editor.getByRole("button", { name: "Enregistrer le cadrage" });
     await expect(save).toBeDisabled();
-    await editor.getByRole("button", { name: "Recentrer" }).click();
+    await editor.getByRole("button", { name: "Effacer le repère" }).click();
     await save.click();
     await expect(editor.getByRole("status")).toHaveText("Simulation : cadrage au centre");
   });

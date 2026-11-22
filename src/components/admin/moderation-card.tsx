@@ -3,7 +3,6 @@
 import { useId } from "react";
 import { FocusEditor } from "@/components/photo/focus-editor";
 import { ta } from "@/i18n/admin.fr";
-import { photoFr } from "@/i18n/photo.fr";
 import type { ActionResult, ModerationEntry } from "@/lib/admin/types";
 import { cn } from "@/lib/cn";
 import { focusPosition, toFocus } from "@/lib/photo/focus";
@@ -181,7 +180,7 @@ export function ModerationCard({
               key={`${entry.photo_url}-${entry.focus_x ?? ""}-${entry.focus_y ?? ""}`}
               src={entry.photo_url}
               initial={focus}
-              title={photoFr.focus.titleOther}
+              audience="other"
               buttonClassName="border border-line bg-card text-text"
               save={async (next) => {
                 const outcome = await actions.setFocus!(entry.id, next);
