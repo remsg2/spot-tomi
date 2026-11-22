@@ -102,6 +102,14 @@ export const ShareIcon = (p: P) => (
     <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
   </Icon>
 );
+export const TapIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M9 11V5a1.5 1.5 0 0 1 3 0v5" />
+    <path d="M12 10V9a1.5 1.5 0 0 1 3 0v2" />
+    <path d="M15 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a5 5 0 0 1-4-2l-2.6-3.4a1.5 1.5 0 0 1 2.3-1.9L9 16" />
+    <path d="M5 4.5 3.5 3M14.5 3.5 16 2M5 8H3" />
+  </Icon>
+);
 export const ExpandIcon = (p: P) => (
   <Icon {...p}>
     <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />

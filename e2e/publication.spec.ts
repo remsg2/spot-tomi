@@ -103,7 +103,15 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
   test("cadrage : toucher le sticker sur la photo entière, envoyé avec la publication", async ({ page }) => {
     await chooseAndReview(page, GPS_PHOTO);
     const picker = page.getByTestId("focus-picker");
-    await expect(picker.getByText("Touche le sticker sur la photo : l'aperçu sera centré dessus.")).toBeVisible();
+    // Fonction mise en avant : titre, « Conseillé », pourquoi, consigne posée sur la photo.
+    await expect(picker.getByRole("heading", { name: "Où est ton sticker sur la photo ?" })).toBeVisible();
+    await expect(picker.getByText("Conseillé", { exact: true })).toBeVisible();
+    await expect(picker.getByText(/la photo est recadrée\. Touche ton sticker/)).toBeVisible();
+    await expect(picker.getByTestId("focus-prompt")).toContainText("Touche ton sticker");
+    // Aperçu recadré, centré tant qu'aucun repère n'est posé.
+    const preview = picker.getByTestId("focus-preview");
+    await expect(preview).toContainText("Sans repère, la photo est centrée");
+    await expect(preview.locator("img").first()).toHaveCSS("object-position", "50% 50%");
     const photo = picker.getByRole("img", { name: /touche le sticker/ });
     // Photo entière (jamais recadrée ici), en hauteur comme la photo d'origine.
     await expect(photo).toHaveCSS("object-fit", "contain");
@@ -112,7 +120,10 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
 
     await photo.click({ position: { x: box.width * 0.25, y: box.height * 0.75 } });
     await expect(picker.getByTestId("focus-marker")).toBeVisible();
-    await expect(picker.getByText("Sticker repéré : l'aperçu est centré dessus.")).toBeVisible();
+    // La consigne disparaît, l'aperçu suit le repère.
+    await expect(picker.getByTestId("focus-prompt")).toHaveCount(0);
+    await expect(preview).toContainText("Ton sticker reste dans le cadre.");
+    await expect(preview.locator("img").first()).toHaveCSS("object-position", /^2[45](\.\d+)?% 7[45](\.\d+)?%$/);
     // Au clavier : flèches pour ajuster.
     await picker.getByRole("group").focus();
     await page.keyboard.press("ArrowRight");
@@ -126,13 +137,14 @@ test.describe("publication d'un sticker (/dev/publish)", () => {
     expect(focus.y).toBeCloseTo(0.75, 2);
   });
 
-  test("cadrage facultatif : « Recentrer » enlève le repère", async ({ page }) => {
+  test("cadrage facultatif : « Effacer le repère » remet la consigne", async ({ page }) => {
     await chooseAndReview(page, GPS_PHOTO);
     const picker = page.getByTestId("focus-picker");
     await picker.getByRole("img", { name: /touche le sticker/ }).click();
     await expect(picker.getByTestId("focus-marker")).toBeVisible();
-    await picker.getByRole("button", { name: "Recentrer" }).click();
+    await picker.getByRole("button", { name: "Effacer le repère" }).click();
     await expect(picker.getByTestId("focus-marker")).toHaveCount(0);
+    await expect(picker.getByTestId("focus-prompt")).toBeVisible();
     // « Changer la photo » reste sur la photo et ne place pas de repère.
     await expect(picker.getByRole("button", { name: "Changer la photo" })).toBeVisible();
   });
