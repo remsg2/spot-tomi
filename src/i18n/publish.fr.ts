@@ -66,7 +66,6 @@ export const publishFr = {
   },
 
   review: {
-    photoAlt: "Ta photo du sticker",
     changePhoto: "Changer la photo",
     checksLabel: "Vérification de la photo",
     gpsLabel: "Position GPS de la photo",

@@ -158,6 +158,12 @@ En production, la démo est **publique** (carte et classement).
   **publié tout de suite** ; une position placée à la main le signale aux modérateurs.
 - Une miniature WebP de 480 px (`….thumb.webp`) sert aux listes et au fil photo ; une
   empreinte de la photo (dHash) repère les photos quasi identiques pour la modération.
+- **Cadrage** : à l'étape de vérification, la photo s'affiche en entier et le membre peut
+  toucher son sticker. Ce point (`spots.focus_x` / `focus_y`, de 0 à 1) centre la photo
+  partout où elle est recadrée (fiche, fil photo, vignettes). L'auteur peut le corriger
+  depuis sa fiche (« Cadrage de l'aperçu »), un modérateur aussi (journalisé) ; une
+  nouvelle photo le remet au centre. Sur la fiche, le bouton « Voir la photo en entier »
+  ouvre une visionneuse plein écran (zoom au double toucher, au pincement ou à la molette).
 
 ## Points (cahier des charges V1.1)
 

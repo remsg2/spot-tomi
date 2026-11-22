@@ -81,6 +81,9 @@ export type PublicSpotRow = {
   edition_name: string;
   /** Miniature (480 px) dans `spot-photos`, si elle existe. */
   thumb_path: string | null;
+  /** Point du sticker sur la photo (0 à 1), null : centre. */
+  focus_x: number | null;
+  focus_y: number | null;
 };
 
 /** Une ligne de `public.spot_point_lines`, figée au calcul des points. */

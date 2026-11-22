@@ -125,6 +125,21 @@ test.describe("onglet Couleur (partie client, /dev/admin)", () => {
     await expect(card.getByRole("status")).toHaveText("Simulation : catégorie tres_rare");
   });
 
+  test("recadrage de l'aperçu par un modérateur", async ({ page }) => {
+    const card = page.locator("article").filter({ hasText: "Fourvière · Bea" });
+    // Vignette centrée sur le repère actuel (30 %, 70 %).
+    await expect(card.locator("img").first()).toHaveCSS("object-position", "30% 70%");
+    await card.getByText("Photo, position et signalements").click();
+    const editor = card.getByTestId("focus-editor");
+    await expect(editor.getByText("Où est le sticker ?")).toBeVisible();
+    await expect(editor.getByTestId("focus-marker")).toBeVisible();
+    const save = editor.getByRole("button", { name: "Enregistrer le cadrage" });
+    await expect(save).toBeDisabled();
+    await editor.getByRole("button", { name: "Recentrer" }).click();
+    await save.click();
+    await expect(editor.getByRole("status")).toHaveText("Simulation : cadrage au centre");
+  });
+
   test("supprimer un sticker demande une confirmation", async ({ page }) => {
     const card = page.locator("article").filter({ hasText: "Tour Eiffel · Nico" });
     await expect(card.getByText("Sans GPS · points en attente")).toBeVisible();

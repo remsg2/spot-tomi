@@ -1,7 +1,9 @@
 "use server";
 
 import { refresh, revalidatePath, updateTag } from "next/cache";
+import { z } from "zod";
 import { ta } from "@/i18n/admin.fr";
+import { photoFr } from "@/i18n/photo.fr";
 import { adminErrorMessage } from "@/lib/admin/errors";
 import { SPOT_PHOTOS_BUCKET } from "@/lib/admin/data";
 import { ruleLabel } from "@/lib/admin/rules";
@@ -145,6 +147,19 @@ export async function setExceptionalAction(form: FormData): Promise<ActionResult
       ? ta.moderation.exceptionalOn(spot.name, spot.points_total)
       : ta.moderation.exceptionalOff(spot.name, spot.points_total),
   };
+}
+
+/** Recadrage de l'aperçu d'un sticker par un modérateur (journalisé par set_spot_focus). */
+export async function setFocusAction(spotId: string, focus: { x: number; y: number } | null): Promise<ActionResult> {
+  const id = z.uuid().safeParse(spotId).success ? spotId : null;
+  const valid = focus === null || [focus.x, focus.y].every((v) => Number.isFinite(v) && v >= 0 && v <= 1);
+  if (!id || !valid) return fail(ta.errors.invalid);
+  const supabase = await sessionClient();
+  if (!supabase) return fail(ta.errors.signedOut);
+  const { error } = await supabase.rpc("set_spot_focus", { p_spot_id: id, p_x: focus?.x ?? null, p_y: focus?.y ?? null });
+  if (error) return fail(adminErrorMessage(error));
+  invalidatePublicData();
+  return { ok: true, message: photoFr.focus.saved };
 }
 
 export async function setRarityAction(form: FormData): Promise<ActionResult> {

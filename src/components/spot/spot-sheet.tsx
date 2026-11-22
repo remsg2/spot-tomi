@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import { ZoomablePhoto } from "@/components/photo/zoomable-photo";
 import { BackLink, PointsBlock, PointsBreakdown, Sticker } from "@/components/ui";
 import { tm } from "@/i18n/map.fr";
 import { rulesFr } from "@/i18n/rules.fr";
 import { formatPoints } from "@/lib/design/points";
+import { focusPosition } from "@/lib/photo/focus";
 import type { EditionOption } from "@/lib/publish/pasted";
 import type { NearbySpot, SpotEditInfo, SpotPageData } from "@/lib/spots/server";
 import { AuthorActions, LikeButton, ReportForm, ShareButton, SpotFocus } from "./spot-client";
@@ -76,18 +78,16 @@ export function SpotSheet({
             )}
           </div>
         ) : (
-          <>
-            {/* Photo publique du bucket spot-photos (WebP sans EXIF), servie par Supabase. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={spot.photoUrl}
-              alt={tm.spot.photoAlt(spot.name)}
-              width={1024}
-              height={768}
-              fetchPriority="high"
-              className="h-full w-full object-cover"
-            />
-          </>
+          // Centrée sur le sticker (repère touché par l'auteur), visible en entier d'un toucher.
+          <ZoomablePhoto
+            src={spot.photoUrl}
+            alt={tm.spot.photoAlt(spot.name)}
+            focus={spot.focus}
+            width={1024}
+            height={768}
+            priority
+            buttonClassName="right-4 bottom-[38px] md:right-3 md:bottom-3"
+          />
         )}
         <div className="absolute inset-x-4 top-[calc(16px+env(safe-area-inset-top))] flex justify-between md:inset-x-3 md:top-3 md:justify-end">
           <BackLink href="/" label={tm.spot.close} icon="close" variant="floating" className="md:hidden" />
@@ -196,6 +196,7 @@ export function SpotSheet({
             name={spot.name}
             userId={viewerId}
             info={extras?.editInfo ?? null}
+            photo={hidden || isDemoPhoto(spot.photoUrl) ? null : { url: spot.photoUrl, focus: spot.focus }}
             editions={extras?.editions ?? []}
             commentMax={extras?.commentMax ?? 280}
           />
@@ -224,7 +225,15 @@ function NearbyList({ spots }: { spots: NearbySpot[] }) {
             >
               {nearby.thumbUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={nearby.thumbUrl} alt="" width={44} height={44} loading="lazy" className="size-11 rounded-[10px] object-cover" />
+                <img
+                  src={nearby.thumbUrl}
+                  alt=""
+                  width={44}
+                  height={44}
+                  loading="lazy"
+                  className="size-11 rounded-[10px] object-cover"
+                  style={{ objectPosition: focusPosition(nearby.focus) }}
+                />
               ) : (
                 <span aria-hidden="true" className="size-11 shrink-0 rounded-[10px] bg-year" />
               )}

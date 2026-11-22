@@ -39,6 +39,8 @@ function spot(n, data) {
     edition_name: `Édition ${data.year}`,
     rarity_category: "courant",
     rarity_reason: null,
+    focus_x: null,
+    focus_y: null,
     author_id: data.author.id,
     author_username: data.author.username,
     color_hex: color(data.year),
@@ -51,7 +53,7 @@ export const SPOTS = [
     name: "Ushuaïa", city: "Ushuaïa", country_iso2: "AR", country_name_fr: "Argentine", country_tier: "lointain",
     lat: -54.8019, lng: -68.303, taken_at: "2025-03-14T15:00:00Z", year: 2025, points_total: 120,
     is_first_in_country: true, rarity_category: "touristique", rarity_reason: "Site touristique à moins de 300 m",
-    comment: "Au bout du monde, face au canal Beagle.", author: AUTHORS.remi,
+    comment: "Au bout du monde, face au canal Beagle.", focus_x: 0.3, focus_y: 0.25, author: AUTHORS.remi,
   }),
   spot(2, {
     name: "Mont Blanc", city: "Chamonix", country_iso2: "FR", country_name_fr: "France", country_tier: "courant",
@@ -154,6 +156,7 @@ function nearby(id, limit) {
     .map(({ s, d }) => ({
       id: s.id, name: s.name, city: s.city, country_name_fr: s.country_name_fr, year: s.year,
       color_hex: s.color_hex, points_total: s.points_total, thumb_path: s.thumb_path, distance_m: Math.round(d),
+      focus_x: s.focus_x, focus_y: s.focus_y,
     }));
 }
 

@@ -36,6 +36,8 @@ export type CreateSpotArgs = {
 
 export type CreateSpotOutcome = { id: string } | { sqlCode: string; message: string };
 
+export type SetFocusArgs = { p_author: string; p_spot_id: string; p_x: number; p_y: number };
+
 export type ReplacePhotoArgs = {
   p_author: string;
   p_spot_id: string;
@@ -58,6 +60,8 @@ export type PublishDeps = {
   geocode(lat: number, lng: number): Promise<{ city: string | null; tourist: boolean }>;
   /** Altitude du terrain, ou null (ne doit pas lever). */
   elevation(lat: number, lng: number): Promise<number | null>;
+  /** Point du sticker sur la photo (set_spot_focus_as) ; un échec ne bloque rien. */
+  setFocus(args: SetFocusArgs): Promise<void>;
   createSpot(args: CreateSpotArgs): Promise<CreateSpotOutcome>;
   replacePhoto(args: ReplacePhotoArgs): Promise<ReplacePhotoOutcome>;
   /** Sticker créé et détail de ses points, au format de la réponse. */
@@ -171,6 +175,13 @@ async function handleReplacePhoto(body: unknown, userId: string, deps: PublishDe
     deps.log?.("replace_spot_photo a échoué", replaced);
     return fail("server_error", 500);
   }
+  // Nouvelle photo : la base a remis le cadrage au centre ; le nouveau point, s'il y en a un.
+  if (input.focus) {
+    await quietly(
+      deps.setFocus({ p_author: userId, p_spot_id: input.replaceSpotId, p_x: input.focus.x, p_y: input.focus.y }),
+      undefined,
+    );
+  }
   // Les anciens fichiers ne servent plus : supprimés sans bloquer la réponse.
   const old = [replaced.oldPhotoPath, replaced.oldThumbPath].filter((p): p is string => Boolean(p));
   await Promise.all(old.map((p) => quietly(deps.removePhoto(p), undefined)));
@@ -252,6 +263,14 @@ export async function handlePublishRequest(request: Request, deps: PublishDeps):
       if (known) return fail(known.code, known.status, created.message || MESSAGES[known.code]);
       deps.log?.("create_spot a échoué", created);
       return fail("server_error", 500);
+    }
+
+    // Cadrage de l'aperçu : facultatif, jamais bloquant (au pire, le centre).
+    if (input.focus) {
+      await quietly(
+        deps.setFocus({ p_author: userId, p_spot_id: created.id, p_x: input.focus.x, p_y: input.focus.y }),
+        undefined,
+      );
     }
 
     const { spot, lines } = await deps.loadSpot(created.id);

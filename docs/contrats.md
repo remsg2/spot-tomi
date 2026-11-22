@@ -315,6 +315,17 @@ génération de stickers de démo (utilisée plus tard pour 5 000 stickers).
 - `update_my_spot` (nom, commentaire, date, édition, position dans `edit_radius_m`,
   pendant `edit_window_days`) ; `my_spot_edit_info` ; `replace_spot_photo`.
 
+### Cadrage des photos (`20261203000000_cadrage.sql`)
+
+- `spots.focus_x`, `spots.focus_y` (0 à 1, les deux ou aucun) : point du sticker sur la
+  photo ; `object-position` des images recadrées. Remis à null quand la photo change.
+- `set_spot_focus(spot, x, y)` : l'auteur (sticker non masqué) ou un modérateur
+  (journalisé `spot.focus`) ; null, null : centre. `set_spot_focus_as(auteur, spot, x, y)` :
+  clé service, appelé par `publish-spot` (entrée `focus: { x, y }`, création comme
+  nouvelle photo), jamais bloquant.
+- Le point est renvoyé par `public_spots`, `nearby_spots`, `photo_feed`, `rarest_places`,
+  `admin_moderation_queue` et `admin_search_spots`.
+
 ### Comptes et modération
 
 - Plus de domicile. `record_admin_account_deletion(acteur, membre, motif)` puis

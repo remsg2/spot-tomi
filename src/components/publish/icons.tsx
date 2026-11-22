@@ -102,6 +102,11 @@ export const ShareIcon = (p: P) => (
     <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
   </Icon>
 );
+export const ExpandIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+  </Icon>
+);
 
 /** Indicateur d'activité ; immobile si l'utilisateur réduit les animations. */
 export function Spinner({ size = 18, className }: { size?: number; className?: string }) {

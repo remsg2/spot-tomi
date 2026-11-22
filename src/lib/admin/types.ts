@@ -43,6 +43,9 @@ export type ModerationItem = {
   rarity_override?: string | null;
   rarity_reason?: string | null;
   thumb_path?: string | null;
+  /** Point du sticker sur la photo (0 à 1), null : centre. */
+  focus_x?: number | null;
+  focus_y?: number | null;
 };
 
 /** Élément de la file, avec l'URL publique de sa photo (calculée côté serveur). */

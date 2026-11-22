@@ -4,18 +4,21 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition, type CSSProperties } from "react";
 import { useMapContext } from "@/components/map/map-provider";
 import { FlagIcon, PencilIcon, ShareIcon, TrashIcon } from "@/components/map/icons";
+import { FocusEditor } from "@/components/photo/focus-editor";
 import { PickerPane } from "@/components/publish/picker-pane";
 import { HapticTouch, PrimaryButton } from "@/components/ui";
 import { tm } from "@/i18n/map.fr";
+import { photoFr as tphoto } from "@/i18n/photo.fr";
 import { cn } from "@/lib/cn";
 import { reportClientError } from "@/lib/errors/report";
 import { haptic } from "@/lib/haptics";
+import type { PhotoFocus } from "@/lib/photo/focus";
 import { distanceMeters, type LatLng } from "@/lib/publish/geo";
 import type { EditionOption } from "@/lib/publish/pasted";
 import { ACCEPTED_PHOTO_TYPES } from "@/lib/publish/photo";
 import type { SpotEditInfo } from "@/lib/spots/server";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { deleteSpot, reportSpot, toggleLike, updateSpot, type SpotActionState } from "./actions";
+import { deleteSpot, reportSpot, setSpotFocus, toggleLike, updateSpot, type SpotActionState } from "./actions";
 
 /** Montre le sticker de la fiche sur la carte de droite (tablette et web). */
 export function SpotFocus({ id, lng, lat }: { id: string; lng: number | null; lat: number | null }) {
@@ -94,17 +97,20 @@ export function AuthorActions({
   info,
   editions,
   commentMax,
+  photo,
 }: {
   id: string;
   name: string;
   userId: string;
+  /** Photo publiée et son repère, pour recadrer l'aperçu (null : sticker masqué ou démo). */
+  photo: { url: string; focus: PhotoFocus | null } | null;
   /** Données de modification (rpc my_spot_edit_info) ; null : nom et commentaire seulement. */
   info: SpotEditInfo | null;
   editions: EditionOption[];
   commentMax: number;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
+  const [mode, setMode] = useState<"idle" | "edit" | "delete" | "focus">("idle");
   const [updateState, updateAction, updating] = useActionState(
     async (previous: SpotActionState, formData: FormData) => {
       const result = await updateSpot(previous, formData);
@@ -289,6 +295,20 @@ export function AuthorActions({
             </button>
           </div>
         </form>
+      ) : mode === "focus" && photo ? (
+        <div className="flex flex-col gap-2.5">
+          <h3 className="text-sm font-bold">{tphoto.focus.editTitle}</h3>
+          <p className="text-xs text-muted">{tphoto.focus.editIntro}</p>
+          <FocusEditor
+            key={photo.url}
+            src={photo.url}
+            initial={photo.focus}
+            save={(focus) => setSpotFocus(id, focus)}
+          />
+          <button type="button" onClick={() => setMode("idle")} className={cn(secondaryButton, "self-start")}>
+            {tm.spot.author.renameCancel}
+          </button>
+        </div>
       ) : mode === "delete" ? (
         <form action={deleteAction} className="flex flex-col gap-3">
           <input type="hidden" name="id" value={id} />
@@ -323,6 +343,11 @@ export function AuthorActions({
                 }}
               />
             </label>
+          )}
+          {photo && (
+            <button type="button" onClick={() => setMode("focus")} className={secondaryButton}>
+              {tphoto.focus.editTitle}
+            </button>
           )}
           <button type="button" onClick={() => setMode("delete")} className={secondaryButton}>
             <TrashIcon size={18} />

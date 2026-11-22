@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { tm } from "@/i18n/map.fr";
+import { photoFr as tp } from "@/i18n/photo.fr";
 import { getSessionUser } from "@/lib/auth/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -102,6 +103,28 @@ export async function toggleLike(id: string): Promise<{ ok: boolean; liked: bool
   }
   const result = data as { liked: boolean; count: number };
   return { ok: true, liked: result.liked, count: Number(result.count) };
+}
+
+const focusSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).nullable();
+
+/**
+ * Cadrage de l'aperçu (rpc set_spot_focus) : point du sticker sur la photo, ou null pour
+ * revenir au centre. L'auteur à tout moment, un modérateur aussi (journalisé).
+ */
+export async function setSpotFocus(id: string, focus: { x: number; y: number } | null): Promise<{ ok: boolean; message: string }> {
+  const spotId = idSchema.safeParse(id);
+  const point = focusSchema.safeParse(focus);
+  if (!spotId.success || !point.success) return { ok: false, message: tp.focus.error };
+  if (!(await getSessionUser())) return { ok: false, message: errors.notAllowed };
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.rpc("set_spot_focus", {
+    p_spot_id: spotId.data,
+    p_x: point.data?.x ?? null,
+    p_y: point.data?.y ?? null,
+  });
+  if (error) return { ok: false, message: error.code === "P0002" ? errors.notAllowed : tp.focus.error };
+  refresh();
+  return { ok: true, message: tp.focus.saved };
 }
 
 /** L'auteur supprime son sticker (et sa photo), puis revient à la carte. */

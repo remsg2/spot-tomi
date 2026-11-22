@@ -7,12 +7,17 @@ import { ta } from "@/i18n/admin.fr";
 import { requireStaff } from "@/lib/admin/auth";
 import { getModerationQueue, searchSpots } from "@/lib/admin/data";
 import { cn } from "@/lib/cn";
-import { moderateSpotAction, setExceptionalAction, setRarityAction } from "../actions";
+import { moderateSpotAction, setExceptionalAction, setFocusAction, setRarityAction } from "../actions";
 import { AdminSkeleton } from "../skeleton";
 
 export const metadata: Metadata = { title: ta.tabs.moderation };
 
-const actions = { moderate: moderateSpotAction, setExceptional: setExceptionalAction, setRarity: setRarityAction };
+const actions = {
+  moderate: moderateSpotAction,
+  setExceptional: setExceptionalAction,
+  setRarity: setRarityAction,
+  setFocus: setFocusAction,
+};
 
 /** Onglet Modération (modérateurs et admins) : file, masqués, recherche d'un sticker. */
 export default function ModerationPage({ searchParams }: PageProps<"/admin/moderation">) {

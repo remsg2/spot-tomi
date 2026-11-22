@@ -9,6 +9,7 @@ import { tm } from "@/i18n/map.fr";
 import { ts } from "@/i18n/stats.fr";
 import { getSessionUser } from "@/lib/auth/server";
 import { editionVisualUrl } from "@/lib/editions";
+import { focusPosition } from "@/lib/photo/focus";
 import { fetchFeed } from "@/lib/stats/queries";
 
 export const metadata: Metadata = { title: ts.feed.title, description: ts.feed.metaDescription };
@@ -78,6 +79,7 @@ async function FeedContent({ searchParams }: Pick<PageProps<"/fil">, "searchPara
                     width={480}
                     height={360}
                     className="h-full w-full object-cover"
+                    style={{ objectPosition: focusPosition(item.focus) }}
                   />
                 )}
                 <span className="absolute top-3 left-3 rounded-[6px] bg-year px-2 py-1 text-[11px] font-extrabold text-on-year">
