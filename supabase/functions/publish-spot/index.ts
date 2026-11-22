@@ -116,6 +116,11 @@ const deps: PublishDeps = {
     return { id: data as string };
   },
 
+  async setFocus(args) {
+    const { error } = await admin.rpc("set_spot_focus_as", args);
+    if (error) throw new Error(`set_spot_focus_as : ${error.message}`);
+  },
+
   async replacePhoto(args) {
     const { data, error } = await admin.rpc("replace_spot_photo", args);
     if (error) return { sqlCode: error.code ?? "", message: error.message ?? "" };

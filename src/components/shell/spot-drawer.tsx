@@ -75,7 +75,9 @@ export function SpotDrawer({ wide, children }: { wide: boolean; children: ReactN
   useEffect(() => {
     if (wide) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      // Échap ferme d'abord la fenêtre ouverte par-dessus (visionneuse photo), pas la fiche.
+      if (event.key !== "Escape" || event.defaultPrevented || document.querySelector("dialog[open]")) return;
+      close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

@@ -120,6 +120,7 @@ test("connecté : estimation, envoi Storage puis publish-spot, sans jamais envoy
     comment: null,
     thumbPath: path.replace(/\.webp$/, ".thumb.webp"),
     photoHash: expect.stringMatching(/^-?\d{1,20}$/),
+    focus: null,
   });
 
   // Rien de la photo d'origine (JPEG, EXIF, GPS, XMP, ICC) n'a quitté le navigateur.

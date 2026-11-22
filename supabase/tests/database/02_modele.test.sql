@@ -152,7 +152,8 @@ select columns_are('public', 'public_spots', array[
   'id', 'author_id', 'author_username', 'author_avatar_path', 'name', 'lat', 'lng', 'altitude_m',
   'taken_at', 'year', 'color_hex', 'country_iso2', 'country_name_fr', 'country_tier', 'city',
   'photo_path', 'is_exceptional', 'is_first_in_country', 'points_total', 'created_at',
-  'comment', 'base_points', 'rarity_bonus', 'rarity_category', 'rarity_reason', 'edition_name', 'thumb_path'
+  'comment', 'base_points', 'rarity_bonus', 'rarity_category', 'rarity_reason', 'edition_name', 'thumb_path',
+  'focus_x', 'focus_y'
 ], 'public_spots a exactement les colonnes du contrat');
 select hasnt_column('public', 'public_spots', 'location', 'public_spots ne contient jamais location');
 select hasnt_column('public', 'public_spots', 'public_location', 'public_spots expose lat/lng, pas la géographie');

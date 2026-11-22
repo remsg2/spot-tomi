@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { ts } from "@/i18n/stats.fr";
 import { cn } from "@/lib/cn";
+import { focusPosition } from "@/lib/photo/focus";
 import type { ContinentFirst, RarePlace, RecordKey, WorldRecord, WorldStats } from "@/lib/stats/queries";
 
 /** Ordre d'affichage des records ; un record absent affiche « Donnée indisponible ». */
@@ -172,7 +173,15 @@ export function RarePlaceList({ places }: { places: RarePlace[] }) {
             <span className="w-5 shrink-0 text-center text-sm font-bold text-muted">{index + 1}</span>
             {place.thumbUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={place.thumbUrl} alt="" width={44} height={44} loading="lazy" className="size-11 rounded-[10px] object-cover" />
+              <img
+                src={place.thumbUrl}
+                alt=""
+                width={44}
+                height={44}
+                loading="lazy"
+                className="size-11 rounded-[10px] object-cover"
+                style={{ objectPosition: focusPosition(place.focus) }}
+              />
             ) : (
               <span aria-hidden="true" className="size-11 shrink-0 rounded-[10px] bg-year" />
             )}

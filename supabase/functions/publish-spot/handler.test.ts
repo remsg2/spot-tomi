@@ -50,6 +50,7 @@ function deps(overrides: Partial<PublishDeps> = {}): PublishDeps & Record<string
     elevation: vi.fn(async () => 812.4),
     createSpot: vi.fn(async () => ({ id: SPOT })),
     replacePhoto: vi.fn(async () => ({ oldPhotoPath: "ancienne.webp", oldThumbPath: null })),
+    setFocus: vi.fn(async () => {}),
     loadSpot: vi.fn(async () => loaded),
     currentRank: vi.fn(async () => ranks.shift() ?? null),
     refreshLeaderboard: vi.fn(async () => {}),
@@ -106,6 +107,24 @@ describe("publish-spot", () => {
     expect(d.elevation).not.toHaveBeenCalled();
     expect(d.refreshLeaderboard).toHaveBeenCalledTimes(1);
     expect(d.removePhoto).not.toHaveBeenCalled();
+    // Sans point de cadrage : rien à enregistrer (centre).
+    expect(d.setFocus).not.toHaveBeenCalled();
+  });
+
+  it("cadrage : le point touché sur la photo est enregistré après la création, sans jamais bloquer", async () => {
+    const d = deps();
+    const response = await handlePublishRequest(post({ ...body, focus: { x: 0.25, y: 0.8 } }), d);
+    expect(response.status).toBe(200);
+    expect(d.setFocus).toHaveBeenCalledWith({ p_author: USER, p_spot_id: SPOT, p_x: 0.25, p_y: 0.8 });
+
+    // Un échec du cadrage ne fait pas échouer la publication.
+    const failing = deps({ setFocus: vi.fn(async () => Promise.reject(new Error("panne"))) });
+    expect((await handlePublishRequest(post({ ...body, focus: { x: 0.5, y: 0.5 } }), failing)).status).toBe(200);
+
+    // Point hors de la photo : entrée refusée.
+    const refused = deps();
+    expect((await handlePublishRequest(post({ ...body, focus: { x: 1.4, y: 0.5 } }), refused)).status).toBe(400);
+    expect(refused.createSpot).not.toHaveBeenCalled();
   });
 
   it("transmet l'édition, la date saisie, le commentaire, la miniature, l'empreinte et le site touristique", async () => {
@@ -171,6 +190,12 @@ describe("publish-spot", () => {
     });
     expect(d.removePhoto).toHaveBeenCalledWith("ancienne.webp");
     expect(d.createSpot).not.toHaveBeenCalled();
+    expect(d.setFocus).not.toHaveBeenCalled();
+
+    // Avec le point du sticker sur la nouvelle photo.
+    const framed = deps();
+    await handlePublishRequest(post({ replaceSpotId: SPOT, photoPath: PATH, focus: { x: 0.1, y: 0.9 } }), framed);
+    expect(framed.setFocus).toHaveBeenCalledWith({ p_author: USER, p_spot_id: SPOT, p_x: 0.1, p_y: 0.9 });
 
     const late = deps({ replacePhoto: vi.fn(async () => ({ sqlCode: "ST007", message: "Délai dépassé." })) });
     const refused = await handlePublishRequest(post({ replaceSpotId: SPOT, photoPath: PATH }), late);

@@ -35,6 +35,11 @@ export async function previewExceptionalAction(): Promise<ActionResult> {
   return { ok: true, message: "Simulation : site remarquable" };
 }
 
+export async function previewFocusAction(_spotId: string, focus: { x: number; y: number } | null): Promise<ActionResult> {
+  if (!(await devOnly())) return { ok: false, message: ta.errors.forbidden };
+  return { ok: true, message: focus ? `Simulation : cadrage ${focus.x}, ${focus.y}` : "Simulation : cadrage au centre" };
+}
+
 export async function previewRarityAction(form: FormData): Promise<ActionResult> {
   if (!(await devOnly())) return { ok: false, message: ta.errors.forbidden };
   const parsed = parseRarityForm(form);

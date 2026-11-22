@@ -1,9 +1,12 @@
 "use client";
 
 import { useId } from "react";
+import { FocusEditor } from "@/components/photo/focus-editor";
 import { ta } from "@/i18n/admin.fr";
+import { photoFr } from "@/i18n/photo.fr";
 import type { ActionResult, ModerationEntry } from "@/lib/admin/types";
 import { cn } from "@/lib/cn";
+import { focusPosition, toFocus } from "@/lib/photo/focus";
 import { ActionMessage } from "./action-message";
 import { ConfirmAction } from "./confirm-action";
 import {
@@ -22,6 +25,8 @@ export type ModerationActions = {
   moderate: (form: FormData) => Promise<ActionResult>;
   setExceptional: (form: FormData) => Promise<ActionResult>;
   setRarity?: (form: FormData) => Promise<ActionResult>;
+  /** Recadrage de l'aperçu (point du sticker sur la photo). */
+  setFocus?: (spotId: string, focus: { x: number; y: number } | null) => Promise<ActionResult>;
 };
 
 const CATEGORIES = ["courant", "touristique", "remarquable", "isole", "tres_rare"] as const;
@@ -70,6 +75,7 @@ export function ModerationCard({
   const moved =
     Math.abs(entry.lat - entry.public_lat) > 1e-7 || Math.abs(entry.lng - entry.public_lng) > 1e-7;
   const canValidate = entry.status !== "published" || entry.report_count > 0 || Boolean(entry.needs_review);
+  const focus = toFocus(entry.focus_x, entry.focus_y);
 
   async function moderate(form: FormData) {
     onResult(entry.id, await actions.moderate(form));
@@ -89,7 +95,13 @@ export function ModerationCard({
             // Photo servie par Supabase Storage, dont l'hôte n'est connu qu'au runtime :
             // next/image demanderait de le déclarer au build (remotePatterns).
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={entry.photo_url} alt="" loading="lazy" className="size-full object-cover" />
+            <img
+              src={entry.photo_url}
+              alt=""
+              loading="lazy"
+              className="size-full object-cover"
+              style={{ objectPosition: focusPosition(focus) }}
+            />
           ) : (
             <span
               aria-hidden="true"
@@ -163,7 +175,21 @@ export function ModerationCard({
           {ta.moderation.details}
         </summary>
         <div className="flex flex-col gap-3 border-t border-line p-3 text-sm">
-          {entry.photo_url ? (
+          {entry.photo_url && actions.setFocus ? (
+            // Photo entière : le modérateur peut aussi corriger le repère du sticker.
+            <FocusEditor
+              key={`${entry.photo_url}-${entry.focus_x ?? ""}-${entry.focus_y ?? ""}`}
+              src={entry.photo_url}
+              initial={focus}
+              title={photoFr.focus.titleOther}
+              buttonClassName="border border-line bg-card text-text"
+              save={async (next) => {
+                const outcome = await actions.setFocus!(entry.id, next);
+                onResult(entry.id, outcome);
+                return outcome;
+              }}
+            />
+          ) : entry.photo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={entry.photo_url}

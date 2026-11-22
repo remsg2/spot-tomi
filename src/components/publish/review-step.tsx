@@ -10,8 +10,10 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import { FocusPicker } from "@/components/photo/focus-picker";
 import { formatCoordinates, tp, type PublishErrorKey } from "@/i18n/publish.fr";
 import { cn } from "@/lib/cn";
+import type { PhotoFocus } from "@/lib/photo/focus";
 import type { PreparedPhoto } from "@/lib/publish/browser-image";
 import { PLACE_NAME_MAX } from "@/lib/publish/contract";
 import { isAppleMobile } from "@/lib/publish/device-position";
@@ -57,6 +59,9 @@ type Props = {
   onEditionChange: (year: number) => void;
   /** Position placée à la main : publié, puis vérifié par un modérateur. */
   needsReview: boolean;
+  /** Point du sticker sur la photo (null : centre). */
+  focus: PhotoFocus | null;
+  onFocusChange: (focus: PhotoFocus | null) => void;
   comment: string;
   commentMax: number;
   onCommentChange: (value: string) => void;
@@ -191,18 +196,21 @@ export function ReviewStep(props: Props) {
           {tp.review.checksLabel}
         </h2>
 
-        <div className="relative h-[200px] shrink-0 overflow-hidden rounded-[20px] bg-soft">
-          {/* Aperçu local (blob:), jamais envoyé tel quel : next/image n'apporte rien ici. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo.previewUrl} alt={tp.review.photoAlt} className="size-full object-cover" />
-          <button
-            type="button"
-            onClick={props.onChangePhoto}
-            className="absolute bottom-3 left-3 h-[34px] rounded-full bg-black/60 px-3 text-xs font-semibold text-white after:absolute after:-inset-[5px] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            {tp.review.changePhoto}
-          </button>
-        </div>
+        {/* Photo entière (aperçu local blob:, jamais envoyé tel quel) : toucher le sticker. */}
+        <FocusPicker
+          src={photo.previewUrl}
+          value={props.focus}
+          onChange={props.onFocusChange}
+          overlay={
+            <button
+              type="button"
+              onClick={props.onChangePhoto}
+              className="absolute bottom-3 left-3 h-[34px] rounded-full bg-black/60 px-3 text-xs font-semibold text-white after:absolute after:-inset-[5px] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              {tp.review.changePhoto}
+            </button>
+          }
+        />
 
         <div className="flex flex-col rounded-[20px] border border-line bg-card px-3.5 py-1.5 lg:bg-bg">
           <ul aria-label={tp.review.checksLabel}>

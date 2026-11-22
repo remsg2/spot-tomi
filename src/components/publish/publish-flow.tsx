@@ -14,8 +14,9 @@ import {
   type GpsSource,
   type PublishResult,
 } from "@/lib/publish/contract";
-import { haptic } from "@/lib/haptics";
 import { reportClientError } from "@/lib/errors/report";
+import { haptic } from "@/lib/haptics";
+import type { PhotoFocus } from "@/lib/photo/focus";
 import { isFreshPhoto, readDevicePosition, type PhotoOrigin } from "@/lib/publish/device-position";
 import type { LatLng } from "@/lib/publish/geo";
 import {
@@ -87,6 +88,8 @@ export function PublishFlow({
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<NameError | null>(null);
   const [comment, setComment] = useState("");
+  // Point du sticker sur la photo (facultatif) : centre l'aperçu recadré.
+  const [focus, setFocus] = useState<PhotoFocus | null>(null);
   /** Date du collage (jour local), préremplie par la photo ou le jour même. */
   const [pastedOn, setPastedOn] = useState("");
   const [edition, setEdition] = useState<number | null>(null);
@@ -186,6 +189,7 @@ export function PublishFlow({
       previewUrl.current = next.previewUrl;
       prepared.current = { blob: null, path: null, thumbPath: null, hash: undefined };
       setPhoto(next);
+      setFocus(null);
       setFresh(isFresh);
       setPastedOn(nextPastedOn);
       setEdition(nextEdition);
@@ -287,6 +291,7 @@ export function PublishFlow({
         comment: comment.trim() || null,
         thumbPath: prepared.current.thumbPath,
         photoHash: prepared.current.hash ?? null,
+        focus,
       });
       haptic("success");
       setStep({ kind: "done", result });
@@ -337,6 +342,7 @@ export function PublishFlow({
     setName("");
     setNameError(null);
     setComment("");
+    setFocus(null);
     setEditionChosen(false);
     setShowDateError(false);
     setEstimate({ kind: "waiting" });
@@ -364,6 +370,8 @@ export function PublishFlow({
           edition={edition}
           onEditionChange={handleEditionChange}
           needsReview={review}
+          focus={focus}
+          onFocusChange={setFocus}
           comment={comment}
           commentMax={commentMax}
           onCommentChange={setComment}

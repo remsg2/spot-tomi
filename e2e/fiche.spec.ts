@@ -59,6 +59,51 @@ test("stickers les plus proches (50 km), avec la distance, de part et d'autre de
   await expect(sheet(page).getByTestId("nearby-spots")).toHaveCount(0);
 });
 
+test("photo centrée sur le sticker, et visible en entier dans la visionneuse", async ({ page, isMobile }) => {
+  await page.goto(`/spots/${USHUAIA_ID}`);
+  const photo = sheet(page).getByRole("img", { name: "Photo du sticker collé à Ushuaïa" });
+  // Repère touché par l'auteur (30 %, 25 %) : l'aperçu recadré reste sur le sticker.
+  await expect(photo).toHaveCSS("object-position", "30% 25%");
+
+  const open = sheet(page).getByRole("button", { name: "Voir la photo en entier" });
+  await open.click();
+  const viewer = page.getByTestId("photo-viewer");
+  await expect(viewer).toBeVisible();
+  const full = viewer.getByRole("img", { name: "Photo du sticker collé à Ushuaïa" });
+  await expect(full).toHaveCSS("object-fit", "contain");
+  // Le bouton n'a pas fait bouger le tiroir (mobile).
+  if (isMobile) await expect(page.getByRole("button", { name: "Agrandir la fiche" })).toBeVisible();
+
+  // Zoom (bouton, puis double clic pour revenir), puis Échap ferme la visionneuse.
+  await viewer.getByRole("button", { name: "Zoomer" }).click();
+  await expect(full).toHaveCSS("transform", /matrix\(2\.5, 0, 0, 2\.5/);
+  await viewer.getByRole("button", { name: "Dézoomer" }).click();
+  await expect(full).toHaveCSS("transform", /matrix\(1, 0, 0, 1/);
+  await full.dblclick();
+  await expect(full).toHaveCSS("transform", /matrix\(2\.5, 0, 0, 2\.5/);
+  await page.keyboard.press("Escape");
+  await expect(viewer).toHaveCount(0);
+  await expect(open).toBeFocused();
+
+  // En web, cliquer la photo l'ouvre aussi ; la croix la ferme.
+  if (!isMobile) {
+    await photo.click({ force: true });
+    await expect(viewer).toBeVisible();
+    await viewer.getByRole("button", { name: "Fermer la photo" }).click();
+    await expect(viewer).toHaveCount(0);
+
+    // Glisser vers le bas sans zoom : fermer.
+    await open.click();
+    await expect(viewer).toBeVisible();
+    await page.mouse.move(640, 300);
+    await page.mouse.down();
+    await page.mouse.move(640, 380, { steps: 4 });
+    await page.mouse.move(640, 480, { steps: 4 });
+    await page.mouse.up();
+    await expect(viewer).toHaveCount(0);
+  }
+});
+
 test("lieu exceptionnel : badge doré avec l'altitude", async ({ page }) => {
   await page.goto(`/spots/${MONT_BLANC_ID}`);
   await expect(page.getByRole("heading", { level: 1, name: "Mont Blanc" })).toBeVisible();

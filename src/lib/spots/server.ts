@@ -3,6 +3,7 @@ import { cache } from "react";
 import { getMyProfile, getSessionUser, type Profile, type SessionUser } from "@/lib/auth/server";
 import { getPublicEnv } from "@/lib/env/server";
 import { editionVisualUrl } from "@/lib/editions";
+import { toFocus, type PhotoFocus } from "@/lib/photo/focus";
 import { publicStorageUrl } from "@/lib/map/data";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { toPointLines, type SpotPointLineRow } from "./lines";
@@ -36,6 +37,8 @@ export type SpotPageData = {
   editionVisualUrl: string | null;
   rarityCategory: string | null;
   rarityReason: string | null;
+  /** Point du sticker sur la photo : centre l'aperçu recadré. */
+  focus: PhotoFocus | null;
 };
 
 /** Sticker proche, sur la fiche (rpc nearby_spots). */
@@ -49,6 +52,7 @@ export type NearbySpot = {
   points: number;
   thumbUrl: string | null;
   distanceM: number;
+  focus: PhotoFocus | null;
 };
 
 /** Formulaire de modification de l'auteur (rpc my_spot_edit_info). */
@@ -128,6 +132,8 @@ type PublicSpotRow = {
   edition_name: string;
   rarity_category: string | null;
   rarity_reason: string | null;
+  focus_x: number | null;
+  focus_y: number | null;
 };
 
 type OwnSpotRow = {
@@ -146,6 +152,8 @@ type OwnSpotRow = {
   comment: string | null;
   rarity_category: string | null;
   rarity_reason: string | null;
+  focus_x: number | null;
+  focus_y: number | null;
   country: { name_fr: string; tier: string } | null;
 };
 
@@ -163,7 +171,7 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
     supabase
       .from("public_spots")
       .select(
-        "id, author_id, author_username, author_avatar_path, name, lat, lng, altitude_m, taken_at, year, color_hex, country_name_fr, country_tier, city, photo_path, is_exceptional, is_first_in_country, points_total, comment, edition_name, rarity_category, rarity_reason",
+        "id, author_id, author_username, author_avatar_path, name, lat, lng, altitude_m, taken_at, year, color_hex, country_name_fr, country_tier, city, photo_path, is_exceptional, is_first_in_country, points_total, comment, edition_name, rarity_category, rarity_reason, focus_x, focus_y",
       )
       .eq("id", id)
       .maybeSingle<PublicSpotRow>(),
@@ -205,6 +213,7 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
       editionVisualUrl: editionVisualUrl(spot.year, null, null),
       rarityCategory: spot.rarity_category,
       rarityReason: spot.rarity_reason,
+      focus: toFocus(spot.focus_x, spot.focus_y),
     };
   }
 
@@ -214,7 +223,7 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
   const { data: own } = await supabase
     .from("spots")
     .select(
-      "id, author_id, name, altitude_m, taken_at, year, city, photo_path, status, is_exceptional, is_first_in_country, points_total, comment, rarity_category, rarity_reason, country:countries(name_fr, tier)",
+      "id, author_id, name, altitude_m, taken_at, year, city, photo_path, status, is_exceptional, is_first_in_country, points_total, comment, rarity_category, rarity_reason, focus_x, focus_y, country:countries(name_fr, tier)",
     )
     .eq("id", id)
     .maybeSingle<OwnSpotRow>();
@@ -256,6 +265,7 @@ export const getSpotPageData = cache(async (id: string): Promise<SpotPageData | 
     editionVisualUrl: editionVisualUrl(own.year, null, null),
     rarityCategory: own.rarity_category,
     rarityReason: own.rarity_reason,
+    focus: toFocus(own.focus_x, own.focus_y),
   };
 });
 
@@ -275,6 +285,8 @@ export async function getNearbySpots(id: string, limit = 6): Promise<NearbySpot[
       points_total: number;
       thumb_path: string | null;
       distance_m: number;
+      focus_x: number | null;
+      focus_y: number | null;
     }>).map((row) => ({
       id: row.id,
       name: row.name,
@@ -285,6 +297,7 @@ export async function getNearbySpots(id: string, limit = 6): Promise<NearbySpot[
       points: row.points_total,
       thumbUrl: row.thumb_path ? publicStorageUrl(supabaseUrl, "spot-photos", row.thumb_path) : null,
       distanceM: row.distance_m,
+      focus: toFocus(row.focus_x, row.focus_y),
     }));
   } catch {
     return [];

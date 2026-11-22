@@ -1,5 +1,6 @@
 import "server-only";
 import { getPublicEnv } from "@/lib/env/server";
+import { toFocus, type PhotoFocus } from "@/lib/photo/focus";
 import { publicStorageUrl } from "@/lib/storage";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -61,6 +62,7 @@ export type RarePlace = {
   points: number;
   username: string;
   thumbUrl: string | null;
+  focus: PhotoFocus | null;
 };
 
 export type MemberStats = {
@@ -193,6 +195,8 @@ export async function fetchRarestPlaces(limit = 10): Promise<RarePlace[]> {
       points_total: number;
       author_username: string;
       thumb_path: string | null;
+      focus_x: number | null;
+      focus_y: number | null;
     }>
   >("rarest_places", { p_limit: limit });
   if (!rows) return [];
@@ -209,6 +213,7 @@ export async function fetchRarestPlaces(limit = 10): Promise<RarePlace[]> {
     points: row.points_total,
     username: row.author_username,
     thumbUrl: row.thumb_path ? publicStorageUrl(supabaseUrl, "spot-photos", row.thumb_path) : null,
+    focus: toFocus(row.focus_x, row.focus_y),
   }));
 }
 
@@ -318,6 +323,8 @@ export type FeedItem = {
   comment: string | null;
   likeCount: number;
   liked: boolean;
+  /** Point du sticker sur la photo : centre la vignette. */
+  focus: PhotoFocus | null;
 };
 
 /** Fil photo : derniers stickers publiés (pagination par date de publication). */
@@ -341,6 +348,8 @@ export async function fetchFeed(before: string | null, limit = 20): Promise<Feed
       comment: string | null;
       like_count: number;
       liked: boolean;
+      focus_x: number | null;
+      focus_y: number | null;
     }>
   >("photo_feed", { p_before: before, p_limit: limit });
   if (!rows) return null;
@@ -363,6 +372,7 @@ export async function fetchFeed(before: string | null, limit = 20): Promise<Feed
     comment: row.comment,
     likeCount: row.like_count,
     liked: row.liked,
+    focus: toFocus(row.focus_x, row.focus_y),
   }));
 }
 

@@ -69,6 +69,15 @@ export const dateSourceSchema = z.enum(["exif", "device", "manual", "upload"]);
 
 /** Empreinte dHash 64 bits, en texte (un bigint dépasse la précision d'un nombre JSON). */
 export const photoHashSchema = z.string().regex(/^-?\d{1,20}$/);
+/**
+ * Point du sticker sur la photo (0 à 1 depuis le coin haut-gauche), touché par le membre :
+ * centre l'aperçu recadré (fiche, fil photo, miniatures). Absent : le centre.
+ */
+export const focusSchema = z
+  .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
+  .nullish()
+  .transform((value) => value ?? null);
+export type PhotoFocus = { x: number; y: number };
 export type GpsSource = z.infer<typeof gpsSourceSchema>;
 export type DateSource = z.infer<typeof dateSourceSchema>;
 
@@ -92,6 +101,7 @@ export const publishInputSchema = z
       .transform((value) => value?.replace(/[ \t]+/g, " ").trim() || null),
     thumbPath: z.string().regex(THUMB_PATH_PATTERN).nullish().transform((value) => value ?? null),
     photoHash: photoHashSchema.nullish().transform((value) => value ?? null),
+    focus: focusSchema,
   })
   .refine((input) => !["exif", "manual"].includes(input.dateSource) || input.takenAt !== null, {
     error: "taken_at_required",
@@ -109,6 +119,7 @@ export const replacePhotoSchema = z
     photoPath: z.string().regex(PHOTO_PATH_PATTERN),
     thumbPath: z.string().regex(THUMB_PATH_PATTERN).nullish().transform((value) => value ?? null),
     photoHash: photoHashSchema.nullish().transform((value) => value ?? null),
+    focus: focusSchema,
   })
   .refine((input) => input.thumbPath === null || input.thumbPath === thumbPathFor(input.photoPath), {
     error: "thumb_mismatch",

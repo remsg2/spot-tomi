@@ -7,7 +7,13 @@ import { SeasonEditor } from "@/components/admin/season-editor";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import type { ModerationEntry } from "@/lib/admin/types";
 import { getPublicEnvResult } from "@/lib/env/server";
-import { previewExceptionalAction, previewModerationAction, previewRarityAction, previewSeasonAction } from "./actions";
+import {
+  previewExceptionalAction,
+  previewFocusAction,
+  previewModerationAction,
+  previewRarityAction,
+  previewSeasonAction,
+} from "./actions";
 
 /*
  * Partie client de l'admin isolée, réservée au développement (absente en
@@ -63,6 +69,10 @@ const QUEUE: ModerationEntry[] = [
     id: "00000000-0000-4000-8000-000000000002",
     name: "Fourvière",
     author_username: "Bea",
+    // Image locale en guise de photo : de quoi essayer le recadrage.
+    photo_url: "/editions/2026.webp",
+    focus_x: 0.3,
+    focus_y: 0.7,
     city: "Lyon",
     status: "published",
     gps_source: "exif",
@@ -101,7 +111,12 @@ export default function DevAdminPage() {
             <ModerationList
               entries={QUEUE}
               empty="Rien à modérer."
-              actions={{ moderate: previewModerationAction, setExceptional: previewExceptionalAction, setRarity: previewRarityAction }}
+              actions={{
+                moderate: previewModerationAction,
+                setExceptional: previewExceptionalAction,
+                setRarity: previewRarityAction,
+                setFocus: previewFocusAction,
+              }}
             />
           </section>
         </main>
