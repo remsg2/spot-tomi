@@ -73,22 +73,25 @@ export const fr = {
     or: "ou",
     email: "Adresse email",
     emailPlaceholder: "toi@exemple.fr",
-    sendMagicLink: "Recevoir un lien de connexion",
-    magicLinkSent: (email: string) =>
-      `C'est parti : un lien de connexion vient d'être envoyé à ${email}. Ouvre-le dans ce même navigateur.`,
-    installedApp:
-      "Dans l'app installée sur l'écran d'accueil, le lien reçu par email s'ouvre dans Safari et ne te connecte pas ici : utilise ton mot de passe.",
+    sendCode: "Recevoir un code par email",
+    codeSent: (email: string) =>
+      `C'est parti : un code à 6 chiffres vient d'être envoyé à ${email}. Tape-le ici (pense à regarder dans les spams).`,
+    code: "Code reçu par email",
+    codeHint: "6 chiffres, valable 1 heure",
+    codeInvalid: "Le code fait 6 chiffres.",
+    verifyCode: "Valider le code",
+    resendCode: "Renvoyer un code",
+    changeEmail: "Changer d'adresse",
     usePassword: "Utiliser un mot de passe",
-    useMagicLink: "Utiliser un lien par email",
+    useCode: "Recevoir un code par email",
     password: "Mot de passe",
     passwordHint: "8 caractères minimum",
     signIn: "Se connecter",
     signUp: "Créer un compte",
     signUpSent: (email: string) =>
       `Compte créé. Confirme ton adresse avec le lien envoyé à ${email}.`,
-    forgotPassword: "Mot de passe oublié ? Reçois un lien de connexion, puis change-le dans tes réglages.",
-    forgotPasswordInstalled:
-      "Mot de passe oublié ? Ouvre Spot Tomi dans Safari, reçois un lien de connexion, puis change ton mot de passe dans tes réglages.",
+    forgotPassword:
+      "Mot de passe oublié ? Reçois un code par email pour te connecter, puis change ton mot de passe dans tes réglages.",
     signOut: "Se déconnecter",
     loginCta: "Se connecter",
     myProfile: "Mon profil",
@@ -104,6 +107,7 @@ export const fr = {
         "L'envoi d'emails est limité pour le moment. Connecte-toi, ou crée ton compte, avec un mot de passe : aucun email n'est nécessaire.",
       over_request_rate_limit: "Trop de tentatives. Réessaie dans quelques minutes.",
       email_address_invalid: "Cette adresse email n'est pas valide.",
+      otp_expired: "Code incorrect ou expiré. Vérifie-le, ou demande un nouveau code.",
       signup_disabled: "Les inscriptions sont fermées pour le moment.",
       default: "Une erreur est survenue. Réessaie.",
     },
