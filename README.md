@@ -119,7 +119,12 @@ En production, la démo est **publique** (carte et classement).
 
 ## Comptes (Supabase Auth)
 
-- Connexion par **lien magique** ou **mot de passe** (`/login`). Google et Apple sont prêts
+- Connexion par **mot de passe** ou par **code à 6 chiffres reçu par email** (`/login`). Le
+  code se tape dans la page qui l'a demandé : il marche aussi dans l'app installée sur
+  iPhone, dont le stockage est séparé de Safari (où s'ouvrent les liens des emails).
+  L'email contient aussi un lien de secours. Modèle : `supabase/templates/code.html`,
+  appliqué avec `supabase/auth.json` à dev et prod à chaque déploiement
+  (`scripts/supabase-auth-config.sh`). Google et Apple sont prêts
   mais désactivés : les ajouter à `ENABLED_OAUTH_PROVIDERS` (`src/lib/auth/providers.ts`)
   après les avoir configurés dans Supabase (tableau ci-dessous). Tous
   les retours passent par `/auth/callback`, qui envoie vers `/welcome` tant que le pseudo

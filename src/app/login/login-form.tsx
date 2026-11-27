@@ -22,11 +22,11 @@ const PROVIDER_ICONS: Record<OAuthProvider, ReactNode> = {
 };
 
 type Status = { kind: "idle" } | { kind: "pending" } | { kind: "error" | "info"; message: string };
-type Mode = "magic" | "password";
+type Mode = "code" | "password";
 
 /**
  * Mode de connexion : le mot de passe par défaut (aucun email nécessaire, et le
- * navigateur remplit email et mot de passe), le lien par email en option. Le
+ * navigateur remplit email et mot de passe), le code reçu par email en option. Le
  * dernier mode choisi est gardé sur l'appareil.
  */
 const MODE_KEY = "spot-tomi:connexion";
@@ -35,7 +35,9 @@ const DEFAULT_MODE: Mode = "password";
 function readStoredMode(): Mode | null {
   try {
     const value = window.localStorage.getItem(MODE_KEY);
-    return value === "password" || value === "magic" ? value : null;
+    if (value === "password" || value === "code") return value;
+    // Ancien nom du mode par email (lien magique), remplacé par le code.
+    return value === "magic" ? "code" : null;
   } catch {
     return null;
   }
@@ -45,20 +47,14 @@ function storeMode(mode: Mode) {
   try {
     window.localStorage.setItem(MODE_KEY, mode);
   } catch {
-    // Stockage indisponible (navigation privée) : on garde le lien magique par défaut.
+    // Stockage indisponible (navigation privée) : on garde le mode par défaut.
   }
 }
 
 const noSubscription = () => () => {};
 
-/**
- * App installée sur l'écran d'accueil d'un iPhone ou d'un iPad : son stockage
- * (cookies) est séparé de Safari, où s'ouvrent les liens des emails. Le lien
- * magique (PKCE) ne peut donc pas la connecter : le mot de passe passe en premier.
- */
-function isIosInstalledApp(): boolean {
-  return (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-}
+/** Code à usage unique envoyé par email (otp_length, supabase/auth.json). */
+const CODE_LENGTH = 6;
 
 const input =
   "min-h-12 w-full rounded-[14px] border border-line bg-card px-4 text-base text-text placeholder:text-muted focus:outline-3 focus:outline-offset-1 focus:outline-text";
@@ -66,17 +62,29 @@ const secondary =
   "flex min-h-12 w-full items-center justify-center gap-3 rounded-[14px] border border-line bg-card px-4 text-[15px] font-semibold text-text shadow-card disabled:opacity-50";
 
 /**
- * Connexion : lien magique ou mot de passe, et Google / Apple quand ils sont
+ * Connexion : code reçu par email ou mot de passe, et Google / Apple quand ils sont
  * activés dans src/lib/auth/providers.ts (Supabase Auth).
+ *
+ * Le code se tape dans la page qui l'a demandé : il marche aussi dans l'app
+ * installée sur l'écran d'accueil d'un iPhone, dont le stockage est séparé de
+ * Safari (où s'ouvrent les liens des emails). L'email garde un lien, pour qui
+ * l'ouvre dans le même navigateur.
  * Tous les retours passent par /auth/callback, qui vérifie le pseudo.
  */
 export function LoginForm({ next }: { next: string }) {
   const storedMode = useSyncExternalStore(noSubscription, readStoredMode, () => null);
   const [chosenMode, setMode] = useState<Mode | null>(null);
-  const installedApp = useSyncExternalStore(noSubscription, isIosInstalledApp, () => false);
   const mode: Mode = chosenMode ?? storedMode ?? DEFAULT_MODE;
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  /** Adresse à laquelle le code a été envoyé : la page attend alors le code. */
+  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
   const pending = status.kind === "pending";
+
+  function goToCallback() {
+    // Passe par le callback (route serveur, donc rechargement complet) pour vérifier le pseudo.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign(`/auth/callback?next=${encodeURIComponent(next)}`);
+  }
 
   function callbackUrl() {
     return `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
@@ -91,7 +99,43 @@ export function LoginForm({ next }: { next: string }) {
     if (error) setStatus({ kind: "error", message: authErrorMessage(error) });
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>, action: "magic" | "signIn" | "signUp") {
+  async function sendCode(email: string) {
+    setStatus({ kind: "pending" });
+    const { error } = await getSupabaseBrowserClient().auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: callbackUrl() },
+    });
+    if (error) {
+      if (error.code === "over_email_send_rate_limit") {
+        // Envoi d'emails limité : le mot de passe n'en a pas besoin.
+        setMode("password");
+        setCodeSentTo(null);
+      }
+      setStatus({ kind: "error", message: authErrorMessage(error) });
+      return;
+    }
+    setCodeSentTo(email);
+    setStatus({ kind: "info", message: t.auth.codeSent(email) });
+  }
+
+  async function verifyCode(event: FormEvent<HTMLFormElement>, email: string) {
+    event.preventDefault();
+    const token = String(new FormData(event.currentTarget).get("code") ?? "").replace(/\s/g, "");
+    if (!new RegExp(`^\\d{${CODE_LENGTH}}$`).test(token)) {
+      setStatus({ kind: "error", message: t.auth.codeInvalid });
+      return;
+    }
+    setStatus({ kind: "pending" });
+    const { error } = await getSupabaseBrowserClient().auth.verifyOtp({ email, token, type: "email" });
+    if (error) {
+      setStatus({ kind: "error", message: authErrorMessage(error) });
+      return;
+    }
+    storeMode("code");
+    goToCallback();
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>, action: "code" | "signIn" | "signUp") {
     event.preventDefault();
     const form = new FormData(event.currentTarget.form ?? event.currentTarget);
     const email = emailSchema.safeParse(String(form.get("email") ?? "").trim());
@@ -99,25 +143,14 @@ export function LoginForm({ next }: { next: string }) {
       setStatus({ kind: "error", message: t.auth.errors.email_address_invalid });
       return;
     }
-    const supabase = getSupabaseBrowserClient();
-    setStatus({ kind: "pending" });
 
-    if (action === "magic") {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.data,
-        options: { emailRedirectTo: callbackUrl() },
-      });
-      if (error?.code === "over_email_send_rate_limit") {
-        // Envoi d'emails limité (service d'email de Supabase) : le mot de passe n'en a pas besoin.
-        setMode("password");
-      }
-      setStatus(
-        error
-          ? { kind: "error", message: authErrorMessage(error) }
-          : { kind: "info", message: t.auth.magicLinkSent(email.data) },
-      );
+    if (action === "code") {
+      await sendCode(email.data);
       return;
     }
+
+    const supabase = getSupabaseBrowserClient();
+    setStatus({ kind: "pending" });
 
     const password = passwordSchema.safeParse(String(form.get("password") ?? ""));
     if (!password.success) {
@@ -135,9 +168,7 @@ export function LoginForm({ next }: { next: string }) {
         return;
       }
       storeMode("password");
-      // Passe par le callback (route serveur, donc rechargement complet) pour vérifier le pseudo.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign(`/auth/callback?next=${encodeURIComponent(next)}`);
+      goToCallback();
       return;
     }
 
@@ -149,8 +180,7 @@ export function LoginForm({ next }: { next: string }) {
     if (error) {
       setStatus({ kind: "error", message: authErrorMessage(error) });
     } else if (data.session) {
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign(`/auth/callback?next=${encodeURIComponent(next)}`);
+      goToCallback();
     } else {
       setStatus({ kind: "info", message: t.auth.signUpSent(email.data) });
     }
@@ -183,75 +213,121 @@ export function LoginForm({ next }: { next: string }) {
         </>
       )}
 
-      <form
-        id="connexion"
-        method="post"
-        className="flex flex-col gap-3"
-        onSubmit={(event) => submit(event, mode === "magic" ? "magic" : "signIn")}
-      >
-        {/* « username » sur l'identifiant d'un formulaire de connexion : reconnu par les gestionnaires de mots de passe. */}
-        <label className="flex flex-col gap-1.5 text-sm font-semibold">
-          {t.auth.email}
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="username"
-            inputMode="email"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            required
-            placeholder={t.auth.emailPlaceholder}
-            className={input}
-          />
-        </label>
-
-        {mode === "password" && (
+      {mode === "code" && codeSentTo ? (
+        <form
+          id="code-connexion"
+          method="post"
+          className="flex flex-col gap-3"
+          onSubmit={(event) => verifyCode(event, codeSentTo)}
+        >
+          {/* « one-time-code » : iOS et Android proposent le code reçu au-dessus du clavier. */}
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            {t.auth.password}
+            {t.auth.code}
             <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              minLength={8}
+              key={codeSentTo}
+              id="code"
+              name="code"
+              type="text"
+              autoComplete="one-time-code"
+              inputMode="numeric"
               required
-              aria-describedby="password-hint"
-              className={input}
+              autoFocus
+              aria-describedby="code-hint"
+              className={`${input} text-center font-mono text-2xl tracking-[0.4em]`}
             />
-            <span id="password-hint" className="text-xs font-normal text-muted">
-              {t.auth.passwordHint}
+            <span id="code-hint" className="text-xs font-normal text-muted">
+              {t.auth.codeHint}
             </span>
           </label>
-        )}
-
-        {mode === "magic" && installedApp && (
-          <p data-testid="installed-app-notice" className="rounded-[14px] bg-soft p-3 text-sm font-semibold">
-            {t.auth.installedApp}
-          </p>
-        )}
-
-        {mode === "magic" ? (
           <PrimaryButton type="submit" fullWidth disabled={pending}>
-            {pending ? t.auth.pending : t.auth.sendMagicLink}
+            {pending ? t.auth.pending : t.auth.verifyCode}
           </PrimaryButton>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <PrimaryButton type="submit" fullWidth disabled={pending}>
-              {pending ? t.auth.pending : t.auth.signIn}
-            </PrimaryButton>
+          <div className="flex flex-wrap gap-x-5 text-sm">
             <button
               type="button"
-              className={secondary}
+              className="min-h-11 font-semibold underline underline-offset-4 disabled:opacity-50"
               disabled={pending}
-              onClick={(event) => submit(event as unknown as FormEvent<HTMLFormElement>, "signUp")}
+              onClick={() => sendCode(codeSentTo)}
             >
-              {t.auth.signUp}
+              {t.auth.resendCode}
+            </button>
+            <button
+              type="button"
+              className="min-h-11 font-semibold underline underline-offset-4"
+              onClick={() => {
+                setCodeSentTo(null);
+                setStatus({ kind: "idle" });
+              }}
+            >
+              {t.auth.changeEmail}
             </button>
           </div>
-        )}
-      </form>
+        </form>
+      ) : (
+        <form
+          id="connexion"
+          method="post"
+          className="flex flex-col gap-3"
+          onSubmit={(event) => submit(event, mode === "code" ? "code" : "signIn")}
+        >
+          {/* « username » sur l'identifiant d'un formulaire de connexion : reconnu par les gestionnaires de mots de passe. */}
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
+            {t.auth.email}
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="username"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              required
+              placeholder={t.auth.emailPlaceholder}
+              className={input}
+            />
+          </label>
+
+          {mode === "password" && (
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">
+              {t.auth.password}
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                minLength={8}
+                required
+                aria-describedby="password-hint"
+                className={input}
+              />
+              <span id="password-hint" className="text-xs font-normal text-muted">
+                {t.auth.passwordHint}
+              </span>
+            </label>
+          )}
+
+          {mode === "code" ? (
+            <PrimaryButton type="submit" fullWidth disabled={pending}>
+              {pending ? t.auth.pending : t.auth.sendCode}
+            </PrimaryButton>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <PrimaryButton type="submit" fullWidth disabled={pending}>
+                {pending ? t.auth.pending : t.auth.signIn}
+              </PrimaryButton>
+              <button
+                type="button"
+                className={secondary}
+                disabled={pending}
+                onClick={(event) => submit(event as unknown as FormEvent<HTMLFormElement>, "signUp")}
+              >
+                {t.auth.signUp}
+              </button>
+            </div>
+          )}
+        </form>
+      )}
 
       {status.kind === "error" || status.kind === "info" ? (
         <p
@@ -267,17 +343,16 @@ export function LoginForm({ next }: { next: string }) {
           type="button"
           className="min-h-11 self-start font-semibold underline underline-offset-4"
           onClick={() => {
-            const nextMode = mode === "magic" ? "password" : "magic";
+            const nextMode = mode === "code" ? "password" : "code";
             setMode(nextMode);
             storeMode(nextMode);
+            setCodeSentTo(null);
             setStatus({ kind: "idle" });
           }}
         >
-          {mode === "magic" ? t.auth.usePassword : t.auth.useMagicLink}
+          {mode === "code" ? t.auth.usePassword : t.auth.useCode}
         </button>
-        {mode === "password" && (
-          <p className="text-muted">{installedApp ? t.auth.forgotPasswordInstalled : t.auth.forgotPassword}</p>
-        )}
+        {mode === "password" && <p className="text-muted">{t.auth.forgotPassword}</p>}
       </div>
     </div>
   );
