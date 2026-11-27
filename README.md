@@ -122,9 +122,13 @@ En production, la démo est **publique** (carte et classement).
 - Connexion par **mot de passe** ou par **code à 6 chiffres reçu par email** (`/login`). Le
   code se tape dans la page qui l'a demandé : il marche aussi dans l'app installée sur
   iPhone, dont le stockage est séparé de Safari (où s'ouvrent les liens des emails).
-  L'email contient aussi un lien de secours. Modèle : `supabase/templates/code.html`,
-  appliqué avec `supabase/auth.json` à dev et prod à chaque déploiement
-  (`scripts/supabase-auth-config.sh`). Google et Apple sont prêts
+  L'email contient aussi un lien de secours. Modèle : `supabase/templates/code.html`.
+- Emails envoyés par Gmail : secrets de dépôt `SMTP_USER` (adresse Gmail) et
+  `SMTP_PASSWORD` (mot de passe d'application Google). À chaque déploiement,
+  `scripts/supabase-auth-config.sh` applique à dev et prod `supabase/auth.json`, puis,
+  avec ces secrets, le SMTP, la limite d'envoi, le code et le modèle
+  (`supabase/auth-email.json`). Sans eux, Supabase garde ses emails par défaut
+  (2 par heure, sans code) et refuse de modifier les modèles. Google et Apple sont prêts
   mais désactivés : les ajouter à `ENABLED_OAUTH_PROVIDERS` (`src/lib/auth/providers.ts`)
   après les avoir configurés dans Supabase (tableau ci-dessous). Tous
   les retours passent par `/auth/callback`, qui envoie vers `/welcome` tant que le pseudo
