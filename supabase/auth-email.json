@@ -1,0 +1,10 @@
+{
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": "465",
+  "smtp_sender_name": "Spot Tomi",
+  "rate_limit_email_sent": 100,
+  "mailer_otp_length": 6,
+  "mailer_otp_exp": 3600,
+  "mailer_subjects_magic_link": "Ton code de connexion Spot Tomi",
+  "mailer_subjects_confirmation": "Ton code de connexion Spot Tomi"
+}
